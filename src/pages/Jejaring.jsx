@@ -7,18 +7,36 @@ export default function Jejaring() {
   const [filterJenis, setFilterJenis] = useState("Semua");
   const [filterKelurahan, setFilterKelurahan] = useState("Semua");
 
-  // ambil daftar kelurahan unik dari data
+  // 🔹 STATUS (dinamis dari data)
+  const daftarStatus = [
+    "Semua",
+    ...new Set(jejaringList.map((j) => j.status).filter(Boolean)),
+  ];
+
+  // 🔹 JENIS (DINAMIS — INI YANG KURANG SEBELUMNYA)
+  const daftarJenis = [
+    "Semua",
+    ...new Set(
+      jejaringList
+        .map((j) => j.jenisFasyankes)
+        .filter(Boolean)
+    ),
+  ];
+
+  // 🔹 KELURAHAN (sudah benar di kode kamu 👍)
   const daftarKelurahan = [
     "Semua",
     ...new Set(jejaringList.map((j) => j.kelurahan).filter(Boolean)),
   ];
 
+  // 🔹 FILTER LOGIC (field konsisten)
   const filteredData = jejaringList.filter((item) => {
     const statusOk =
       filterStatus === "Semua" || item.status === filterStatus;
 
     const jenisOk =
-      filterJenis === "Semua" || item.jenis === filterJenis;
+      filterJenis === "Semua" ||
+      item.jenisFasyankes === filterJenis;
 
     const kelurahanOk =
       filterKelurahan === "Semua" ||
@@ -34,45 +52,51 @@ export default function Jejaring() {
       </h1>
 
       {/* FILTER */}
-      <div className="flex flex-wrap gap-4 mb-6">
-        {/* Status */}
+      <div className="flex flex-wrap gap-4 mb-4">
+        {/* STATUS */}
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
           className="bg-slate-800 border border-slate-600 rounded px-3 py-2"
         >
-          <option value="Semua">Semua Status</option>
-          <option value="Aktif">Aktif</option>
-          <option value="Tidak Aktif">Tidak Aktif</option>
+          {daftarStatus.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
         </select>
 
-        {/* Jenis */}
+        {/* JENIS (DINAMIS) */}
         <select
           value={filterJenis}
           onChange={(e) => setFilterJenis(e.target.value)}
           className="bg-slate-800 border border-slate-600 rounded px-3 py-2"
         >
-          <option value="Semua">Semua Jenis</option>
-          <option value="Apotek">Apotek</option>
-          <option value="Klinik Pratama Umum">Klinik Pratama Umum</option>
-          <option value="Tempat Praktik Mandiri Bidan">
-            Tempat Praktik Mandiri Bidan
-          </option>
+          {daftarJenis.map((j) => (
+            <option key={j} value={j}>
+              {j}
+            </option>
+          ))}
         </select>
 
-        {/* Kelurahan */}
+        {/* KELURAHAN */}
         <select
           value={filterKelurahan}
           onChange={(e) => setFilterKelurahan(e.target.value)}
           className="bg-slate-800 border border-slate-600 rounded px-3 py-2"
         >
-          {daftarKelurahan.map((kel, i) => (
-            <option key={i} value={kel}>
+          {daftarKelurahan.map((kel) => (
+            <option key={kel} value={kel}>
               {kel}
             </option>
           ))}
         </select>
       </div>
+
+      {/* INFO JUMLAH */}
+      <p className="text-sm text-slate-400 mb-4">
+        Menampilkan {filteredData.length} fasilitas kesehatan
+      </p>
 
       {/* LIST */}
       {filteredData.map((item) => (
