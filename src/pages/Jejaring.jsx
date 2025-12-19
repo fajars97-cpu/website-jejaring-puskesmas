@@ -58,11 +58,16 @@ export default function Jejaring() {
 
         {/* LIST */}
         <div className="md:col-span-2 space-y-4">
-          {/* JejaringCard di sini */}
-          <div className="bg-slate-800 rounded-xl p-6">
-            Card Placeholder
-          </div>
+        {filteredData.map((item) => (
+        <JejaringCard key={item.id} data={item} />
+         ))}
+
+        {filteredData.length === 0 && (
+        <div className="text-slate-400 text-sm">
+        Data tidak ditemukan.
         </div>
+       )}
+       </div>
 
       </section>
 
