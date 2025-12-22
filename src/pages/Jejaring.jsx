@@ -60,7 +60,7 @@ export default function Jejaring() {
 
       {/* ================= HEADER ================= */}
       <section>
-        <h1 className="text-3xl font-bold">
+        <h1 className="text-3xl font-bold text-[#087745]">
           Data Jejaring Fasilitas Kesehatan
         </h1>
         <p className="text-slate-400 mt-2 max-w-3xl">
@@ -71,7 +71,7 @@ export default function Jejaring() {
       </section>
 
       {/* ================= FILTER BAR ================= */}
-      <section className="bg-slate-800/60 rounded-xl p-4">
+      <section className="bg-[#0f2a1f] rounded-xl p-4 border border-[#087745]/30">
         <JejaringFilter
           jenis={filterJenis}
           setJenis={setFilterJenis}
@@ -90,7 +90,7 @@ export default function Jejaring() {
 
         {/* SIDEBAR INFO */}
         <aside className="hidden md:block md:col-span-1">
-          <div className="bg-slate-800/40 rounded-xl p-4 text-sm text-slate-400">
+          <div className="bg-[#0f2a1f] rounded-xl p-4 text-sm text-white/80 border-l-4 border-[#087745]">
             Menampilkan {filteredData.length} fasilitas kesehatan
             jejaring yang telah terdaftar dan diverifikasi.
           </div>
