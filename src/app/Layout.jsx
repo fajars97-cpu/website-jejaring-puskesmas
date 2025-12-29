@@ -1,8 +1,7 @@
 import { Outlet, NavLink } from "react-router-dom";
 
 /**
- * Menu publik (tanpa login)
- * Nanti ini bisa dilihat semua orang
+ * Menu publik
  */
 const publicMenu = [
   { label: "Home", path: "/", end: true },
@@ -11,27 +10,21 @@ const publicMenu = [
 ];
 
 /**
- * Menu auth / internal
- * Sekarang hanya Login
- * Nanti bisa berkembang jadi Dashboard, Admin, dll
+ * Menu auth
  */
-const authMenu = [
-  { label: "Login", path: "/login" },
-];
+const authMenu = [{ label: "Login", path: "/login" }];
 
 /**
- * Style dasar (sementara, sebelum Tailwind)
+ * Warna pedoman (Dinkes style)
  */
-const linkStyle = {
-  textDecoration: "none",
-  padding: "6px 10px",
-  color: "#cbd5e1",
-};
-
-const activeStyle = {
-  fontWeight: "bold",
-  borderBottom: "2px solid #38bdf8",
-  color: "#ffffff",
+const COLORS = {
+  green: "#087745",
+  greenSoft: "#e6f4ee",
+  blue: "#0e7490",
+  textDark: "#1f2937",
+  textMuted: "#64748b",
+  border: "#e5e7eb",
+  bgPage: "#f8fafc",
 };
 
 export default function Layout() {
@@ -39,58 +32,61 @@ export default function Layout() {
     <div
       style={{
         minHeight: "100vh",
-        width: "100%",
         display: "flex",
         flexDirection: "column",
-        backgroundColor: "#1f2933",
-        color: "#ffffff",
+        backgroundColor: "#ffffff",
+        color: COLORS.textDark,
       }}
     >
       {/* HEADER */}
       <header
         style={{
-          padding: "12px 16px",
-          borderBottom: "1px solid #374151",
+          backgroundColor: COLORS.green,
+          color: "#ffffff",
+          padding: "14px 24px",
         }}
       >
-        <strong>Website Jejaring Puskesmas</strong>
+        <strong style={{ fontSize: 16 }}>
+          Website Jejaring Puskesmas
+        </strong>
 
-        {/* NAVIGATION */}
         <nav
           style={{
-            marginTop: 8,
+            marginTop: 10,
             display: "flex",
             alignItems: "center",
-            gap: 12,
+            gap: 16,
           }}
         >
-          {/* MENU PUBLIK */}
           {publicMenu.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
               end={item.end}
-              style={({ isActive }) =>
-                isActive
-                  ? { ...linkStyle, ...activeStyle }
-                  : linkStyle
-              }
+              style={({ isActive }) => ({
+                textDecoration: "none",
+                color: "#ffffff",
+                paddingBottom: 4,
+                borderBottom: isActive
+                  ? "2px solid #ffffff"
+                  : "2px solid transparent",
+                fontWeight: isActive ? 600 : 400,
+              })}
             >
               {item.label}
             </NavLink>
           ))}
 
-          {/* MENU AUTH (KANAN) */}
           <div style={{ marginLeft: "auto" }}>
             {authMenu.map((item) => (
               <NavLink
                 key={item.path}
                 to={item.path}
-                style={({ isActive }) =>
-                  isActive
-                    ? { ...linkStyle, ...activeStyle }
-                    : linkStyle
-                }
+                style={{
+                  textDecoration: "none",
+                  color: "#ffffff",
+                  fontWeight: 500,
+                }}
               >
                 {item.label}
               </NavLink>
@@ -101,21 +97,31 @@ export default function Layout() {
 
       {/* MAIN CONTENT */}
       <main
-         style={{
-         flex: 1,
-         padding: "24px",
-         width: "100%",
-         boxSizing: "border-box",
-        }}>
-        <Outlet />
+        style={{
+          flex: 1,
+          backgroundColor: COLORS.bgPage,
+          padding: "32px 24px",
+        }}
+      >
+        {/* container supaya konten tidak nempel pinggir */}
+        <div
+          style={{
+            maxWidth: 1200,
+            margin: "0 auto",
+          }}
+        >
+          <Outlet />
+        </div>
       </main>
 
       {/* FOOTER */}
       <footer
         style={{
-          padding: "12px 16px",
-          borderTop: "1px solid #374151",
+          borderTop: `1px solid ${COLORS.border}`,
+          padding: "12px 24px",
           fontSize: 12,
+          color: COLORS.textMuted,
+          backgroundColor: "#ffffff",
         }}
       >
         © Puskesmas
