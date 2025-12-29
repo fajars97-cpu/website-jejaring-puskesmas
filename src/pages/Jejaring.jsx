@@ -19,8 +19,8 @@ export default function Jejaring() {
   );
 
   return (
-    <main className="bg-white min-h-screen">
-      <div className="max-w-7xl mx-auto px-6 py-10 space-y-8">
+    <main className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-6 py-10 space-y-10">
 
         {/* HEADER */}
         <div>
@@ -33,18 +33,20 @@ export default function Jejaring() {
           </p>
         </div>
 
-        {/* FILTER */}
-        <JejaringFilter
-          jenis={filterJenis}
-          setJenis={setFilterJenis}
-          kelurahan={filterKelurahan}
-          setKelurahan={setFilterKelurahan}
-          status={filterStatus}
-          setStatus={setFilterStatus}
-          jenisOptions={jenisOptions}
-          kelurahanOptions={kelurahanOptions}
-          statusOptions={statusOptions}
-        />
+        {/* FILTER PANEL */}
+        <div className="bg-white rounded-2xl shadow-md border border-gray-200 p-6">
+          <JejaringFilter
+            jenis={filterJenis}
+            setJenis={setFilterJenis}
+            kelurahan={filterKelurahan}
+            setKelurahan={setFilterKelurahan}
+            status={filterStatus}
+            setStatus={setFilterStatus}
+            jenisOptions={jenisOptions}
+            kelurahanOptions={kelurahanOptions}
+            statusOptions={statusOptions}
+          />
+        </div>
 
         {/* INFO */}
         <p className="text-sm text-gray-600">

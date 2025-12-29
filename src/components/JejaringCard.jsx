@@ -2,24 +2,25 @@ export default function JejaringCard({ data }) {
   return (
     <div
       className="
-        bg-white
-        border border-gray-200
-        rounded-xl
-        shadow-sm
-        hover:shadow-md
-        transition
         relative
+        bg-white
+        rounded-2xl
+        border border-gray-200
+        shadow-md
+        hover:shadow-xl
+        transition
+        hover:-translate-y-0.5
         overflow-hidden
       "
     >
       {/* ACCENT STRIP */}
-      <div className="absolute left-0 top-0 h-full w-1 bg-[#087745]" />
+      <div className="absolute left-0 top-0 h-full w-1.5 bg-[#087745]" />
 
-      <div className="p-5 pl-6">
+      <div className="p-6 pl-7">
         <div className="flex gap-4">
 
           {/* FOTO */}
-          <div className="w-24 h-20 bg-[#f0f7f4] rounded-lg flex items-center justify-center text-xs text-gray-500">
+          <div className="w-24 h-20 bg-[#f0f7f4] rounded-xl flex items-center justify-center text-xs text-gray-500">
             Foto
           </div>
 
@@ -54,7 +55,7 @@ export default function JejaringCard({ data }) {
               {data.alamat}
             </p>
 
-            <p className="text-xs text-gray-600 mt-2">
+            <p className="text-xs text-gray-500 mt-2">
               PJ: {data.pjNama}
             </p>
           </div>
