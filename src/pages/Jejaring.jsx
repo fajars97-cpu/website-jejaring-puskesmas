@@ -8,9 +8,9 @@ export default function Jejaring() {
   const [filterKelurahan, setFilterKelurahan] = useState("Semua");
   const [filterStatus, setFilterStatus] = useState("Semua");
 
-  const jenisOptions = ["Semua", ...new Set(jejaringList.map(i => i.jenisFasyankes).filter(Boolean))];
-  const kelurahanOptions = ["Semua", ...new Set(jejaringList.map(i => i.kelurahan).filter(Boolean))];
-  const statusOptions = ["Semua", ...new Set(jejaringList.map(i => i.status).filter(Boolean))];
+  const jenisOptions = Array.from(new Set(jejaringList.map(i => i.jenisFasyankes).filter(v => v && v !== "Semua")));
+  const kelurahanOptions = Array.from(new Set(jejaringList.map(i => i.kelurahan).filter(v => v && v !== "Semua")));
+  const statusOptions = Array.from(new Set(jejaringList.map(i => i.status).filter(v => v && v !== "Semua")));
 
   const filteredData = jejaringList.filter(item =>
     (filterJenis === "Semua" || item.jenisFasyankes === filterJenis) &&

@@ -1,18 +1,15 @@
 export default function JejaringCard({ data }) {
   return (
-    <div
-      className="
-        relative
-        bg-white
-        rounded-2xl
-        border border-gray-200
-        shadow-md
-        hover:shadow-xl
-        transition
-        hover:-translate-y-0.5
-        overflow-hidden
-      "
-    >
+    <div className="
+     relative
+     bg-white
+     rounded-2xl
+     border border-gray-200
+     shadow-md
+     hover:shadow-xl
+     transition
+     overflow-hidden
+     ">
       {/* ACCENT STRIP */}
       <div className="absolute left-0 top-0 h-full w-1.5 bg-[#087745]" />
 
@@ -32,12 +29,12 @@ export default function JejaringCard({ data }) {
               </h3>
 
               <span className="
-                text-xs
-                px-3 py-1
-                rounded-full
-                bg-[#e6f4ee]
-                text-[#087745]
-                font-medium
+              text-xs
+              font-semibold
+              px-3 py-1
+              rounded-full
+              bg-[#e6f4ee]
+              text-[#087745]
               ">
                 {data.status}
               </span>
