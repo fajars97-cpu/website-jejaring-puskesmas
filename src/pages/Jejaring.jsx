@@ -19,50 +19,52 @@ export default function Jejaring() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-10 space-y-8">
+    <main className="bg-white min-h-screen">
+      <div className="max-w-7xl mx-auto px-6 py-10 space-y-8">
 
-      {/* HEADER */}
-      <div>
-        <h1 className="text-3xl font-bold text-[#087745]">
-          Data Jejaring Fasilitas Kesehatan
-        </h1>
-        <p className="mt-2 text-gray-600 max-w-3xl">
-          Informasi fasilitas pelayanan kesehatan yang bekerja sama dengan
-          Puskesmas dan telah diverifikasi.
+        {/* HEADER */}
+        <div>
+          <h1 className="text-3xl font-bold text-[#087745]">
+            Data Jejaring Fasilitas Kesehatan
+          </h1>
+          <p className="mt-2 text-gray-600 max-w-3xl">
+            Informasi fasilitas pelayanan kesehatan yang bekerja sama dengan
+            Puskesmas dan telah diverifikasi.
+          </p>
+        </div>
+
+        {/* FILTER */}
+        <JejaringFilter
+          jenis={filterJenis}
+          setJenis={setFilterJenis}
+          kelurahan={filterKelurahan}
+          setKelurahan={setFilterKelurahan}
+          status={filterStatus}
+          setStatus={setFilterStatus}
+          jenisOptions={jenisOptions}
+          kelurahanOptions={kelurahanOptions}
+          statusOptions={statusOptions}
+        />
+
+        {/* INFO */}
+        <p className="text-sm text-gray-600">
+          Menampilkan <b>{filteredData.length}</b> fasilitas kesehatan
         </p>
+
+        {/* CARD LIST */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {filteredData.map(item => (
+            <JejaringCard key={item.id} data={item} />
+          ))}
+
+          {filteredData.length === 0 && (
+            <p className="text-sm text-gray-500">
+              Data tidak ditemukan.
+            </p>
+          )}
+        </div>
+
       </div>
-
-      {/* FILTER PANEL */}
-      <JejaringFilter
-        jenis={filterJenis}
-        setJenis={setFilterJenis}
-        kelurahan={filterKelurahan}
-        setKelurahan={setFilterKelurahan}
-        status={filterStatus}
-        setStatus={setFilterStatus}
-        jenisOptions={jenisOptions}
-        kelurahanOptions={kelurahanOptions}
-        statusOptions={statusOptions}
-      />
-
-      {/* INFO */}
-      <div className="text-sm text-gray-600">
-        Menampilkan <b>{filteredData.length}</b> fasilitas kesehatan
-      </div>
-
-      {/* CARD LIST */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {filteredData.map(item => (
-          <JejaringCard key={item.id} data={item} />
-        ))}
-
-        {filteredData.length === 0 && (
-          <div className="text-gray-500 text-sm">
-            Data tidak ditemukan.
-          </div>
-        )}
-      </div>
-
-    </div>
+    </main>
   );
 }

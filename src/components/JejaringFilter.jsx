@@ -10,71 +10,65 @@ export default function JejaringFilter({
   kelurahanOptions = [],
 }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-      <h3 className="text-sm font-semibold text-gray-800 mb-4">
+    <section className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+      <h3 className="text-sm font-semibold text-gray-900 mb-4">
         Filter Fasilitas Kesehatan
       </h3>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
-        {/* JENIS */}
+        {/** Jenis */}
         <div>
-          <label className="block text-sm text-gray-600 mb-1">
+          <label className="block text-sm text-gray-700 mb-1">
             Jenis Fasyankes
           </label>
           <select
             value={jenis}
             onChange={(e) => setJenis(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#087745]"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-[#087745]"
           >
             <option value="Semua">Semua</option>
-            {jenisOptions.map((j) => (
-              <option key={j} value={j}>
-                {j}
-              </option>
+            {jenisOptions.map(j => (
+              <option key={j} value={j}>{j}</option>
             ))}
           </select>
         </div>
 
-        {/* KELURAHAN */}
+        {/** Kelurahan */}
         <div>
-          <label className="block text-sm text-gray-600 mb-1">
+          <label className="block text-sm text-gray-700 mb-1">
             Kelurahan
           </label>
           <select
             value={kelurahan}
             onChange={(e) => setKelurahan(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#087745]"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-[#087745]"
           >
             <option value="Semua">Semua</option>
-            {kelurahanOptions.map((k) => (
-              <option key={k} value={k}>
-                {k}
-              </option>
+            {kelurahanOptions.map(k => (
+              <option key={k} value={k}>{k}</option>
             ))}
           </select>
         </div>
 
-        {/* STATUS */}
+        {/** Status */}
         <div>
-          <label className="block text-sm text-gray-600 mb-1">
+          <label className="block text-sm text-gray-700 mb-1">
             Status
           </label>
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#087745]"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-[#087745]"
           >
             <option value="Semua">Semua</option>
-            {statusOptions.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
+            {statusOptions.map(s => (
+              <option key={s} value={s}>{s}</option>
             ))}
           </select>
         </div>
 
       </div>
-    </div>
+    </section>
   );
 }
