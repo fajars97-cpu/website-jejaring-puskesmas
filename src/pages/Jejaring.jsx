@@ -12,13 +12,11 @@ export default function Jejaring() {
   const kelurahanOptions = ["Semua", ...new Set(jejaringList.map(i => i.kelurahan).filter(Boolean))];
   const statusOptions = ["Semua", ...new Set(jejaringList.map(i => i.status).filter(Boolean))];
 
-  const filteredData = jejaringList.filter(item => {
-    return (
-      (filterJenis === "Semua" || item.jenisFasyankes === filterJenis) &&
-      (filterKelurahan === "Semua" || item.kelurahan === filterKelurahan) &&
-      (filterStatus === "Semua" || item.status === filterStatus)
-    );
-  });
+  const filteredData = jejaringList.filter(item =>
+    (filterJenis === "Semua" || item.jenisFasyankes === filterJenis) &&
+    (filterKelurahan === "Semua" || item.kelurahan === filterKelurahan) &&
+    (filterStatus === "Semua" || item.status === filterStatus)
+  );
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-10 space-y-8">
@@ -34,27 +32,25 @@ export default function Jejaring() {
         </p>
       </div>
 
-      {/* FILTER */}
-      <div className="bg-[#e6f4ee] border border-[#087745]/20 rounded-xl p-5">
-        <JejaringFilter
-          jenis={filterJenis}
-          setJenis={setFilterJenis}
-          kelurahan={filterKelurahan}
-          setKelurahan={setFilterKelurahan}
-          status={filterStatus}
-          setStatus={setFilterStatus}
-          jenisOptions={jenisOptions}
-          kelurahanOptions={kelurahanOptions}
-          statusOptions={statusOptions}
-        />
-      </div>
+      {/* FILTER PANEL */}
+      <JejaringFilter
+        jenis={filterJenis}
+        setJenis={setFilterJenis}
+        kelurahan={filterKelurahan}
+        setKelurahan={setFilterKelurahan}
+        status={filterStatus}
+        setStatus={setFilterStatus}
+        jenisOptions={jenisOptions}
+        kelurahanOptions={kelurahanOptions}
+        statusOptions={statusOptions}
+      />
 
       {/* INFO */}
       <div className="text-sm text-gray-600">
         Menampilkan <b>{filteredData.length}</b> fasilitas kesehatan
       </div>
 
-      {/* LIST */}
+      {/* CARD LIST */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {filteredData.map(item => (
           <JejaringCard key={item.id} data={item} />

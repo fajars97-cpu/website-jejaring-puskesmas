@@ -1,7 +1,7 @@
 export default function JejaringCard({ data }) {
   const statusStyle =
     data.status === "Aktif"
-      ? "bg-green-100 text-green-700"
+      ? "bg-green-50 text-green-700"
       : "bg-gray-200 text-gray-600";
 
   return (
@@ -10,7 +10,7 @@ export default function JejaringCard({ data }) {
       <div className="flex gap-4">
 
         {/* FOTO */}
-        <div className="w-32 h-24 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden shrink-0">
+        <div className="w-28 h-20 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden shrink-0">
           {data.foto ? (
             <img
               src={data.foto}
@@ -24,10 +24,8 @@ export default function JejaringCard({ data }) {
           )}
         </div>
 
-        {/* CONTENT */}
+        {/* KONTEN */}
         <div className="flex-1">
-
-          {/* HEADER */}
           <div className="flex justify-between items-start gap-3">
             <h3 className="text-lg font-semibold text-[#087745] leading-tight">
               {data.namaFasyankes}
@@ -40,7 +38,6 @@ export default function JejaringCard({ data }) {
             </span>
           </div>
 
-          {/* META */}
           <p className="text-sm text-gray-600 mt-1">
             {data.jenisFasyankes} • {data.tipeFasyankes}
           </p>
@@ -65,7 +62,7 @@ export default function JejaringCard({ data }) {
           {data.kegiatan.map((k, i) => (
             <span
               key={i}
-              className="text-xs bg-[#e6f4ee] text-[#087745] px-3 py-1 rounded-full"
+              className="text-xs bg-gray-100 text-gray-700 px-3 py-1 rounded-full"
             >
               {k}
             </span>
