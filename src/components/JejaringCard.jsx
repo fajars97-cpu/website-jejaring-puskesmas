@@ -1,15 +1,21 @@
-export default function JejaringCard({ data }) {
+export default function JejaringCard({ data, isActive, onClick }) {
   return (
-    <div className="
-     relative
-     bg-white
-     rounded-2xl
-     border border-gray-200
-     shadow-md
-     hover:shadow-xl
-     transition
-     overflow-hidden
-     ">
+    <div
+      onClick={onClick}
+      className={`
+        relative
+        bg-white
+        rounded-2xl
+        border border-gray-200
+        shadow-sm
+        hover:shadow-lg
+        transition-all
+        duration-300
+        cursor-pointer
+        overflow-hidden
+        ${isActive ? "ring-2 ring-[#087745]" : ""}
+      `}
+    >
       {/* ACCENT STRIP */}
       <div className="absolute left-0 top-0 h-full w-1.5 bg-[#087745]" />
 
