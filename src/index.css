@@ -20,3 +20,14 @@ body {
   color: #1c1c1c;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, Arial, sans-serif;
 }
+
+@keyframes expand {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
