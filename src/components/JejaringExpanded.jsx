@@ -1,6 +1,10 @@
 export default function JejaringExpanded({ data, onClose }) {
   if (!data) return null;
 
+  const mapSrc = data.placeId
+    ? `https://www.google.com/maps/embed/v1/place?key=${import.meta.env.VITE_GOOGLE_MAPS_KEY}&q=place_id:${data.placeId}`
+    : null;
+
   return (
     <div
       className="
@@ -23,15 +27,16 @@ export default function JejaringExpanded({ data, onClose }) {
           relative
         "
       >
-        {/* Close */}
+        {/* CLOSE */}
         <button
           onClick={onClose}
           className="
             absolute
             top-4
             right-4
+            text-sm
             text-gray-400
-            hover:text-gray-600
+            hover:text-red-500
             transition
           "
         >
@@ -46,29 +51,31 @@ export default function JejaringExpanded({ data, onClose }) {
             </h2>
 
             <p className="text-sm text-gray-600 mt-1">
-              {data.kelurahan}, {data.kecamatan}
+              {data.kelurahan}, Kec. {data.kecamatan}
             </p>
 
-            <div className="mt-4 space-y-2 text-sm">
+            <div className="mt-4 space-y-2 text-sm text-gray-700">
               <p><strong>Alamat:</strong> {data.alamat}</p>
               <p><strong>PJ:</strong> {data.pj}</p>
               <p><strong>Status:</strong> {data.status}</p>
             </div>
           </div>
 
-          {/* MAP */}
-          <div
-            className="
-              bg-gray-100
-              rounded-xl
-              flex
-              items-center
-              justify-center
-              text-gray-400
-              text-sm
-            "
-          >
-            Map akan ditampilkan di sini
+          {/* GOOGLE MAP */}
+          <div className="w-full h-[260px] rounded-xl overflow-hidden border bg-gray-100">
+            {mapSrc ? (
+              <iframe
+                title="Google Maps"
+                src={mapSrc}
+                className="w-full h-full"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
+                Place ID belum tersedia
+              </div>
+            )}
           </div>
         </div>
       </div>

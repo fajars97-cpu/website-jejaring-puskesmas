@@ -6,6 +6,7 @@ export const jejaringList = [
     kelurahan: "Jagakarsa",
     kecamatan: "Jagakarsa",
     wilayah: "Jakarta Selatan",
+    gmapsUrl: "https://maps.app.goo.gl/e7HkB5i5cnSLGz1R7",
 
     // STATUS & TIPE
     status: "Aktif",
@@ -53,6 +54,7 @@ export const jejaringList = [
     kelurahan: "Ciganjur",
     kecamatan: "Jagakarsa",
     wilayah: "Jakarta Selatan",
+    gmapsUrl: "https://maps.app.goo.gl/fniYQAfLyA32rgNp7",
 
     // STATUS & TIPE
     status: "Aktif",
@@ -100,6 +102,7 @@ export const jejaringList = [
     kelurahan: "Tanjung Barat",
     kecamatan: "Jagakarsa",
     wilayah: "Jakarta Selatan",
+    gmapsUrl: "https://maps.app.goo.gl/FhpAFw91E3y6XZRh7",
 
     // STATUS & TIPE
     status: "Aktif",
