@@ -5,28 +5,58 @@ import JejaringCard from "../components/JejaringCard";
 import JejaringFilter from "../components/JejaringFilter";
 import JejaringExpanded from "../components/JejaringExpanded";
 
+/* =========================
+   SMOOTH SCROLL HELPER
+========================= */
+function smoothScrollTo(targetY, duration = 700) {
+  const startY = window.scrollY;
+  const distance = targetY - startY;
+  let startTime = null;
+
+  function easeInOutCubic(t) {
+    return t < 0.5
+      ? 4 * t * t * t
+      : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
+
+  function step(currentTime) {
+    if (!startTime) startTime = currentTime;
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = easeInOutCubic(progress);
+
+    window.scrollTo(0, startY + distance * eased);
+
+    if (elapsed < duration) {
+      requestAnimationFrame(step);
+    }
+  }
+
+  requestAnimationFrame(step);
+}
+
 export default function Jejaring() {
-  // =========================
-  // FILTER STATE
-  // =========================
+  /* =========================
+     FILTER STATE
+  ========================= */
   const [filterJenis, setFilterJenis] = useState("Semua");
   const [filterKelurahan, setFilterKelurahan] = useState("Semua");
   const [filterStatus, setFilterStatus] = useState("Semua");
 
-  // =========================
-  // ACTIVE CARD & ROW
-  // =========================
+  /* =========================
+     ACTIVE CARD & ROW
+  ========================= */
   const [activeId, setActiveId] = useState(null);
   const [activeRow, setActiveRow] = useState(null);
 
-  // =========================
-  // REF UNTUK AUTO SCROLL
-  // =========================
+  /* =========================
+     REF AUTO SCROLL
+  ========================= */
   const expandedRef = useRef(null);
 
-  // =========================
-  // OPTIONS (ANTI DUPLIKASI)
-  // =========================
+  /* =========================
+     OPTIONS (ANTI DUPLIKASI)
+  ========================= */
   const jenisOptions = useMemo(
     () =>
       [...new Set(jejaringList.map(i => i.jenisFasyankes).filter(Boolean))],
@@ -45,9 +75,9 @@ export default function Jejaring() {
     []
   );
 
-  // =========================
-  // FILTERED DATA (MAX 10)
-  // =========================
+  /* =========================
+     FILTERED DATA (MAX 10)
+  ========================= */
   const filteredData = useMemo(() => {
     return jejaringList
       .filter(
@@ -62,9 +92,9 @@ export default function Jejaring() {
       .slice(0, 10);
   }, [filterJenis, filterKelurahan, filterStatus]);
 
-  // =========================
-  // CLICK HANDLER
-  // =========================
+  /* =========================
+     CLICK HANDLER
+  ========================= */
   const handleClick = (id, rowIndex) => {
     if (activeId === id) {
       setActiveId(null);
@@ -77,26 +107,36 @@ export default function Jejaring() {
 
   const activeData = filteredData.find(i => i.id === activeId);
 
-  // =========================
-  // AUTO SCROLL KE EXPANDED
-  // =========================
+  /* =========================
+     AUTO SCROLL (SMOOTH + BONUS)
+  ========================= */
   useEffect(() => {
     if (!activeId || activeRow === null) return;
 
-    // kasih jeda dikit biar DOM + animasi expand siap
     const timer = setTimeout(() => {
-      expandedRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }, 80);
+      if (!expandedRef.current) return;
+
+      const rect = expandedRef.current.getBoundingClientRect();
+
+      // BONUS: kalau sudah kelihatan di viewport, jangan auto scroll
+      const isVisible =
+        rect.top >= 0 &&
+        rect.bottom <= window.innerHeight;
+
+      if (isVisible) return;
+
+      const targetY =
+        window.scrollY + rect.top - 24; // offset biar napas
+
+      smoothScrollTo(targetY, 750); // durasi scroll
+    }, 140); // delay nunggu expand animation kebentuk
 
     return () => clearTimeout(timer);
   }, [activeId, activeRow]);
 
-  // =========================
-  // RENDER
-  // =========================
+  /* =========================
+     RENDER
+  ========================= */
   return (
     <main className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-6 py-10 space-y-10">
@@ -131,7 +171,7 @@ export default function Jejaring() {
           Menampilkan <b>{filteredData.length}</b> fasilitas kesehatan
         </p>
 
-        {/* GRID 2 KOLOM + EXPAND PER ROW */}
+        {/* GRID 2 KOLOM + EXPAND */}
         <section className="space-y-8">
           {Array.from({
             length: Math.ceil(filteredData.length / 2),
