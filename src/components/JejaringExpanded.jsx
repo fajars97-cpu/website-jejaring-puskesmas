@@ -1,8 +1,9 @@
 export default function JejaringExpanded({ data, onClose }) {
   if (!data) return null;
 
-  const mapSrc = data.placeId
-    ? `https://www.google.com/maps/embed/v1/place?key=${import.meta.env.VITE_GOOGLE_MAPS_KEY}&q=place_id:${data.placeId}`
+  // convert google maps url → embed
+  const mapSrc = data.gmapsUrl
+    ? data.gmapsUrl.replace("https://www.google.com/maps", "https://www.google.com/maps/embed")
     : null;
 
   return (
@@ -16,29 +17,11 @@ export default function JejaringExpanded({ data, onClose }) {
         animate-expand
       "
     >
-      <div
-        className="
-          bg-white
-          rounded-2xl
-          border
-          border-gray-200
-          shadow-lg
-          p-6
-          relative
-        "
-      >
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-lg p-6 relative">
         {/* CLOSE */}
         <button
           onClick={onClose}
-          className="
-            absolute
-            top-4
-            right-4
-            text-sm
-            text-gray-400
-            hover:text-red-500
-            transition
-          "
+          className="absolute top-4 right-4 text-sm text-gray-400 hover:text-red-500 transition"
         >
           Tutup ✕
         </button>
@@ -56,16 +39,16 @@ export default function JejaringExpanded({ data, onClose }) {
 
             <div className="mt-4 space-y-2 text-sm text-gray-700">
               <p><strong>Alamat:</strong> {data.alamat}</p>
-              <p><strong>PJ:</strong> {data.pj}</p>
+              <p><strong>PJ:</strong> {data.pj || "-"}</p>
               <p><strong>Status:</strong> {data.status}</p>
             </div>
           </div>
 
-          {/* GOOGLE MAP */}
-          <div className="w-full h-[260px] rounded-xl overflow-hidden border bg-gray-100">
+          {/* MAP */}
+          <div className="w-full h-65 rounded-xl overflow-hidden border bg-gray-100">
             {mapSrc ? (
               <iframe
-                title="Google Maps"
+                title={`Map ${data.namaFasyankes}`}
                 src={mapSrc}
                 className="w-full h-full"
                 loading="lazy"
@@ -73,7 +56,7 @@ export default function JejaringExpanded({ data, onClose }) {
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
-                Place ID belum tersedia
+                Lokasi belum tersedia
               </div>
             )}
           </div>
