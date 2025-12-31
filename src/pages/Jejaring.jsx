@@ -4,11 +4,12 @@ import { jejaringList } from "../data/jejaring";
 import JejaringCard from "../components/JejaringCard";
 import JejaringFilter from "../components/JejaringFilter";
 import JejaringExpanded from "../components/JejaringExpanded";
+import JejaringMap from "../components/JejaringMap";
 
-/* =========================
+/* =========================================================
    SMOOTH SCROLL HELPER
-========================= */
-function smoothScrollTo(targetY, duration = 700) {
+========================================================= */
+function smoothScrollTo(targetY, duration = 750) {
   const startY = window.scrollY;
   const distance = targetY - startY;
   let startTime = null;
@@ -36,27 +37,27 @@ function smoothScrollTo(targetY, duration = 700) {
 }
 
 export default function Jejaring() {
-  /* =========================
+  /* =========================================================
      FILTER STATE
-  ========================= */
+  ========================================================= */
   const [filterJenis, setFilterJenis] = useState("Semua");
   const [filterKelurahan, setFilterKelurahan] = useState("Semua");
   const [filterStatus, setFilterStatus] = useState("Semua");
 
-  /* =========================
-     ACTIVE CARD & ROW
-  ========================= */
+  /* =========================================================
+     ACTIVE CARD STATE
+  ========================================================= */
   const [activeId, setActiveId] = useState(null);
   const [activeRow, setActiveRow] = useState(null);
 
-  /* =========================
-     REF AUTO SCROLL
-  ========================= */
+  /* =========================================================
+     REF (AUTO SCROLL EXPANDED)
+  ========================================================= */
   const expandedRef = useRef(null);
 
-  /* =========================
-     OPTIONS (ANTI DUPLIKASI)
-  ========================= */
+  /* =========================================================
+     FILTER OPTIONS (ANTI DUPLIKASI)
+  ========================================================= */
   const jenisOptions = useMemo(
     () =>
       [...new Set(jejaringList.map(i => i.jenisFasyankes).filter(Boolean))],
@@ -75,27 +76,25 @@ export default function Jejaring() {
     []
   );
 
-  /* =========================
+  /* =========================================================
      FILTERED DATA (MAX 10)
-  ========================= */
+  ========================================================= */
   const filteredData = useMemo(() => {
     return jejaringList
-      .filter(
-        item =>
-          (filterJenis === "Semua" ||
-            item.jenisFasyankes === filterJenis) &&
-          (filterKelurahan === "Semua" ||
-            item.kelurahan === filterKelurahan) &&
-          (filterStatus === "Semua" ||
-            item.status === filterStatus)
+      .filter(item =>
+        (filterJenis === "Semua" || item.jenisFasyankes === filterJenis) &&
+        (filterKelurahan === "Semua" || item.kelurahan === filterKelurahan) &&
+        (filterStatus === "Semua" || item.status === filterStatus)
       )
       .slice(0, 10);
   }, [filterJenis, filterKelurahan, filterStatus]);
 
-  /* =========================
-     CLICK HANDLER
-  ========================= */
-  const handleClick = (id, rowIndex) => {
+  const activeData = filteredData.find(i => i.id === activeId);
+
+  /* =========================================================
+     HANDLER: CARD CLICK
+  ========================================================= */
+  const handleCardClick = (id, rowIndex) => {
     if (activeId === id) {
       setActiveId(null);
       setActiveRow(null);
@@ -105,11 +104,20 @@ export default function Jejaring() {
     }
   };
 
-  const activeData = filteredData.find(i => i.id === activeId);
+  /* =========================================================
+     HANDLER: MARKER CLICK (MAP → LIST)
+  ========================================================= */
+  const handleMarkerClick = id => {
+    const index = filteredData.findIndex(item => item.id === id);
+    if (index === -1) return;
 
-  /* =========================
-     AUTO SCROLL (SMOOTH + BONUS)
-  ========================= */
+    setActiveId(id);
+    setActiveRow(Math.floor(index / 2));
+  };
+
+  /* =========================================================
+     AUTO SCROLL KE EXPANDED CARD
+  ========================================================= */
   useEffect(() => {
     if (!activeId || activeRow === null) return;
 
@@ -118,30 +126,27 @@ export default function Jejaring() {
 
       const rect = expandedRef.current.getBoundingClientRect();
 
-      // BONUS: kalau sudah kelihatan di viewport, jangan auto scroll
+      // Kalau sudah kelihatan di viewport, tidak perlu scroll
       const isVisible =
-        rect.top >= 0 &&
-        rect.bottom <= window.innerHeight;
+        rect.top >= 0 && rect.bottom <= window.innerHeight;
 
       if (isVisible) return;
 
-      const targetY =
-        window.scrollY + rect.top - 24; // offset biar napas
-
-      smoothScrollTo(targetY, 750); // durasi scroll
-    }, 140); // delay nunggu expand animation kebentuk
+      const targetY = window.scrollY + rect.top - 24;
+      smoothScrollTo(targetY, 800);
+    }, 140);
 
     return () => clearTimeout(timer);
   }, [activeId, activeRow]);
 
-  /* =========================
+  /* =========================================================
      RENDER
-  ========================= */
+  ========================================================= */
   return (
     <main className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-6 py-10 space-y-10">
 
-        {/* HEADER */}
+        {/* ================= HEADER ================= */}
         <header>
           <h1 className="text-3xl font-bold text-[#087745]">
             Data Jejaring Fasilitas Kesehatan
@@ -152,7 +157,7 @@ export default function Jejaring() {
           </p>
         </header>
 
-        {/* FILTER */}
+        {/* ================= FILTER ================= */}
         <section className="bg-white rounded-2xl shadow-md border p-6">
           <JejaringFilter
             jenis={filterJenis}
@@ -171,57 +176,71 @@ export default function Jejaring() {
           Menampilkan <b>{filteredData.length}</b> fasilitas kesehatan
         </p>
 
-        {/* GRID 2 KOLOM + EXPAND */}
+        {/* ================= LIST JEJARING ================= */}
         <section className="space-y-8">
-          {Array.from({
-            length: Math.ceil(filteredData.length / 2),
-          }).map((_, rowIndex) => {
-            const left = filteredData[rowIndex * 2];
-            const right = filteredData[rowIndex * 2 + 1];
+          {Array.from({ length: Math.ceil(filteredData.length / 2) }).map(
+            (_, rowIndex) => {
+              const left = filteredData[rowIndex * 2];
+              const right = filteredData[rowIndex * 2 + 1];
 
-            return (
-              <div key={rowIndex} className="space-y-4">
+              return (
+                <div key={rowIndex} className="space-y-4">
+                  <div className="grid md:grid-cols-2 gap-6">
+                    {left && (
+                      <JejaringCard
+                        data={left}
+                        isActive={activeId === left.id}
+                        onClick={() =>
+                          handleCardClick(left.id, rowIndex)
+                        }
+                      />
+                    )}
+                    {right && (
+                      <JejaringCard
+                        data={right}
+                        isActive={activeId === right.id}
+                        onClick={() =>
+                          handleCardClick(right.id, rowIndex)
+                        }
+                      />
+                    )}
+                  </div>
 
-                {/* ROW */}
-                <div className="grid md:grid-cols-2 gap-6">
-                  {left && (
-                    <JejaringCard
-                      data={left}
-                      isActive={activeId === left.id}
-                      onClick={() => handleClick(left.id, rowIndex)}
-                    />
-                  )}
-                  {right && (
-                    <JejaringCard
-                      data={right}
-                      isActive={activeId === right.id}
-                      onClick={() => handleClick(right.id, rowIndex)}
-                    />
+                  {activeRow === rowIndex && activeData && (
+                    <div ref={expandedRef}>
+                      <JejaringExpanded
+                        data={activeData}
+                        onClose={() => {
+                          setActiveId(null);
+                          setActiveRow(null);
+                        }}
+                      />
+                    </div>
                   )}
                 </div>
-
-                {/* EXPANDED */}
-                {activeRow === rowIndex && activeData && (
-                  <div ref={expandedRef}>
-                    <JejaringExpanded
-                      data={activeData}
-                      onClose={() => {
-                        setActiveId(null);
-                        setActiveRow(null);
-                      }}
-                    />
-                  </div>
-                )}
-
-              </div>
-            );
-          })}
+              );
+            }
+          )}
 
           {filteredData.length === 0 && (
             <p className="text-sm text-gray-500">
               Data tidak ditemukan.
             </p>
           )}
+        </section>
+
+        {/* ================= MAP SECTION ================= */}
+        <section className="bg-white rounded-2xl shadow-md border p-6">
+          <h2 className="text-xl font-bold text-[#087745] mb-3">
+            Peta Jejaring Wilayah Jagakarsa
+          </h2>
+
+          <JejaringMap
+            data={filteredData}
+            activeId={activeId}
+            activeKelurahan={filterKelurahan}
+            onMarkerClick={handleMarkerClick}
+          />
         </section>
 
       </div>
