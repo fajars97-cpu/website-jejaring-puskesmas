@@ -2,47 +2,76 @@ export default function JejaringExpanded({ data, onClose }) {
   if (!data) return null;
 
   return (
-    <section
+    <div
       className="
-        bg-white
-        rounded-2xl
-        shadow-xl
-        border
-        p-6
-        animate-[expand_0.35s_ease-out]
+        col-span-2
+        overflow-hidden
+        transition-all
+        duration-500
+        ease-in-out
+        animate-expand
       "
     >
-      <div className="flex justify-between items-start mb-4">
-        <div>
-          <h2 className="text-xl font-semibold text-[#087745]">
-            {data.namaFasyankes}
-          </h2>
-          <p className="text-sm text-gray-500">
-            {data.kelurahan}, Kec. {data.kecamatan}
-          </p>
-        </div>
-
+      <div
+        className="
+          bg-white
+          rounded-2xl
+          border
+          border-gray-200
+          shadow-lg
+          p-6
+          relative
+        "
+      >
+        {/* Close */}
         <button
           onClick={onClose}
-          className="text-sm text-gray-500 hover:text-gray-800"
+          className="
+            absolute
+            top-4
+            right-4
+            text-gray-400
+            hover:text-gray-600
+            transition
+          "
         >
           Tutup ✕
         </button>
-      </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* DETAIL */}
-        <div className="space-y-2 text-sm text-gray-700">
-          <p><b>Alamat:</b> {data.alamat}</p>
-          <p><b>PJ:</b> {data.pj}</p>
-          <p><b>Status:</b> {data.status}</p>
-        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* INFO */}
+          <div>
+            <h2 className="text-xl font-semibold text-green-700">
+              {data.namaFasyankes}
+            </h2>
 
-        {/* MAP PLACEHOLDER */}
-        <div className="h-64 bg-gray-100 rounded-xl flex items-center justify-center text-gray-400">
-          Map akan ditampilkan di sini
+            <p className="text-sm text-gray-600 mt-1">
+              {data.kelurahan}, {data.kecamatan}
+            </p>
+
+            <div className="mt-4 space-y-2 text-sm">
+              <p><strong>Alamat:</strong> {data.alamat}</p>
+              <p><strong>PJ:</strong> {data.pj}</p>
+              <p><strong>Status:</strong> {data.status}</p>
+            </div>
+          </div>
+
+          {/* MAP */}
+          <div
+            className="
+              bg-gray-100
+              rounded-xl
+              flex
+              items-center
+              justify-center
+              text-gray-400
+              text-sm
+            "
+          >
+            Map akan ditampilkan di sini
+          </div>
         </div>
       </div>
-    </section>
+    </div>
   );
 }

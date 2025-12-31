@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { jejaringList } from "../data/jejaring";
 
 import JejaringCard from "../components/JejaringCard";
@@ -6,27 +6,39 @@ import JejaringFilter from "../components/JejaringFilter";
 import JejaringExpanded from "../components/JejaringExpanded";
 
 export default function Jejaring() {
+  // FILTER STATE
   const [filterJenis, setFilterJenis] = useState("Semua");
   const [filterKelurahan, setFilterKelurahan] = useState("Semua");
   const [filterStatus, setFilterStatus] = useState("Semua");
 
-  // 🔥 ACTIVE CARD & ROW
+  // ACTIVE CARD & ROW
   const [activeId, setActiveId] = useState(null);
   const [activeRow, setActiveRow] = useState(null);
 
-  // OPTIONS (AMAN DARI DUPLIKASI)
-  const jenisOptions = [...new Set(jejaringList.map(i => i.jenisFasyankes).filter(Boolean))];
-  const kelurahanOptions = [...new Set(jejaringList.map(i => i.kelurahan).filter(Boolean))];
-  const statusOptions = [...new Set(jejaringList.map(i => i.status).filter(Boolean))];
+  // OPTIONS (ANTI DUPLIKASI)
+  const jenisOptions = useMemo(
+    () => [...new Set(jejaringList.map(i => i.jenisFasyankes).filter(Boolean))],
+    []
+  );
+  const kelurahanOptions = useMemo(
+    () => [...new Set(jejaringList.map(i => i.kelurahan).filter(Boolean))],
+    []
+  );
+  const statusOptions = useMemo(
+    () => [...new Set(jejaringList.map(i => i.status).filter(Boolean))],
+    []
+  );
 
-  // FILTER
-  const filteredData = jejaringList
-    .filter(item =>
-      (filterJenis === "Semua" || item.jenisFasyankes === filterJenis) &&
-      (filterKelurahan === "Semua" || item.kelurahan === filterKelurahan) &&
-      (filterStatus === "Semua" || item.status === filterStatus)
-    )
-    .slice(0, 10); // 🔒 max 10 item
+  // FILTERED DATA (MAX 10)
+  const filteredData = useMemo(() => {
+    return jejaringList
+      .filter(item =>
+        (filterJenis === "Semua" || item.jenisFasyankes === filterJenis) &&
+        (filterKelurahan === "Semua" || item.kelurahan === filterKelurahan) &&
+        (filterStatus === "Semua" || item.status === filterStatus)
+      )
+      .slice(0, 10);
+  }, [filterJenis, filterKelurahan, filterStatus]);
 
   // CLICK HANDLER
   const handleClick = (id, rowIndex) => {
@@ -38,6 +50,8 @@ export default function Jejaring() {
       setActiveRow(rowIndex);
     }
   };
+
+  const activeData = filteredData.find(i => i.id === activeId);
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -75,45 +89,47 @@ export default function Jejaring() {
 
         {/* GRID 2 KOLOM + EXPAND PER ROW */}
         <section className="space-y-8">
-          {Array.from({ length: Math.ceil(filteredData.length / 2) }).map((_, rowIndex) => {
-            const left = filteredData[rowIndex * 2];
-            const right = filteredData[rowIndex * 2 + 1];
+          {Array.from({ length: Math.ceil(filteredData.length / 2) }).map(
+            (_, rowIndex) => {
+              const left = filteredData[rowIndex * 2];
+              const right = filteredData[rowIndex * 2 + 1];
 
-            return (
-              <div key={rowIndex} className="space-y-4">
+              return (
+                <div key={rowIndex} className="space-y-4">
 
-                {/* ROW */}
-                <div className="grid md:grid-cols-2 gap-6">
-                  {left && (
-                    <JejaringCard
-                      data={left}
-                      isActive={activeId === left.id}
-                      onClick={() => handleClick(left.id, rowIndex)}
+                  {/* ROW */}
+                  <div className="grid md:grid-cols-2 gap-6">
+                    {left && (
+                      <JejaringCard
+                        data={left}
+                        isActive={activeId === left.id}
+                        onClick={() => handleClick(left.id, rowIndex)}
+                      />
+                    )}
+                    {right && (
+                      <JejaringCard
+                        data={right}
+                        isActive={activeId === right.id}
+                        onClick={() => handleClick(right.id, rowIndex)}
+                      />
+                    )}
+                  </div>
+
+                  {/* EXPANDED */}
+                  {activeRow === rowIndex && activeData && (
+                    <JejaringExpanded
+                      data={activeData}
+                      onClose={() => {
+                        setActiveId(null);
+                        setActiveRow(null);
+                      }}
                     />
                   )}
-                  {right && (
-                    <JejaringCard
-                      data={right}
-                      isActive={activeId === right.id}
-                      onClick={() => handleClick(right.id, rowIndex)}
-                    />
-                  )}
+
                 </div>
-
-                {/* EXPANDED */}
-                {activeRow === rowIndex && (
-                  <JejaringExpanded
-                    data={filteredData.find(i => i.id === activeId)}
-                    onClose={() => {
-                      setActiveId(null);
-                      setActiveRow(null);
-                    }}
-                  />
-                )}
-
-              </div>
-            );
-          })}
+              );
+            }
+          )}
 
           {filteredData.length === 0 && (
             <p className="text-sm text-gray-500">Data tidak ditemukan.</p>
