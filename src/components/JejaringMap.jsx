@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import pinRed from "/icons/pin-red.png";
 
 import kecamatanRaw from "../data/jagakarsa-kecamatan.geojson?raw";
 import kelurahanRaw from "../data/jagakarsa-kelurahan.geojson?raw";
@@ -86,7 +87,7 @@ export default function JejaringMap({
     map.on("load", () => {
 
         /* ================= LOAD PIN MERAH ================= */
-map.loadImage("/icons/pin-red.png", (err, image) => {
+map.loadImage(pinRed, (err, image) => {
   if (err) {
     console.error("❌ gagal load pin-red.png", err);
     return;
