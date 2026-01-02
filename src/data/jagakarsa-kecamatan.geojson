@@ -1,0 +1,23 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Jagakarsa"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [106.797, -6.356],
+            [106.861, -6.356],
+            [106.861, -6.305],
+            [106.797, -6.305],
+            [106.797, -6.356]
+          ]
+        ]
+      }
+    }
+  ]
+}

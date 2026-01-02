@@ -1,0 +1,53 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "Jagakarsa" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[106.82,-6.33],[106.835,-6.33],[106.835,-6.315],[106.82,-6.315],[106.82,-6.33]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Ciganjur" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[106.80,-6.32],[106.82,-6.32],[106.82,-6.30],[106.80,-6.30],[106.80,-6.32]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Tanjung Barat" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[106.83,-6.32],[106.86,-6.32],[106.86,-6.30],[106.83,-6.30],[106.83,-6.32]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Cipedak" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[106.80,-6.35],[106.83,-6.35],[106.83,-6.33],[106.80,-6.33],[106.80,-6.35]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Srengseng Sawah" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[106.83,-6.35],[106.86,-6.35],[106.86,-6.33],[106.83,-6.33],[106.83,-6.35]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Lenteng Agung" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[106.86,-6.33],[106.88,-6.33],[106.88,-6.30],[106.86,-6.30],[106.86,-6.33]]]
+      }
+    }
+  ]
+}
