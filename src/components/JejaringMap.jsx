@@ -106,6 +106,13 @@ export default function JejaringMap({
         },
       });
 
+      map.loadImage("/icons/pin-red.png", (err, image) => {
+      if (err) throw err;
+        if (!map.hasImage("pin-red")) {
+          map.addImage("pin-red", image);
+        }
+      });
+
       map.addLayer({
         id: "mask-fill",
         type: "fill",
@@ -160,26 +167,28 @@ export default function JejaringMap({
       });
 
       map.addLayer({
-        id: "jejaring-marker",
-        type: "circle",
-        source: "jejaring",
-        paint: {
-          "circle-radius": 6,
-          "circle-color": "#16a34a",
-          "circle-stroke-width": 1,
-          "circle-stroke-color": "#065f46",
-        },
+      id: "jejaring-marker",
+      type: "symbol",
+      source: "jejaring",
+      layout: {
+      "icon-image": "pin-red",
+      "icon-size": 0.7,
+      "icon-anchor": "bottom", // ini penting, biar ujung pin nempel lokasi
+      "icon-allow-overlap": true,
+      },
       });
 
       map.addLayer({
-        id: "jejaring-marker-active",
-        type: "circle",
-        source: "jejaring",
-        filter: ["==", ["get", "id"], -999999],
-        paint: {
-          "circle-radius": 9,
-          "circle-color": "#065f46",
-        },
+      id: "jejaring-marker-active",
+      type: "symbol",
+      source: "jejaring",
+      filter: ["==", ["get", "id"], -999999],
+      layout: {
+      "icon-image": "pin-red",
+      "icon-size": 0.95,
+      "icon-anchor": "bottom",
+      "icon-allow-overlap": true,
+      },
       });
 
       /* ================= INTERAKSI ================= */
