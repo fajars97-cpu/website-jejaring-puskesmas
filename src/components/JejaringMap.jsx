@@ -150,17 +150,17 @@ export default function JejaringMap({
            MASK LAYER (DI BAWAH KELURAHAN)
         ===================================================== */
         map.addLayer(
-          {
-            id: "mask-fill",
-            type: "fill",
-            source: "mask",
-            paint: {
-              "fill-color": "#000",
-              "fill-opacity": 0.45,
-            },
-          },
-          "kelurahan-fill" // ⬅️ KUNCI: posisi layer
-        );
+  {
+    id: "mask-fill",
+    type: "fill",
+    source: "mask",
+    paint: {
+      "fill-color": "#000",
+      "fill-opacity": 0.45,
+    },
+  },
+  "road-label" // ✅ layer bawaan Mapbox
+);
 
         /* =====================================================
            KECAMATAN BORDER
