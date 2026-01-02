@@ -67,7 +67,7 @@ export default function JejaringMap({
           source: "mask",
           paint: {
             "fill-color": "#000",
-            "fill-opacity": 0.28,
+            "fill-opacity": 0.05,
           },
         },
         "waterway-label" // layer aman di streets-v12
@@ -88,8 +88,8 @@ export default function JejaringMap({
           "fill-opacity": [
             "case",
             ["==", ["get", "name"], activeKelurahan],
-            0.45,
-            0.25,
+            0.05,
+            0.05,
           ],
         },
       });
