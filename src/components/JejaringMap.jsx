@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
@@ -15,10 +15,11 @@ export default function JejaringMap({
   activeId = null,
   activeKelurahan = "Semua",
   onMarkerClick,
-  onKelurahanClick,
+  onKelurahanSelect,
 }) {
   const mapRef = useRef(null);
   const mapContainerRef = useRef(null);
+  const [hoveredKelurahan, setHoveredKelurahan] = useState(null);
 
   /* =========================================================
      INIT MAP (ONCE)
@@ -29,7 +30,7 @@ export default function JejaringMap({
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: "mapbox://styles/mapbox/light-v11",
-      center: [106.82, -6.33], // Jagakarsa
+      center: [106.82, -6.33],
       zoom: 12.5,
       minZoom: 11,
     });
@@ -38,7 +39,7 @@ export default function JejaringMap({
     map.addControl(new mapboxgl.NavigationControl(), "top-right");
 
     map.on("load", () => {
-      /* ================= MASK OUTSIDE JAGAKARSA ================= */
+      /* ================= MASK ================= */
       map.addSource("mask-jagakarsa", {
         type: "geojson",
         data: {
@@ -69,7 +70,7 @@ export default function JejaringMap({
         },
       });
 
-      /* ================= KECAMATAN BOUNDARY ================= */
+      /* ================= KECAMATAN ================= */
       map.addSource("kecamatan", {
         type: "geojson",
         data: kecamatanGeo,
@@ -96,8 +97,8 @@ export default function JejaringMap({
         type: "fill",
         source: "kelurahan",
         paint: {
-          "fill-color": "#16a34a",
-          "fill-opacity": 0.08,
+          "fill-color": "#BFEAD7",
+          "fill-opacity": 0.18,
         },
       });
 
@@ -160,7 +161,18 @@ export default function JejaringMap({
 
       map.on("click", "kelurahan-fill", e => {
         const name = e.features?.[0]?.properties?.name;
-        if (name) onKelurahanClick?.(name);
+        if (name) onKelurahanSelect?.(name);
+      });
+
+      map.on("mousemove", "kelurahan-fill", e => {
+        const name = e.features?.[0]?.properties?.name;
+        setHoveredKelurahan(name || null);
+        map.getCanvas().style.cursor = "pointer";
+      });
+
+      map.on("mouseleave", "kelurahan-fill", () => {
+        setHoveredKelurahan(null);
+        map.getCanvas().style.cursor = "";
       });
     });
   }, []);
@@ -208,44 +220,34 @@ export default function JejaringMap({
   }, [activeId]);
 
   /* =========================================================
-     DIM MARKER & HIGHLIGHT KELURAHAN
+     DIM & HIGHLIGHT (KELURAHAN + MARKER)
   ========================================================= */
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
-    // Marker dim
-    if (map.getLayer("jejaring-marker")) {
-      map.setPaintProperty(
-        "jejaring-marker",
-        "circle-opacity",
-        activeKelurahan === "Semua"
-          ? 0.9
-          : [
-              "case",
-              ["==", ["get", "kelurahan"], activeKelurahan],
-              0.9,
-              0.25,
-            ]
-      );
+    if (map.getLayer("kelurahan-fill")) {
+      map.setPaintProperty("kelurahan-fill", "fill-opacity", [
+        "case",
+        ["==", ["get", "name"], hoveredKelurahan],
+        0.38,
+        ["==", ["get", "name"], activeKelurahan],
+        0.30,
+        0.18,
+      ]);
     }
 
-    // Kelurahan highlight
-    if (map.getLayer("kelurahan-fill")) {
-      map.setPaintProperty(
-        "kelurahan-fill",
-        "fill-opacity",
-        activeKelurahan === "Semua"
-          ? 0.08
-          : [
-              "case",
-              ["==", ["get", "name"], activeKelurahan],
-              0.3,
-              0.05,
-            ]
-      );
+    if (map.getLayer("jejaring-marker")) {
+      map.setPaintProperty("jejaring-marker", "circle-opacity", [
+        "case",
+        activeKelurahan === "Semua",
+        0.9,
+        ["==", ["get", "kelurahan"], activeKelurahan],
+        0.9,
+        0.25,
+      ]);
     }
-  }, [activeKelurahan]);
+  }, [activeKelurahan, hoveredKelurahan]);
 
   return (
     <div className="w-full h-105 rounded-2xl overflow-hidden border">
