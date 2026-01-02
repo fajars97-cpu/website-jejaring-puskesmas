@@ -38,7 +38,7 @@ function smoothScrollTo(targetY, duration = 750) {
 
 export default function Jejaring() {
   /* =========================================================
-     FILTER STATE
+     FILTER STATE (SINGLE SOURCE OF TRUTH)
   ========================================================= */
   const [filterJenis, setFilterJenis] = useState("Semua");
   const [filterKelurahan, setFilterKelurahan] = useState("Semua");
@@ -92,7 +92,7 @@ export default function Jejaring() {
   const activeData = filteredData.find(i => i.id === activeId);
 
   /* =========================================================
-     HANDLER: CARD CLICK
+     HANDLER: CARD CLICK (LIST)
   ========================================================= */
   const handleCardClick = (id, rowIndex) => {
     if (activeId === id) {
@@ -105,8 +105,14 @@ export default function Jejaring() {
   };
 
   /* =========================================================
-     HANDLER: MARKER CLICK (MAP → LIST)
+     HANDLER: MAP → LIST (MARKER / POLYGON)
   ========================================================= */
+  const handleKelurahanSelect = kelurahanName => {
+    setFilterKelurahan(kelurahanName);
+    setActiveId(null);
+    setActiveRow(null);
+  };
+
   const handleMarkerClick = id => {
     const index = filteredData.findIndex(item => item.id === id);
     if (index === -1) return;
@@ -126,7 +132,6 @@ export default function Jejaring() {
 
       const rect = expandedRef.current.getBoundingClientRect();
 
-      // Kalau sudah kelihatan di viewport, tidak perlu scroll
       const isVisible =
         rect.top >= 0 && rect.bottom <= window.innerHeight;
 
@@ -138,6 +143,15 @@ export default function Jejaring() {
 
     return () => clearTimeout(timer);
   }, [activeId, activeRow]);
+
+  /* =========================================================
+     AUTO SCROLL KE ATAS SAAT KELURAHAN DARI MAP DIPILIH
+  ========================================================= */
+  useEffect(() => {
+    if (filterKelurahan !== "Semua") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [filterKelurahan]);
 
   /* =========================================================
      RENDER
@@ -229,7 +243,7 @@ export default function Jejaring() {
           )}
         </section>
 
-        {/* ================= MAP SECTION ================= */}
+        {/* ================= MAP ================= */}
         <section className="bg-white rounded-2xl shadow-md border p-6">
           <h2 className="text-xl font-bold text-[#087745] mb-3">
             Peta Jejaring Wilayah Jagakarsa
@@ -239,6 +253,7 @@ export default function Jejaring() {
             data={filteredData}
             activeId={activeId}
             activeKelurahan={filterKelurahan}
+            onKelurahanSelect={handleKelurahanSelect}
             onMarkerClick={handleMarkerClick}
           />
         </section>
