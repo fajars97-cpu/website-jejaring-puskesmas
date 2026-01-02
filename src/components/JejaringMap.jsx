@@ -180,7 +180,7 @@ map.loadImage(pinRed, (err, image) => {
       source: "jejaring",
       layout: {
       "icon-image": "pin-red",
-      "icon-size": 0.1,
+      "icon-size": 0.05,
       "icon-anchor": "bottom", // ini penting, biar ujung pin nempel lokasi
       "icon-allow-overlap": true,
       },
@@ -193,7 +193,7 @@ map.loadImage(pinRed, (err, image) => {
       filter: ["==", ["get", "id"], -999999],
       layout: {
       "icon-image": "pin-red",
-      "icon-size": 0.15,
+      "icon-size": 0.08,
       "icon-anchor": "bottom",
       "icon-allow-overlap": true,
       },

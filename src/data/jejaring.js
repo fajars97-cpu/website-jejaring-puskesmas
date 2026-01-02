@@ -110,8 +110,8 @@ export const jejaringList = [
     wilayah: "Jakarta Selatan",
     gmapsUrl: "https://maps.app.goo.gl/8hAvnAnSqkq7CYrM9",
     gmapsEmbedUrl: "https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d31723.973294347725!2d106.7909513!3d-6.329633!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e69ed2ee0550311%3A0x9946e01e3de20d75!2sHappy%20Dental%20Clinic%20Aeon%20Mall%20Tanjung%20Barat!5e0!3m2!1sid!2sid!4v1767153035253!5m2!1sid!2sid",
-    lat: -6.29585,
-    lng: 106.83947,
+    lat: -6.29926,
+    lng: 106.83741,
 
     // STATUS & TIPE
     status: "Aktif",
