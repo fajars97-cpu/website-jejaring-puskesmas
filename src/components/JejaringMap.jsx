@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
@@ -16,9 +16,54 @@ export default function JejaringMap({
   activeKelurahan = "Semua",
   onMarkerClick,
   onKelurahanSelect,
+  onMapApi, // <-- bridge ke parent (optional)
 }) {
   const mapRef = useRef(null);
   const containerRef = useRef(null);
+
+  const dataById = useMemo(() => {
+    const m = new Map();
+    for (const d of data) m.set(d.id, d);
+    return m;
+  }, [data]);
+
+  // Stabilizer: jalankan fungsi hanya ketika style + layer siap
+  const runWhenReady = (fn) => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const canRun =
+      map.isStyleLoaded() &&
+      map.getSource("kelurahan") &&
+      map.getSource("jejaring") &&
+      map.getLayer("kelurahan-fill") &&
+      map.getLayer("kelurahan-outline") &&
+      map.getLayer("jejaring-marker") &&
+      map.getLayer("jejaring-marker-active");
+
+    if (canRun) {
+      fn(map);
+      return;
+    }
+
+    // Tunggu sampai map "idle" (style + tiles + layers settle)
+    const onIdle = () => {
+      map.off("idle", onIdle);
+      // cek lagi (jaga-jaga)
+      const ok =
+        map.isStyleLoaded() &&
+        map.getSource("kelurahan") &&
+        map.getSource("jejaring") &&
+        map.getLayer("kelurahan-fill") &&
+        map.getLayer("kelurahan-outline") &&
+        map.getLayer("jejaring-marker") &&
+        map.getLayer("jejaring-marker-active");
+
+      if (ok) fn(map);
+    };
+
+    map.on("idle", onIdle);
+  };
 
   /* =========================================================
      INIT MAP (ONCE)
@@ -32,7 +77,7 @@ export default function JejaringMap({
       center: [106.82, -6.33],
       zoom: 12.8,
       minZoom: 11,
-      maxZoom: 18, // 🔥 BISA ZOOM DEKAT
+      maxZoom: 18, // 🔥 bisa zoom dekat
     });
 
     mapRef.current = map;
@@ -54,6 +99,7 @@ export default function JejaringMap({
                 [105, -7.5],
                 [105, -5],
               ],
+              // hole: kecamatan jagakarsa
               kecamatanGeo.features[0].geometry.coordinates[0],
             ],
           },
@@ -66,15 +112,12 @@ export default function JejaringMap({
         source: "mask",
         paint: {
           "fill-color": "#000",
-          "fill-opacity": 0.45, // dim luar aja
+          "fill-opacity": 0.45,
         },
       });
 
       /* ================= KECAMATAN BORDER ================= */
-      map.addSource("kecamatan", {
-        type: "geojson",
-        data: kecamatanGeo,
-      });
+      map.addSource("kecamatan", { type: "geojson", data: kecamatanGeo });
 
       map.addLayer({
         id: "kecamatan-outline",
@@ -87,10 +130,7 @@ export default function JejaringMap({
       });
 
       /* ================= KELURAHAN ================= */
-      map.addSource("kelurahan", {
-        type: "geojson",
-        data: kelurahanGeo,
-      });
+      map.addSource("kelurahan", { type: "geojson", data: kelurahanGeo });
 
       map.addLayer({
         id: "kelurahan-fill",
@@ -98,12 +138,8 @@ export default function JejaringMap({
         source: "kelurahan",
         paint: {
           "fill-color": "#22c55e",
-          "fill-opacity": [
-            "case",
-            ["==", ["get", "name"], activeKelurahan],
-            0.12,
-            0.04,
-          ],
+          // default (akan di-update via effect juga)
+          "fill-opacity": 0.04,
         },
       });
 
@@ -112,28 +148,15 @@ export default function JejaringMap({
         type: "line",
         source: "kelurahan",
         paint: {
-          "line-color": [
-            "case",
-            ["==", ["get", "name"], activeKelurahan],
-            "#065f46",
-            "#16a34a",
-          ],
-          "line-width": [
-            "case",
-            ["==", ["get", "name"], activeKelurahan],
-            3.5,
-            2,
-          ],
+          "line-color": "#16a34a",
+          "line-width": 2,
         },
       });
 
       /* ================= MARKER JEJARING ================= */
       map.addSource("jejaring", {
         type: "geojson",
-        data: {
-          type: "FeatureCollection",
-          features: [],
-        },
+        data: { type: "FeatureCollection", features: [] },
       });
 
       map.addLayer({
@@ -152,7 +175,7 @@ export default function JejaringMap({
         id: "jejaring-marker-active",
         type: "circle",
         source: "jejaring",
-        filter: ["==", ["get", "id"], activeId],
+        filter: ["==", ["get", "id"], -999999],
         paint: {
           "circle-radius": 9,
           "circle-color": "#065f46",
@@ -160,20 +183,22 @@ export default function JejaringMap({
       });
 
       /* ================= INTERAKSI ================= */
-      map.on("click", "kelurahan-fill", e => {
+      map.on("click", "kelurahan-fill", (e) => {
         const feature = e.features?.[0];
         if (!feature) return;
 
-        const name = feature.properties.name;
+        const name = feature?.properties?.name;
+        if (!name) return;
+
         onKelurahanSelect?.(name);
 
-        // 🔥 FLY TO KELURAHAN
-        const bounds = feature.geometry.coordinates[0].reduce(
+        // fitBounds ke kelurahan
+        const coords = feature.geometry?.coordinates?.[0];
+        if (!coords || !coords.length) return;
+
+        const bounds = coords.reduce(
           (b, c) => b.extend(c),
-          new mapboxgl.LngLatBounds(
-            feature.geometry.coordinates[0][0],
-            feature.geometry.coordinates[0][0]
-          )
+          new mapboxgl.LngLatBounds(coords[0], coords[0])
         );
 
         map.fitBounds(bounds, {
@@ -183,60 +208,140 @@ export default function JejaringMap({
         });
       });
 
-      map.on("click", "jejaring-marker", e => {
+      map.on("click", "jejaring-marker", (e) => {
         const f = e.features?.[0];
-        if (f) onMarkerClick?.(f.properties.id);
+        if (!f) return;
+
+        const id = f.properties?.id;
+        if (id == null) return;
+
+        onMarkerClick?.(id);
+
+        // flyTo titik marker (enak buat orientasi user)
+        const coords = f.geometry?.coordinates;
+        if (Array.isArray(coords) && coords.length === 2) {
+          map.flyTo({
+            center: coords,
+            zoom: Math.max(map.getZoom(), 15.5),
+            duration: 850,
+            essential: true,
+          });
+        }
       });
 
       map.on("mouseenter", "kelurahan-fill", () => {
         map.getCanvas().style.cursor = "pointer";
       });
-
       map.on("mouseleave", "kelurahan-fill", () => {
         map.getCanvas().style.cursor = "";
       });
+
+      // expose API ke parent (optional)
+      onMapApi?.({
+        flyToJejaringById: (id) => {
+          const d = dataById.get(id);
+          if (!d?.lng || !d?.lat) return;
+
+          runWhenReady((m) => {
+            m.flyTo({
+              center: [d.lng, d.lat],
+              zoom: Math.max(m.getZoom(), 16),
+              duration: 900,
+              essential: true,
+            });
+          });
+        },
+      });
     });
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /* =========================================================
      UPDATE JEJARING DATA
   ========================================================= */
   useEffect(() => {
-    const map = mapRef.current;
-    const source = map?.getSource("jejaring");
-    if (!source) return;
+    runWhenReady((map) => {
+      const source = map.getSource("jejaring");
+      if (!source) return;
 
-    source.setData({
-      type: "FeatureCollection",
-      features: data
-        .filter(d => d.lat && d.lng)
-        .map(d => ({
-          type: "Feature",
-          geometry: {
-            type: "Point",
-            coordinates: [d.lng, d.lat],
-          },
-          properties: {
-            id: d.id,
-            kelurahan: d.kelurahan,
-          },
-        })),
+      source.setData({
+        type: "FeatureCollection",
+        features: data
+          .filter((d) => d.lat && d.lng)
+          .map((d) => ({
+            type: "Feature",
+            geometry: { type: "Point", coordinates: [d.lng, d.lat] },
+            properties: {
+              id: d.id,
+              kelurahan: d.kelurahan,
+            },
+          })),
+      });
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
   /* =========================================================
      ACTIVE MARKER
   ========================================================= */
   useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !map.getLayer("jejaring-marker-active")) return;
-
-    map.setFilter("jejaring-marker-active", [
-      "==",
-      ["get", "id"],
-      activeId,
-    ]);
+    runWhenReady((map) => {
+      map.setFilter("jejaring-marker-active", [
+        "==",
+        ["get", "id"],
+        activeId ?? -999999,
+      ]);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId]);
+
+  /* =========================================================
+     HIGHLIGHT KELURAHAN (SYNC FILTER ↔ MAP)
+     - active kelurahan: lebih dominan
+     - lainnya: dim ringan
+  ========================================================= */
+  useEffect(() => {
+    const target = activeKelurahan || "Semua";
+
+    runWhenReady((map) => {
+      const isAll = target === "Semua";
+
+      // Fill opacity
+      map.setPaintProperty("kelurahan-fill", "fill-opacity", [
+        "case",
+        isAll,
+        0.05,
+        ["==", ["get", "name"], target],
+        0.14,
+        0.03,
+      ]);
+
+      // Outline style
+      map.setPaintProperty("kelurahan-outline", "line-color", [
+        "case",
+        isAll,
+        "#16a34a",
+        ["==", ["get", "name"], target],
+        "#065f46",
+        "#16a34a",
+      ]);
+
+      map.setPaintProperty("kelurahan-outline", "line-width", [
+        "case",
+        isAll,
+        2,
+        ["==", ["get", "name"], target],
+        3.5,
+        2,
+      ]);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeKelurahan]);
 
   return (
     <div className="w-full h-105 rounded-2xl overflow-hidden border border-gray-300">

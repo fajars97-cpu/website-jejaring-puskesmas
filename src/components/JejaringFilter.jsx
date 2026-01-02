@@ -16,7 +16,6 @@ export default function JejaringFilter({
       </h3>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
         {/** Jenis */}
         <div>
           <label className="block text-sm text-gray-700 mb-1">
@@ -28,46 +27,47 @@ export default function JejaringFilter({
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-[#087745]"
           >
             <option value="Semua">Semua</option>
-            {jenisOptions.map(j => (
-              <option key={j} value={j}>{j}</option>
+            {jenisOptions.map((j) => (
+              <option key={j} value={j}>
+                {j}
+              </option>
             ))}
           </select>
         </div>
 
         {/** Kelurahan */}
         <div>
-          <label className="block text-sm text-gray-700 mb-1">
-            Kelurahan
-          </label>
+          <label className="block text-sm text-gray-700 mb-1">Kelurahan</label>
           <select
             value={kelurahan}
             onChange={(e) => setKelurahan(e.target.value)}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-[#087745]"
           >
             <option value="Semua">Semua</option>
-            {kelurahanOptions.map(k => (
-              <option key={k} value={k}>{k}</option>
+            {kelurahanOptions.map((k) => (
+              <option key={k} value={k}>
+                {k}
+              </option>
             ))}
           </select>
         </div>
 
         {/** Status */}
         <div>
-          <label className="block text-sm text-gray-700 mb-1">
-            Status
-          </label>
+          <label className="block text-sm text-gray-700 mb-1">Status</label>
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value)}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-[#087745]"
           >
             <option value="Semua">Semua</option>
-            {statusOptions.map(s => (
-              <option key={s} value={s}>{s}</option>
+            {statusOptions.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
             ))}
           </select>
         </div>
-
       </div>
     </section>
   );

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { jejaringList } from "../data/jejaring";
 
 import JejaringCard from "../components/JejaringCard";
@@ -15,9 +15,7 @@ function smoothScrollTo(targetY, duration = 750) {
   let startTime = null;
 
   function easeInOutCubic(t) {
-    return t < 0.5
-      ? 4 * t * t * t
-      : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
   }
 
   function step(currentTime) {
@@ -28,9 +26,7 @@ function smoothScrollTo(targetY, duration = 750) {
 
     window.scrollTo(0, startY + distance * eased);
 
-    if (elapsed < duration) {
-      requestAnimationFrame(step);
-    }
+    if (elapsed < duration) requestAnimationFrame(step);
   }
 
   requestAnimationFrame(step);
@@ -56,23 +52,29 @@ export default function Jejaring() {
   const expandedRef = useRef(null);
 
   /* =========================================================
+     MAP API BRIDGE (imperative, tapi minimal & aman)
+  ========================================================= */
+  const mapApiRef = useRef(null);
+
+  const registerMapApi = useCallback((api) => {
+    mapApiRef.current = api;
+  }, []);
+
+  /* =========================================================
      FILTER OPTIONS (ANTI DUPLIKASI)
   ========================================================= */
   const jenisOptions = useMemo(
-    () =>
-      [...new Set(jejaringList.map(i => i.jenisFasyankes).filter(Boolean))],
+    () => [...new Set(jejaringList.map((i) => i.jenisFasyankes).filter(Boolean))],
     []
   );
 
   const kelurahanOptions = useMemo(
-    () =>
-      [...new Set(jejaringList.map(i => i.kelurahan).filter(Boolean))],
+    () => [...new Set(jejaringList.map((i) => i.kelurahan).filter(Boolean))],
     []
   );
 
   const statusOptions = useMemo(
-    () =>
-      [...new Set(jejaringList.map(i => i.status).filter(Boolean))],
+    () => [...new Set(jejaringList.map((i) => i.status).filter(Boolean))],
     []
   );
 
@@ -81,40 +83,51 @@ export default function Jejaring() {
   ========================================================= */
   const filteredData = useMemo(() => {
     return jejaringList
-      .filter(item =>
-        (filterJenis === "Semua" || item.jenisFasyankes === filterJenis) &&
-        (filterKelurahan === "Semua" || item.kelurahan === filterKelurahan) &&
-        (filterStatus === "Semua" || item.status === filterStatus)
+      .filter(
+        (item) =>
+          (filterJenis === "Semua" || item.jenisFasyankes === filterJenis) &&
+          (filterKelurahan === "Semua" || item.kelurahan === filterKelurahan) &&
+          (filterStatus === "Semua" || item.status === filterStatus)
       )
       .slice(0, 10);
   }, [filterJenis, filterKelurahan, filterStatus]);
 
-  const activeData = filteredData.find(i => i.id === activeId);
+  const activeData = filteredData.find((i) => i.id === activeId);
 
   /* =========================================================
      HANDLER: CARD CLICK (LIST)
+     - tetap expand inline
+     - plus: flyTo marker / lokasi bila ada
   ========================================================= */
   const handleCardClick = (id, rowIndex) => {
     if (activeId === id) {
       setActiveId(null);
       setActiveRow(null);
-    } else {
-      setActiveId(id);
-      setActiveRow(rowIndex);
+      return;
     }
+
+    setActiveId(id);
+    setActiveRow(rowIndex);
+
+    // FlyTo ke titik jejaring (kalau ada)
+    mapApiRef.current?.flyToJejaringById?.(id);
   };
 
   /* =========================================================
      HANDLER: MAP → LIST (MARKER / POLYGON)
   ========================================================= */
-  const handleKelurahanSelect = kelurahanName => {
+  const handleKelurahanSelect = (kelurahanName) => {
+    // set filter => list sinkron
     setFilterKelurahan(kelurahanName);
+
+    // reset active card biar UX bersih
     setActiveId(null);
     setActiveRow(null);
   };
 
-  const handleMarkerClick = id => {
-    const index = filteredData.findIndex(item => item.id === id);
+  const handleMarkerClick = (id) => {
+    // marker click => auto expand card
+    const index = filteredData.findIndex((item) => item.id === id);
     if (index === -1) return;
 
     setActiveId(id);
@@ -131,10 +144,7 @@ export default function Jejaring() {
       if (!expandedRef.current) return;
 
       const rect = expandedRef.current.getBoundingClientRect();
-
-      const isVisible =
-        rect.top >= 0 && rect.bottom <= window.innerHeight;
-
+      const isVisible = rect.top >= 0 && rect.bottom <= window.innerHeight;
       if (isVisible) return;
 
       const targetY = window.scrollY + rect.top - 24;
@@ -145,7 +155,7 @@ export default function Jejaring() {
   }, [activeId, activeRow]);
 
   /* =========================================================
-     AUTO SCROLL KE ATAS SAAT KELURAHAN DARI MAP DIPILIH
+     AUTO SCROLL KE ATAS SAAT KELURAHAN DARI MAP / FILTER DIPILIH
   ========================================================= */
   useEffect(() => {
     if (filterKelurahan !== "Semua") {
@@ -159,7 +169,6 @@ export default function Jejaring() {
   return (
     <main className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-6 py-10 space-y-10">
-
         {/* ================= HEADER ================= */}
         <header>
           <h1 className="text-3xl font-bold text-[#087745]">
@@ -175,11 +184,23 @@ export default function Jejaring() {
         <section className="bg-white rounded-2xl shadow-md border p-6">
           <JejaringFilter
             jenis={filterJenis}
-            setJenis={setFilterJenis}
+            setJenis={(v) => {
+              setFilterJenis(v);
+              setActiveId(null);
+              setActiveRow(null);
+            }}
             kelurahan={filterKelurahan}
-            setKelurahan={setFilterKelurahan}
+            setKelurahan={(v) => {
+              setFilterKelurahan(v);
+              setActiveId(null);
+              setActiveRow(null);
+            }}
             status={filterStatus}
-            setStatus={setFilterStatus}
+            setStatus={(v) => {
+              setFilterStatus(v);
+              setActiveId(null);
+              setActiveRow(null);
+            }}
             jenisOptions={jenisOptions}
             kelurahanOptions={kelurahanOptions}
             statusOptions={statusOptions}
@@ -204,18 +225,14 @@ export default function Jejaring() {
                       <JejaringCard
                         data={left}
                         isActive={activeId === left.id}
-                        onClick={() =>
-                          handleCardClick(left.id, rowIndex)
-                        }
+                        onClick={() => handleCardClick(left.id, rowIndex)}
                       />
                     )}
                     {right && (
                       <JejaringCard
                         data={right}
                         isActive={activeId === right.id}
-                        onClick={() =>
-                          handleCardClick(right.id, rowIndex)
-                        }
+                        onClick={() => handleCardClick(right.id, rowIndex)}
                       />
                     )}
                   </div>
@@ -237,9 +254,7 @@ export default function Jejaring() {
           )}
 
           {filteredData.length === 0 && (
-            <p className="text-sm text-gray-500">
-              Data tidak ditemukan.
-            </p>
+            <p className="text-sm text-gray-500">Data tidak ditemukan.</p>
           )}
         </section>
 
@@ -255,9 +270,9 @@ export default function Jejaring() {
             activeKelurahan={filterKelurahan}
             onKelurahanSelect={handleKelurahanSelect}
             onMarkerClick={handleMarkerClick}
+            onMapApi={registerMapApi}
           />
         </section>
-
       </div>
     </main>
   );
