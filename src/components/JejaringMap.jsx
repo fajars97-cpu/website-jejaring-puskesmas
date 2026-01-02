@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
@@ -19,14 +19,14 @@ export default function JejaringMap({
 }) {
   const mapRef = useRef(null);
   const containerRef = useRef(null);
-  const [hoveredKelurahan, setHoveredKelurahan] = useState(null);
 
+  /* ================= INIT MAP ================= */
   useEffect(() => {
     if (mapRef.current) return;
 
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style: "mapbox://styles/mapbox/streets-v12", // 🔑 KUNCI
+      style: "mapbox://styles/mapbox/streets-v12",
       center: [106.82, -6.33],
       zoom: 12.5,
       minZoom: 11,
@@ -37,7 +37,7 @@ export default function JejaringMap({
     map.addControl(new mapboxgl.NavigationControl(), "top-right");
 
     map.on("load", () => {
-      /* ============ MASK LUAR ============ */
+      /* ===== MASK ===== */
       map.addSource("mask", {
         type: "geojson",
         data: {
@@ -58,51 +58,61 @@ export default function JejaringMap({
         },
       });
 
-      map.addLayer({
-        id: "mask-fill",
-        type: "fill",
-        source: "mask",
-        paint: {
-          "fill-color": "#000",
-          "fill-opacity": 0.32,
+      map.addLayer(
+        {
+          id: "mask-fill",
+          type: "fill",
+          source: "mask",
+          paint: {
+            "fill-color": "#000",
+            "fill-opacity": 0.3,
+          },
         },
-      });
+        "waterway-label" // 🔑 STABIL
+      );
 
-      /* ============ KELURAHAN ============ */
+      /* ===== KELURAHAN ===== */
       map.addSource("kelurahan", {
         type: "geojson",
         data: kelurahanGeo,
       });
 
-      // FILL — cukup tegas, tidak norak
       map.addLayer({
         id: "kelurahan-fill",
         type: "fill",
         source: "kelurahan",
         paint: {
-          "fill-color": "#86efac", // hijau soft tapi kelihatan
-          "fill-opacity": 0.35,
+          "fill-color": "#86efac",
+          "fill-opacity": [
+            "case",
+            ["boolean", ["feature-state", "hover"], false],
+            0.5,
+            ["boolean", ["feature-state", "active"], false],
+            0.45,
+            0.25,
+          ],
         },
       });
 
-      // OUTLINE — lebih gelap dari jalan
       map.addLayer({
         id: "kelurahan-outline",
         type: "line",
         source: "kelurahan",
         paint: {
           "line-color": "#065f46",
-          "line-width": 2,
+          "line-width": [
+            "case",
+            ["boolean", ["feature-state", "active"], false],
+            3,
+            2,
+          ],
         },
       });
 
-      /* ============ MARKER JEJARING ============ */
+      /* ===== MARKER ===== */
       map.addSource("jejaring", {
         type: "geojson",
-        data: {
-          type: "FeatureCollection",
-          features: [],
-        },
+        data: { type: "FeatureCollection", features: [] },
       });
 
       map.addLayer({
@@ -117,32 +127,41 @@ export default function JejaringMap({
         },
       });
 
-      map.addLayer({
-        id: "jejaring-marker-active",
-        type: "circle",
-        source: "jejaring",
-        filter: ["==", ["get", "id"], activeId],
-        paint: {
-          "circle-radius": 9,
-          "circle-color": "#065f46",
-        },
+      map.on("click", "kelurahan-fill", e => {
+        const feature = e.features?.[0];
+        if (!feature) return;
+
+        onKelurahanSelect?.(feature.properties.name);
       });
 
-      /* ============ INTERAKSI ============ */
-      map.on("click", "kelurahan-fill", e => {
-        const name = e.features?.[0]?.properties?.name;
-        if (name) onKelurahanSelect?.(name);
-      });
+      let hoveredId = null;
 
       map.on("mousemove", "kelurahan-fill", e => {
-        const name = e.features?.[0]?.properties?.name;
-        setHoveredKelurahan(name);
-        map.getCanvas().style.cursor = "pointer";
+        const feature = e.features?.[0];
+        if (!feature) return;
+
+        if (hoveredId !== null) {
+          map.setFeatureState(
+            { source: "kelurahan", id: hoveredId },
+            { hover: false }
+          );
+        }
+
+        hoveredId = feature.id;
+        map.setFeatureState(
+          { source: "kelurahan", id: hoveredId },
+          { hover: true }
+        );
       });
 
       map.on("mouseleave", "kelurahan-fill", () => {
-        setHoveredKelurahan(null);
-        map.getCanvas().style.cursor = "";
+        if (hoveredId !== null) {
+          map.setFeatureState(
+            { source: "kelurahan", id: hoveredId },
+            { hover: false }
+          );
+        }
+        hoveredId = null;
       });
 
       map.on("click", "jejaring-marker", e => {
@@ -152,7 +171,7 @@ export default function JejaringMap({
     });
   }, []);
 
-  /* ============ UPDATE DATA ============ */
+  /* ================= UPDATE DATA ================= */
   useEffect(() => {
     const map = mapRef.current;
     const source = map?.getSource("jejaring");
@@ -170,33 +189,23 @@ export default function JejaringMap({
           },
           properties: {
             id: d.id,
-            kelurahan: d.kelurahan,
           },
         })),
     });
   }, [data]);
 
-  /* ============ VISUAL STATE ============ */
+  /* ================= ACTIVE KELURAHAN ================= */
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
-    map.setPaintProperty("kelurahan-fill", "fill-opacity", [
-      "case",
-      ["==", ["get", "name"], hoveredKelurahan],
-      0.5,
-      ["==", ["get", "name"], activeKelurahan],
-      0.45,
-      0.25,
-    ]);
-
-    map.setPaintProperty("kelurahan-outline", "line-width", [
-      "case",
-      ["==", ["get", "name"], activeKelurahan],
-      3,
-      2,
-    ]);
-  }, [activeKelurahan, hoveredKelurahan]);
+    kelurahanGeo.features.forEach(f => {
+      map.setFeatureState(
+        { source: "kelurahan", id: f.id },
+        { active: f.properties.name === activeKelurahan }
+      );
+    });
+  }, [activeKelurahan]);
 
   return (
     <div className="w-full h-105 rounded-2xl overflow-hidden border">
