@@ -1,5 +1,10 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
-import { jejaringList } from "../data/jejaring";
+
+/* NOTE: Fallback data lokal tetap dipakai sebagai cadangan (anti white blank) */
+import { jejaringList as jejaringFallback } from "../data/jejaring";
+
+/* NOTE: Repo Supabase (adapter snake_case -> camelCase) */
+import { fetchJejaringList } from "../lib/jejaringRepo";
 
 import JejaringCard from "../components/JejaringCard";
 import JejaringFilter from "../components/JejaringFilter";
@@ -8,6 +13,7 @@ import JejaringMap from "../components/JejaringMap";
 
 /* =========================================================
    SMOOTH SCROLL HELPER
+   NOTE: Ini helper lama kamu, dipertahankan apa adanya.
 ========================================================= */
 function smoothScrollTo(targetY, duration = 750) {
   const startY = window.scrollY;
@@ -35,24 +41,43 @@ function smoothScrollTo(targetY, duration = 750) {
 export default function Jejaring() {
   /* =========================================================
      FILTER STATE (SINGLE SOURCE OF TRUTH)
+     NOTE: Tetap sama, jangan diubah.
   ========================================================= */
   const [filterJenis, setFilterJenis] = useState("Semua");
   const [filterKelurahan, setFilterKelurahan] = useState("Semua");
   const [filterStatus, setFilterStatus] = useState("Semua");
 
   /* =========================================================
+     DATA SOURCE (SUPABASE + FALLBACK)
+     NOTE:
+     - Default pakai fallback lokal supaya halaman tidak blank.
+     - Lalu fetch Supabase (read-only).
+     - PERBAIKAN UTAMA: jika Supabase sukses tapi kosong => tetap set []
+       (bukan diam-diam balik ke fallback).
+     - Fallback hanya jika error beneran.
+  ========================================================= */
+  const [jejaringList, setJejaringList] = useState(jejaringFallback);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState(null);
+
+  /* =========================================================
      ACTIVE CARD STATE
+     NOTE: Tetap sama.
   ========================================================= */
   const [activeId, setActiveId] = useState(null);
   const [activeRow, setActiveRow] = useState(null);
 
   /* =========================================================
      REF (AUTO SCROLL EXPANDED)
+     NOTE: Tetap sama.
   ========================================================= */
   const expandedRef = useRef(null);
 
   /* =========================================================
      MAP API BRIDGE (imperative, tapi minimal & aman)
+     NOTE:
+     - Bridge ini kunci untuk sinkronisasi list -> map (flyTo).
+     - Dipertahankan.
   ========================================================= */
   const mapApiRef = useRef(null);
 
@@ -61,28 +86,72 @@ export default function Jejaring() {
   }, []);
 
   /* =========================================================
-     FILTER OPTIONS (ANTI DUPLIKASI)
+     FETCH DATA FROM SUPABASE (READ-ONLY)
+     NOTE:
+     - Hanya ambil data sekali (mount).
+     - Anti setState setelah unmount (isMounted guard).
+     - PERBAIKAN: sukses fetch => set data walaupun kosong.
+     - Fallback hanya saat error.
   ========================================================= */
-  const jenisOptions = useMemo(
-    () => [...new Set(jejaringList.map((i) => i.jenisFasyankes).filter(Boolean))],
-    []
-  );
+  useEffect(() => {
+    let isMounted = true;
 
-  const kelurahanOptions = useMemo(
-    () => [...new Set(jejaringList.map((i) => i.kelurahan).filter(Boolean))],
-    []
-  );
+    async function loadData() {
+      setIsLoading(true);
+      setLoadError(null);
 
-  const statusOptions = useMemo(
-    () => [...new Set(jejaringList.map((i) => i.status).filter(Boolean))],
-    []
-  );
+      try {
+        const data = await fetchJejaringList();
+
+        // NOTE: sukses fetch => set data walau kosong
+        if (isMounted) {
+          setJejaringList(Array.isArray(data) ? data : []);
+        }
+      } catch (err) {
+        console.error("Gagal load jejaring dari Supabase:", err);
+
+        // NOTE: fallback hanya saat error
+        if (isMounted) {
+          setLoadError(err);
+          setJejaringList(jejaringFallback);
+        }
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    }
+
+    loadData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  /* =========================================================
+     FILTER OPTIONS (ANTI DUPLIKASI)
+     NOTE:
+     - Dependency harus [jejaringList] supaya options ikut update
+       saat Supabase load.
+  ========================================================= */
+  const jenisOptions = useMemo(() => {
+    return [...new Set((jejaringList ?? []).map((i) => i.jenisFasyankes).filter(Boolean))];
+  }, [jejaringList]);
+
+  const kelurahanOptions = useMemo(() => {
+    return [...new Set((jejaringList ?? []).map((i) => i.kelurahan).filter(Boolean))];
+  }, [jejaringList]);
+
+  const statusOptions = useMemo(() => {
+    return [...new Set((jejaringList ?? []).map((i) => i.status).filter(Boolean))];
+  }, [jejaringList]);
 
   /* =========================================================
      FILTERED DATA (MAX 10)
+     NOTE:
+     - Dependency include jejaringList supaya refresh saat Supabase masuk.
   ========================================================= */
   const filteredData = useMemo(() => {
-    return jejaringList
+    return (jejaringList ?? [])
       .filter(
         (item) =>
           (filterJenis === "Semua" || item.jenisFasyankes === filterJenis) &&
@@ -90,12 +159,13 @@ export default function Jejaring() {
           (filterStatus === "Semua" || item.status === filterStatus)
       )
       .slice(0, 10);
-  }, [filterJenis, filterKelurahan, filterStatus]);
+  }, [jejaringList, filterJenis, filterKelurahan, filterStatus]);
 
   const activeData = filteredData.find((i) => i.id === activeId);
 
   /* =========================================================
      HANDLER: CARD CLICK (LIST)
+     NOTE:
      - tetap expand inline
      - plus: flyTo marker / lokasi bila ada
   ========================================================= */
@@ -109,18 +179,18 @@ export default function Jejaring() {
     setActiveId(id);
     setActiveRow(rowIndex);
 
-    // FlyTo ke titik jejaring (kalau ada)
+    // NOTE: FlyTo ke titik jejaring (kalau ada)
     mapApiRef.current?.flyToJejaringById?.(id);
   };
 
   /* =========================================================
-     HANDLER: MAP → LIST (MARKER / POLYGON)
+     HANDLER: MAP → LIST (KELURAHAN)
+     NOTE:
+     - set filter => list sinkron
+     - reset active card biar UX bersih
   ========================================================= */
   const handleKelurahanSelect = (kelurahanName) => {
-    // set filter => list sinkron
     setFilterKelurahan(kelurahanName);
-
-    // reset active card biar UX bersih
     setActiveId(null);
     setActiveRow(null);
   };
@@ -136,6 +206,7 @@ export default function Jejaring() {
 
   /* =========================================================
      AUTO SCROLL KE EXPANDED CARD
+     NOTE: Tetap sama.
   ========================================================= */
   useEffect(() => {
     if (!activeId || activeRow === null) return;
@@ -156,6 +227,7 @@ export default function Jejaring() {
 
   /* =========================================================
      AUTO SCROLL KE ATAS SAAT KELURAHAN DARI MAP / FILTER DIPILIH
+     NOTE: Tetap sama.
   ========================================================= */
   useEffect(() => {
     if (filterKelurahan !== "Semua") {
@@ -165,6 +237,9 @@ export default function Jejaring() {
 
   /* =========================================================
      RENDER
+     NOTE:
+     - UI utama tidak diubah.
+     - indikator loading/error ringan & tidak mengganggu.
   ========================================================= */
   return (
     <main className="min-h-screen bg-gray-50">
@@ -178,6 +253,16 @@ export default function Jejaring() {
             Informasi fasilitas pelayanan kesehatan yang bekerja sama dengan
             Puskesmas dan telah diverifikasi.
           </p>
+
+          {/* NOTE: indikator fetch data (ringan, non-intrusive) */}
+          {isLoading && (
+            <p className="mt-3 text-sm text-gray-500">Memuat data terbaru…</p>
+          )}
+          {loadError && !isLoading && (
+            <p className="mt-3 text-sm text-orange-600">
+              Gagal memuat data terbaru. Menampilkan data cadangan.
+            </p>
+          )}
         </header>
 
         {/* ================= FILTER ================= */}
