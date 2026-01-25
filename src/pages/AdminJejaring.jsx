@@ -18,16 +18,19 @@ export default function AdminJejaring() {
   const { rows, count, page, setPage, pageCount, loading, refreshing, error, fetchPage } = useJejaringList();
 
   const [search, setSearch] = useState("");
+
+  // CREATE state
+  const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState(CREATE_DEFAULTS);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
   const [createOk, setCreateOk] = useState("");
 
-  // edit modal
+  // EDIT state
   const [editOpen, setEditOpen] = useState(false);
   const [editRow, setEditRow] = useState(null);
 
-  // delete confirm
+  // DELETE state
   const [delOpen, setDelOpen] = useState(false);
   const [delRow, setDelRow] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -53,8 +56,19 @@ export default function AdminJejaring() {
       setCreateForm(CREATE_DEFAULTS);
       setPage(1);
       await fetchPage({ isRefresh: true });
+
+      // UX: sukses -> tutup form
+      setShowCreate(false);
     } catch (e2) {
-      setCreateError(e2?.message || "Gagal menambahkan data.");
+      const msg = e2?.message || "Gagal menambahkan data.";
+
+      // Bantu user: kalau database punya kolom NOT NULL yang belum ada di form
+      // (contoh kasus kamu: jenis_fasyankes)
+      setCreateError(
+        msg.includes("violates not-null constraint")
+          ? `${msg}\n\nCatatan: database punya kolom wajib (NOT NULL) yang belum ada di form. Tambahkan field tersebut di form sebelum insert bisa berhasil.`
+          : msg
+      );
     } finally {
       setCreating(false);
     }
@@ -91,11 +105,12 @@ export default function AdminJejaring() {
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6">
+      {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <h1 className="text-xl font-semibold">Admin Jejaring</h1>
           <p className="mt-1 text-sm text-slate-600">
-            Kelola data <span className="font-mono">jejaring_fasyankes</span> (Step 8.3: Delete + confirm).
+            Kelola data <span className="font-mono">jejaring_fasyankes</span>.
           </p>
         </div>
 
@@ -118,49 +133,80 @@ export default function AdminJejaring() {
           >
             {refreshing ? "Refreshing…" : "Refresh"}
           </button>
+
+          {/* Toggle create */}
+          <button
+            type="button"
+            onClick={() => {
+              setCreateOk("");
+              setCreateError("");
+              setShowCreate((v) => !v);
+            }}
+            className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+          >
+            {showCreate ? "Tutup" : "+ Tambah"}
+          </button>
         </div>
       </div>
 
-      {/* CREATE */}
-      <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
-        <div className="text-sm font-semibold text-slate-800">Tambah Jejaring</div>
-        <div className="mt-1 text-xs text-slate-500">
-          Minimal kolom: nama, alamat, kelurahan, kecamatan, lat, lng. Telepon/email opsional.
-        </div>
-
-        <form onSubmit={onCreate} className="mt-4 space-y-3">
-          <JejaringFormFields
-            value={createForm}
-            onChange={(k, v) => setCreateForm((p) => ({ ...p, [k]: v }))}
-          />
-
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-xs">
-              {createError ? (
-                <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-red-700">
-                  <span className="font-semibold">Gagal:</span> {createError}
-                </div>
-              ) : createOk ? (
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-800">
-                  {createOk}
-                </div>
-              ) : (
-                <div className="text-slate-500">Tips: lat/lng wajib angka.</div>
-              )}
-            </div>
-
-            <button
-              type="submit"
-              disabled={creating}
-              className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
-            >
-              {creating ? "Menyimpan…" : "Tambah"}
-            </button>
+      {/* CREATE (collapsible) */}
+      {showCreate ? (
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="text-sm font-semibold text-slate-800">Tambah Fasyankes</div>
+          <div className="mt-1 text-xs text-slate-500">
+            Form ini masih versi sederhana. Nanti kita lengkapi sesuai struktur database.
           </div>
-        </form>
-      </div>
 
-      {/* STATUS */}
+          <form onSubmit={onCreate} className="mt-4 space-y-3">
+            <JejaringFormFields
+              value={createForm}
+              onChange={(k, v) => setCreateForm((p) => ({ ...p, [k]: v }))}
+            />
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-xs whitespace-pre-line">
+                {createError ? (
+                  <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-red-700">
+                    <span className="font-semibold">Gagal:</span> {createError}
+                  </div>
+                ) : createOk ? (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-800">
+                    {createOk}
+                  </div>
+                ) : (
+                  <div className="text-slate-500">Tips: lat/lng wajib angka.</div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCreateForm(CREATE_DEFAULTS);
+                    setCreateOk("");
+                    setCreateError("");
+                    setShowCreate(false);
+                  }}
+                  disabled={creating}
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold hover:bg-slate-50 disabled:opacity-60"
+                >
+                  Batal
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={creating}
+                  className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                >
+                  {creating ? "Menyimpan…" : "Tambah"}
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      ) : null}
+
+      {/* Status */}
       <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-sm text-slate-700">
@@ -203,7 +249,7 @@ export default function AdminJejaring() {
         ) : null}
       </div>
 
-      {/* TABLE */}
+      {/* Table */}
       <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
           <div className="text-sm font-semibold text-slate-800">Data Jejaring</div>
@@ -223,13 +269,14 @@ export default function AdminJejaring() {
             <table className="w-full min-w-245 border-collapse">
               <thead className="bg-slate-50">
                 <tr>
-                  {/* Aksi di kiri */}
                   <th className="whitespace-nowrap border-b border-slate-200 px-4 py-3 text-left text-xs font-semibold text-slate-700">
                     Aksi
                   </th>
-
                   {displayColumns.map((col) => (
-                    <th key={col} className="whitespace-nowrap border-b border-slate-200 px-4 py-3 text-left text-xs font-semibold text-slate-700">
+                    <th
+                      key={col}
+                      className="whitespace-nowrap border-b border-slate-200 px-4 py-3 text-left text-xs font-semibold text-slate-700"
+                    >
                       {col}
                     </th>
                   ))}
@@ -259,7 +306,6 @@ export default function AdminJejaring() {
                                 ? "rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium hover:bg-slate-50"
                                 : "rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-400"
                             }
-                            title={canMutate ? "Edit data" : "Tidak ada id/uuid untuk update"}
                           >
                             Edit
                           </button>
@@ -273,7 +319,6 @@ export default function AdminJejaring() {
                                 ? "rounded-lg border border-red-200 bg-white px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
                                 : "rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-400"
                             }
-                            title={canMutate ? "Hapus data" : "Tidak ada id/uuid untuk delete"}
                           >
                             Hapus
                           </button>
@@ -281,7 +326,11 @@ export default function AdminJejaring() {
                       </td>
 
                       {displayColumns.map((col) => (
-                        <td key={col} className="max-w-[320px] truncate px-4 py-3 align-top text-sm text-slate-800" title={formatCellValue(row[col])}>
+                        <td
+                          key={col}
+                          className="max-w-[320px] truncate px-4 py-3 align-top text-sm text-slate-800"
+                          title={formatCellValue(row[col])}
+                        >
                           {formatCellValue(row[col])}
                         </td>
                       ))}
@@ -294,7 +343,7 @@ export default function AdminJejaring() {
         )}
       </div>
 
-      {/* Edit modal */}
+      {/* Modals */}
       <EditJejaringModal
         open={editOpen}
         row={editRow}
@@ -305,15 +354,10 @@ export default function AdminJejaring() {
         onSaved={() => fetchPage({ isRefresh: true })}
       />
 
-      {/* Delete confirm */}
       <ConfirmDialog
         open={delOpen}
         title="Konfirmasi Hapus"
-        description={
-          delRow
-            ? `Yakin hapus data ini?\n\n${delRow.nama_fasyankes || "(tanpa nama)"}`
-            : "Yakin hapus data ini?"
-        }
+        description={delRow ? `Yakin hapus data ini?\n\n${delRow.nama_fasyankes || "(tanpa nama)"}` : "Yakin hapus data ini?"}
         confirmText="Ya, hapus"
         cancelText="Batal"
         danger
@@ -327,7 +371,6 @@ export default function AdminJejaring() {
         onConfirm={doDelete}
       />
 
-      {/* Delete error toast-like (opsional) */}
       {delErr ? (
         <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
           <span className="font-semibold">Gagal hapus:</span> {delErr}
