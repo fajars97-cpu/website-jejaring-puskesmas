@@ -252,10 +252,7 @@ export default function AdminJejaring() {
       {/* Table */}
       <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-          <div className="text-sm font-semibold text-slate-800">Data Jejaring</div>
-          <div className="text-xs text-slate-500">
-            {displayColumns.length ? `Kolom tampil: ${displayColumns.join(", ")}` : "Menunggu data…"}
-          </div>
+        <div className="text-sm font-semibold text-slate-800">Data Jejaring</div>
         </div>
 
         {loading ? (

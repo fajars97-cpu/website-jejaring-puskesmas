@@ -1,36 +1,78 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Modal from "./Modal";
 import JejaringFormFields from "./JejaringFormFields";
 import ConfirmDialog from "./ConfirmDialog";
+import { CREATE_DEFAULTS } from "./constants";
 import { getRowKey, normalizeJejaringPayload, validateJejaring } from "./utils";
 import { updateJejaring } from "./api";
 
 export default function EditJejaringModal({ open, row, onClose, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
-
   const [form, setForm] = useState(null);
 
   // confirm state
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  React.useEffect(() => {
+  const key = useMemo(() => (row ? getRowKey(row) : null), [row]);
+
+  useEffect(() => {
     if (!open || !row) return;
+
     setErr("");
     setConfirmOpen(false);
+
+    // Hydrate form dari row + fallback ke default agar semua field ada
+    // (supaya JejaringFormFields full tidak jadi uncontrolled/undefined)
     setForm({
-      nama_fasyankes: row?.nama_fasyankes ?? "",
-      alamat: row?.alamat ?? "",
-      kelurahan: row?.kelurahan ?? "",
-      kecamatan: row?.kecamatan ?? "Jagakarsa",
-      telepon: row?.telepon ?? "",
-      email: row?.email ?? "",
-      lat: row?.lat ?? "",
-      lng: row?.lng ?? "",
+      ...CREATE_DEFAULTS,
+
+      // identitas
+      nama_fasyankes: row?.nama_fasyankes ?? CREATE_DEFAULTS.nama_fasyankes,
+      jenis_fasyankes: row?.jenis_fasyankes ?? CREATE_DEFAULTS.jenis_fasyankes,
+      tipe_fasyankes: row?.tipe_fasyankes ?? CREATE_DEFAULTS.tipe_fasyankes,
+      status: row?.status ?? CREATE_DEFAULTS.status,
+
+      // lokasi
+      alamat: row?.alamat ?? CREATE_DEFAULTS.alamat,
+      kelurahan: row?.kelurahan ?? CREATE_DEFAULTS.kelurahan,
+      kecamatan: row?.kecamatan ?? CREATE_DEFAULTS.kecamatan,
+      kota: row?.kota ?? CREATE_DEFAULTS.kota,
+      kode_pos: row?.kode_pos ?? CREATE_DEFAULTS.kode_pos,
+
+      // geo
+      lat: row?.lat ?? CREATE_DEFAULTS.lat,
+      lng: row?.lng ?? CREATE_DEFAULTS.lng,
+
+      // kontak + maps
+      telepon: row?.telepon ?? CREATE_DEFAULTS.telepon,
+      email: row?.email ?? CREATE_DEFAULTS.email,
+      gmaps_url: row?.gmaps_url ?? CREATE_DEFAULTS.gmaps_url,
+      gmaps_embed_url: row?.gmaps_embed_url ?? CREATE_DEFAULTS.gmaps_embed_url,
+
+      // admin/meta
+      is_verified: row?.is_verified ?? CREATE_DEFAULTS.is_verified,
+      penyelenggara: row?.penyelenggara ?? CREATE_DEFAULTS.penyelenggara,
+      kelompok_penyelenggara: row?.kelompok_penyelenggara ?? CREATE_DEFAULTS.kelompok_penyelenggara,
+
+      // izin + pj
+      pj_nama: row?.pj_nama ?? CREATE_DEFAULTS.pj_nama,
+      nomor_izin: row?.nomor_izin ?? CREATE_DEFAULTS.nomor_izin,
+      izin_mulai: row?.izin_mulai ?? CREATE_DEFAULTS.izin_mulai,
+      izin_berakhir: row?.izin_berakhir ?? CREATE_DEFAULTS.izin_berakhir,
+      jumlah_sdm: row?.jumlah_sdm ?? CREATE_DEFAULTS.jumlah_sdm,
+
+      // mou
+      mou_nomor: row?.mou_nomor ?? CREATE_DEFAULTS.mou_nomor,
+      mou_mulai: row?.mou_mulai ?? CREATE_DEFAULTS.mou_mulai,
+      mou_akhir: row?.mou_akhir ?? CREATE_DEFAULTS.mou_akhir,
+
+      // lain-lain
+      kegiatan: row?.kegiatan ?? CREATE_DEFAULTS.kegiatan,
+      foto: row?.foto ?? CREATE_DEFAULTS.foto,
     });
   }, [open, row]);
 
-  const key = useMemo(() => (row ? getRowKey(row) : null), [row]);
   const setField = (k, v) => setForm((p) => ({ ...(p || {}), [k]: v }));
 
   function requestSave(e) {
@@ -50,20 +92,18 @@ export default function EditJejaringModal({ open, row, onClose, onSaved }) {
       return;
     }
 
-    // valid -> minta konfirmasi
     setConfirmOpen(true);
   }
 
   async function doSave() {
     if (!row || !form) return;
-    const k = key;
-    if (!k) return;
+    if (!key) return;
 
     const payload = normalizeJejaringPayload(form);
 
     setSaving(true);
     try {
-      await updateJejaring(k.pk, k.value, payload);
+      await updateJejaring(key.pk, key.value, payload);
       await onSaved?.();
       setConfirmOpen(false);
       onClose?.();
@@ -104,7 +144,7 @@ export default function EditJejaringModal({ open, row, onClose, onSaved }) {
                 disabled={saving}
                 className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
               >
-                Simpan
+                {saving ? "Menyimpan…" : "Simpan"}
               </button>
             </div>
           </form>
@@ -118,7 +158,7 @@ export default function EditJejaringModal({ open, row, onClose, onSaved }) {
         confirmText="Ya, simpan"
         cancelText="Batal"
         loading={saving}
-        onClose={() => setConfirmOpen(false)}
+        onClose={saving ? undefined : () => setConfirmOpen(false)}
         onConfirm={doSave}
       />
     </>
