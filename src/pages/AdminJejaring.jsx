@@ -13,9 +13,19 @@ import { useJejaringList } from "../features/admin-jejaring/useJejaringList";
 import JejaringFormFields from "../features/admin-jejaring/JejaringFormFields";
 import EditJejaringModal from "../features/admin-jejaring/EditJejaringModal";
 import ConfirmDialog from "../features/admin-jejaring/ConfirmDialog";
+import { useAuth } from "../context/AuthContext";
+
+function userLabel(user) {
+  const email = user?.email || "";
+  if (!email) return "Admin";
+  return email;
+}
 
 export default function AdminJejaring() {
-  const { rows, count, page, setPage, pageCount, loading, refreshing, error, fetchPage } = useJejaringList();
+  const { user, isAdmin, signOut } = useAuth();
+
+  const { rows, count, page, setPage, pageCount, loading, refreshing, error, fetchPage } =
+    useJejaringList();
 
   const [search, setSearch] = useState("");
 
@@ -61,9 +71,6 @@ export default function AdminJejaring() {
       setShowCreate(false);
     } catch (e2) {
       const msg = e2?.message || "Gagal menambahkan data.";
-
-      // Bantu user: kalau database punya kolom NOT NULL yang belum ada di form
-      // (contoh kasus kamu: jenis_fasyankes)
       setCreateError(
         msg.includes("violates not-null constraint")
           ? `${msg}\n\nCatatan: database punya kolom wajib (NOT NULL) yang belum ada di form. Tambahkan field tersebut di form sebelum insert bisa berhasil.`
@@ -105,6 +112,33 @@ export default function AdminJejaring() {
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6">
+      {/* Admin bar (biar terasa area admin) */}
+      <div className="mb-4 flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
+            Mode: Admin
+          </span>
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-700">
+            Signed in: <span className="font-semibold">{userLabel(user)}</span>
+          </span>
+          {!isAdmin ? (
+            <span className="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
+              Warning: bukan admin
+            </span>
+          ) : null}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={signOut}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold hover:bg-slate-50"
+          >
+            Logout
+          </button>
+        </div>
+      </div>
+
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
@@ -164,7 +198,7 @@ export default function AdminJejaring() {
             />
 
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="text-xs whitespace-pre-line">
+              <div className="whitespace-pre-line text-xs">
                 {createError ? (
                   <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-red-700">
                     <span className="font-semibold">Gagal:</span> {createError}
@@ -212,7 +246,8 @@ export default function AdminJejaring() {
           <div className="text-sm text-slate-700">
             Total data: <span className="font-semibold">{loading ? "…" : count}</span>
             <span className="mx-2 text-slate-300">•</span>
-            Page: <span className="font-semibold">{page}</span> / <span className="font-semibold">{pageCount}</span>
+            Page: <span className="font-semibold">{page}</span> /{" "}
+            <span className="font-semibold">{pageCount}</span>
             {search.trim() ? (
               <>
                 <span className="mx-2 text-slate-300">•</span>
@@ -252,7 +287,7 @@ export default function AdminJejaring() {
       {/* Table */}
       <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-        <div className="text-sm font-semibold text-slate-800">Data Jejaring</div>
+          <div className="text-sm font-semibold text-slate-800">Data Jejaring</div>
         </div>
 
         {loading ? (
@@ -354,7 +389,11 @@ export default function AdminJejaring() {
       <ConfirmDialog
         open={delOpen}
         title="Konfirmasi Hapus"
-        description={delRow ? `Yakin hapus data ini?\n\n${delRow.nama_fasyankes || "(tanpa nama)"}` : "Yakin hapus data ini?"}
+        description={
+          delRow
+            ? `Yakin hapus data ini?\n\n${delRow.nama_fasyankes || "(tanpa nama)"}`
+            : "Yakin hapus data ini?"
+        }
         confirmText="Ya, hapus"
         cancelText="Batal"
         danger

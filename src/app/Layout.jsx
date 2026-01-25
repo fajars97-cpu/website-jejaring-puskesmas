@@ -1,4 +1,5 @@
 import { Outlet, NavLink } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 /**
  * Menu publik
@@ -8,11 +9,6 @@ const publicMenu = [
   { label: "Jejaring", path: "/jejaring" },
   { label: "Perizinan", path: "/perizinan" },
 ];
-
-/**
- * Menu auth
- */
-const authMenu = [{ label: "Login", path: "/login" }];
 
 /**
  * Warna pedoman (Dinkes style)
@@ -27,7 +23,15 @@ const COLORS = {
   bgPage: "#f8fafc",
 };
 
+function getUserLabel(user) {
+  const email = user?.email || "";
+  if (!email) return "Admin";
+  return email.split("@")[0];
+}
+
 export default function Layout() {
+  const { user, isAdmin, loading, signOut } = useAuth();
+
   return (
     <div
       style={{
@@ -46,9 +50,7 @@ export default function Layout() {
           padding: "14px 24px",
         }}
       >
-        <strong style={{ fontSize: 16 }}>
-          Website Jejaring Puskesmas
-        </strong>
+        <strong style={{ fontSize: 16 }}>Website Jejaring Puskesmas</strong>
 
         <nav
           style={{
@@ -67,9 +69,7 @@ export default function Layout() {
                 textDecoration: "none",
                 color: "#ffffff",
                 paddingBottom: 4,
-                borderBottom: isActive
-                  ? "2px solid #ffffff"
-                  : "2px solid transparent",
+                borderBottom: isActive ? "2px solid #ffffff" : "2px solid transparent",
                 fontWeight: isActive ? 600 : 400,
               })}
             >
@@ -77,20 +77,58 @@ export default function Layout() {
             </NavLink>
           ))}
 
-          <div style={{ marginLeft: "auto" }}>
-            {authMenu.map((item) => (
+          {/* RIGHT SIDE */}
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+            {loading ? (
+              <span style={{ fontSize: 13, opacity: 0.85 }}>…</span>
+            ) : user && isAdmin ? (
+              <>
+                <NavLink
+                  to="/admin"
+                  title={user?.email || ""}
+                  style={{
+                    textDecoration: "none",
+                    color: "#ffffff",
+                    fontWeight: 600,
+                    fontSize: 13,
+                    padding: "6px 10px",
+                    borderRadius: 12,
+                    border: "1px solid rgba(255,255,255,0.25)",
+                    background: "rgba(255,255,255,0.12)",
+                  }}
+                >
+                  {getUserLabel(user)}
+                </NavLink>
+
+                <button
+                  type="button"
+                  onClick={signOut}
+                  style={{
+                    cursor: "pointer",
+                    color: "#ffffff",
+                    fontWeight: 600,
+                    fontSize: 13,
+                    padding: "6px 10px",
+                    borderRadius: 12,
+                    border: "1px solid rgba(255,255,255,0.25)",
+                    background: "rgba(255,255,255,0.12)",
+                  }}
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
               <NavLink
-                key={item.path}
-                to={item.path}
+                to="/login"
                 style={{
                   textDecoration: "none",
                   color: "#ffffff",
                   fontWeight: 500,
                 }}
               >
-                {item.label}
+                Login
               </NavLink>
-            ))}
+            )}
           </div>
         </nav>
       </header>
@@ -103,13 +141,7 @@ export default function Layout() {
           padding: "32px 24px",
         }}
       >
-        {/* container supaya konten tidak nempel pinggir */}
-        <div
-          style={{
-            maxWidth: 1200,
-            margin: "0 auto",
-          }}
-        >
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <Outlet />
         </div>
       </main>
