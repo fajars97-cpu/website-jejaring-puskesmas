@@ -23,8 +23,22 @@ export default function JejaringCard({ data, isActive, onClick }) {
         <div className="flex gap-4">
 
           {/* FOTO */}
-          <div className="w-24 h-20 bg-[#f0f7f4] rounded-xl flex items-center justify-center text-xs text-gray-500">
-            Foto
+          <div className="w-24 h-20 bg-[#f0f7f4] rounded-xl overflow-hidden flex items-center justify-center text-xs text-gray-500">
+          {data.foto ? (
+          <img
+            src={data.foto}
+            alt={`Foto ${data.namaFasyankes || "Fasyankes"}`}
+            className="w-full h-full object-cover"
+            loading="lazy"
+            referrerPolicy="no-referrer"
+            onError={(e) => {
+           // fallback kalau URL invalid / diblok
+           e.currentTarget.style.display = "none";
+           }}
+           />
+           ) : (  
+          "Foto Fasyankes"
+          )}
           </div>
 
           {/* CONTENT */}
