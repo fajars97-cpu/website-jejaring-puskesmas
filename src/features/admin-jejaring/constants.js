@@ -70,3 +70,6 @@ export const CREATE_DEFAULTS = {
   kegiatan: "",
   foto: "",
 };
+
+export const FOTO_MAX_MB = 3;
+export const FOTO_ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];

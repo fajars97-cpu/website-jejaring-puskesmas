@@ -1,18 +1,98 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   JENIS_OPTIONS,
   TIPE_OPTIONS,
   STATUS_OPTIONS,
   PENYELENGGARA_OPTIONS,
   KELOMPOK_PENYELENGGARA_OPTIONS,
+  FOTO_ALLOWED_TYPES,
+  FOTO_MAX_MB,
 } from "./constants";
+import { uploadToCloudinary } from "./cloudinary";
 
 export default function JejaringFormFields({ value, onChange }) {
-  const set = (k) => (e) => onChange(k, e.target.type === "checkbox" ? e.target.checked : e.target.value);
+  const set = (k) => (e) =>
+    onChange(k, e.target.type === "checkbox" ? e.target.checked : e.target.value);
 
   const inputBase =
     "mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-300";
   const labelBase = "text-xs font-medium text-slate-700";
+
+  // ===== Foto upload state (lokal) =====
+  const [file, setFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [uploadErr, setUploadErr] = useState("");
+  const [uploadOk, setUploadOk] = useState("");
+
+  const fotoUrl = String(value?.foto ?? "").trim();
+
+  const maxBytes = useMemo(() => (FOTO_MAX_MB || 3) * 1024 * 1024, []);
+  const allowedTypes = useMemo(
+    () => (Array.isArray(FOTO_ALLOWED_TYPES) && FOTO_ALLOWED_TYPES.length ? FOTO_ALLOWED_TYPES : ["image/jpeg", "image/png", "image/webp"]),
+    []
+  );
+
+  useEffect(() => {
+    if (!file) {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      setPreviewUrl("");
+      return;
+    }
+    const u = URL.createObjectURL(file);
+    setPreviewUrl(u);
+    return () => URL.revokeObjectURL(u);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [file]);
+
+  function onPickFile(e) {
+    setUploadErr("");
+    setUploadOk("");
+    const f = e.target.files?.[0];
+    if (!f) return;
+
+    if (!allowedTypes.includes(f.type)) {
+      setUploadErr(`Format tidak didukung. Gunakan JPG/PNG/WEBP.`);
+      e.target.value = "";
+      return;
+    }
+    if (f.size > maxBytes) {
+      setUploadErr(`Ukuran file terlalu besar. Maks ${FOTO_MAX_MB || 3} MB.`);
+      e.target.value = "";
+      return;
+    }
+
+    setFile(f);
+  }
+
+  async function doUpload() {
+    setUploadErr("");
+    setUploadOk("");
+
+    if (!file) {
+      setUploadErr("Pilih file dulu.");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const r = await uploadToCloudinary(file);
+      onChange("foto", r.secureUrl); // <-- simpan URL ke form
+      setUploadOk("Upload sukses. URL foto sudah terisi.");
+      setFile(null);
+    } catch (err) {
+      setUploadErr(err?.message || "Upload gagal.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function clearFoto() {
+    setUploadErr("");
+    setUploadOk("");
+    setFile(null);
+    onChange("foto", "");
+  }
 
   return (
     <div className="space-y-4">
@@ -235,9 +315,101 @@ export default function JejaringFormFields({ value, onChange }) {
             <input value={value.kegiatan ?? ""} onChange={set("kegiatan")} className={inputBase} />
           </div>
 
+          {/* FOTO: upload + URL */}
           <div className="md:col-span-2">
-            <label className={labelBase}>Foto (URL/path)</label>
-            <input value={value.foto ?? ""} onChange={set("foto")} className={inputBase} />
+            <div className="flex items-center justify-between gap-2">
+              <label className={labelBase}>Foto Fasyankes</label>
+              {fotoUrl ? (
+                <button
+                  type="button"
+                  onClick={clearFoto}
+                  className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium hover:bg-slate-50"
+                >
+                  Clear
+                </button>
+              ) : null}
+            </div>
+
+            {/* Preview */}
+            {fotoUrl ? (
+              <div className="mt-2 flex items-start gap-3">
+                <img
+                  src={fotoUrl}
+                  alt="Preview foto"
+                  className="h-20 w-20 rounded-xl border border-slate-200 object-cover"
+                  loading="lazy"
+                />
+                <div className="min-w-0">
+                  <div className="text-xs text-slate-600">URL tersimpan:</div>
+                  <div className="mt-1 truncate text-xs font-mono text-slate-800" title={fotoUrl}>
+                    {fotoUrl}
+                  </div>
+                </div>
+              </div>
+            ) : previewUrl ? (
+              <div className="mt-2 flex items-start gap-3">
+                <img
+                  src={previewUrl}
+                  alt="Preview file"
+                  className="h-20 w-20 rounded-xl border border-slate-200 object-cover"
+                />
+                <div className="text-xs text-slate-600">
+                  File siap di-upload: <span className="font-semibold">{file?.name}</span>
+                </div>
+              </div>
+            ) : null}
+
+            {/* Picker + upload */}
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={onPickFile}
+                disabled={uploading}
+                className="block w-full text-sm"
+              />
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={doUpload}
+                  disabled={uploading || !file}
+                  className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                >
+                  {uploading ? "Uploading…" : "Upload ke Cloudinary"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFile(null)}
+                  disabled={uploading || !file}
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold hover:bg-slate-50 disabled:opacity-60"
+                >
+                  Reset file
+                </button>
+              </div>
+            </div>
+
+            {/* Feedback */}
+            {uploadErr ? (
+              <div className="mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                <span className="font-semibold">Upload gagal:</span> {uploadErr}
+              </div>
+            ) : uploadOk ? (
+              <div className="mt-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+                {uploadOk}
+              </div>
+            ) : (
+              <div className="mt-2 text-xs text-slate-500">
+                Tips: format JPG/PNG/WEBP, maks {FOTO_MAX_MB || 3} MB.
+              </div>
+            )}
+
+            {/* Manual URL fallback (tetap disediakan) */}
+            <div className="mt-3">
+              <label className={labelBase}>Foto (URL) – opsional</label>
+              <input value={value.foto ?? ""} onChange={set("foto")} className={inputBase} placeholder="https://..." />
+            </div>
           </div>
         </div>
       </div>
