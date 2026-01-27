@@ -48,6 +48,9 @@ export default function AdminJejaring() {
     izin: "ALL",
   });
 
+  // MOBILE: filter collapse
+  const [showFilters, setShowFilters] = useState(false);
+
   // CREATE
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState(CREATE_DEFAULTS);
@@ -165,12 +168,9 @@ export default function AdminJejaring() {
         return;
       }
 
-      const tagKel =
-        filters.kelurahan !== "ALL" ? `_kel-${slug(filters.kelurahan)}` : "";
-      const tagJenis =
-        filters.jenis !== "ALL" ? `_jenis-${slug(filters.jenis)}` : "";
-      const tagStatus =
-        filters.status !== "ALL" ? `_status-${slug(filters.status)}` : "";
+      const tagKel = filters.kelurahan !== "ALL" ? `_kel-${slug(filters.kelurahan)}` : "";
+      const tagJenis = filters.jenis !== "ALL" ? `_jenis-${slug(filters.jenis)}` : "";
+      const tagStatus = filters.status !== "ALL" ? `_status-${slug(filters.status)}` : "";
       const tagMou = filters.mou !== "ALL" ? `_mou-${filters.mou}` : "";
       const tagIzin = filters.izin !== "ALL" ? `_izin-${filters.izin}` : "";
 
@@ -205,29 +205,52 @@ export default function AdminJejaring() {
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6">
-      {/* Admin bar */}
-      <div className="mb-4 flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
-            Mode: Admin
-          </span>
-          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-700">
-            Signed in: <span className="font-semibold">{userLabel(user)}</span>
-          </span>
-          {!isAdmin ? (
-            <span className="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
-              Warning: bukan admin
+      {/* Admin bar (mobile compact + desktop detailed) */}
+      <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-3">
+        {/* MOBILE */}
+        <div className="flex items-center justify-between gap-2 sm:hidden">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
+              Admin
             </span>
-          ) : null}
+            <span className="min-w-0 truncate rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-700">
+              {userLabel(user)}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={signOut}
+            className="shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold hover:bg-slate-50"
+          >
+            Logout
+          </button>
         </div>
 
-        <button
-          type="button"
-          onClick={signOut}
-          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold hover:bg-slate-50"
-        >
-          Logout
-        </button>
+        {/* DESKTOP/TABLET */}
+        <div className="hidden sm:flex sm:items-center sm:justify-between sm:gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
+              Mode: Admin
+            </span>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-700">
+              Signed in: <span className="font-semibold">{userLabel(user)}</span>
+            </span>
+            {!isAdmin ? (
+              <span className="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
+                Warning: bukan admin
+              </span>
+            ) : null}
+          </div>
+
+          <button
+            type="button"
+            onClick={signOut}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold hover:bg-slate-50"
+          >
+            Logout
+          </button>
+        </div>
       </div>
 
       {/* Header */}
@@ -239,47 +262,52 @@ export default function AdminJejaring() {
           </p>
         </div>
 
+        {/* Actions (mobile-friendly) */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="relative">
+          {/* Search full width on mobile */}
+          <div className="relative w-full sm:w-auto">
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search (client-side)…"
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 pr-10 text-sm outline-none focus:border-slate-300"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 pr-10 text-sm outline-none focus:border-slate-300 sm:w-65"
             />
             <div className="pointer-events-none absolute right-3 top-2.5 text-slate-400">⌕</div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => fetchPage({ isRefresh: true })}
-            disabled={loading || refreshing}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-60"
-          >
-            {refreshing ? "Refreshing…" : "Refresh"}
-          </button>
+          {/* Buttons: grid on mobile */}
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+            <button
+              type="button"
+              onClick={() => fetchPage({ isRefresh: true })}
+              disabled={loading || refreshing}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-60"
+            >
+              {refreshing ? "Refreshing…" : "Refresh"}
+            </button>
 
-          <button
-            type="button"
-            onClick={onExportExcel}
-            disabled={exporting || loading}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-60"
-            title="Export sesuai filter yang aktif"
-          >
-            {exporting ? "Exporting…" : "Export Excel"}
-          </button>
+            <button
+              type="button"
+              onClick={onExportExcel}
+              disabled={exporting || loading}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-60"
+              title="Export sesuai filter yang aktif"
+            >
+              {exporting ? "Export…" : "Export"}
+            </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              setCreateOk("");
-              setCreateError("");
-              setShowCreate((v) => !v);
-            }}
-            className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-          >
-            {showCreate ? "Tutup" : "+ Tambah"}
-          </button>
+            <button
+              type="button"
+              onClick={() => {
+                setCreateOk("");
+                setCreateError("");
+                setShowCreate((v) => !v);
+              }}
+              className="col-span-2 w-full rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+            >
+              {showCreate ? "Tutup" : "+ Tambah"}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -289,8 +317,20 @@ export default function AdminJejaring() {
         </div>
       ) : null}
 
-      {/* FILTER BAR */}
-      <FilterBar rows={rows} filters={filters} setFilters={setFilters} />
+      {/* FILTER BAR (collapsible on mobile) */}
+      <div className="mt-3">
+        <button
+          type="button"
+          onClick={() => setShowFilters((v) => !v)}
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold hover:bg-slate-50 sm:hidden"
+        >
+          {showFilters ? "Tutup Filter" : "Tampilkan Filter"}
+        </button>
+
+        <div className={showFilters ? "block" : "hidden sm:block"}>
+          <FilterBar rows={rows} filters={filters} setFilters={setFilters} />
+        </div>
+      </div>
 
       {/* CREATE */}
       {showCreate ? (
@@ -360,7 +400,8 @@ export default function AdminJejaring() {
             {anyFilterActive ? (
               <>
                 <span className="mx-2 text-slate-300">•</span>
-                Hasil filter (di page ini): <span className="font-semibold">{filteredRows.length}</span>
+                Hasil filter (di page ini):{" "}
+                <span className="font-semibold">{filteredRows.length}</span>
               </>
             ) : null}
           </div>
@@ -403,7 +444,9 @@ export default function AdminJejaring() {
           <div className="p-6 text-sm text-slate-600">Loading…</div>
         ) : !filteredRows.length ? (
           <div className="p-6 text-sm text-slate-600">
-            {rows.length ? "Tidak ada hasil untuk filter di page ini." : "Belum ada data (atau query kosong)."}
+            {rows.length
+              ? "Tidak ada hasil untuk filter di page ini."
+              : "Belum ada data (atau query kosong)."}
           </div>
         ) : (
           <div className="w-full overflow-x-auto">
