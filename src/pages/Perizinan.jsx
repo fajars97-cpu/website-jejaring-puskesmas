@@ -227,8 +227,7 @@ export default function Perizinan() {
         </h1>
         <p className="max-w-3xl text-sm leading-relaxed text-black/60 md:text-base">
           Pilih kartu di bawah untuk melihat ringkasan <span className="font-semibold">alur</span>{" "}
-          dan <span className="font-semibold">dokumen umum</span> yang biasanya dibutuhkan.
-          Ini format infografis: cepat dibaca, anti ribet, no drama.
+          dan <span className="font-semibold">dokumen umum</span> yang dibutuhkan.
         </p>
       </div>
 
@@ -324,8 +323,7 @@ export default function Perizinan() {
 
       {/* Footer hint */}
       <div className="mt-6 rounded-2xl border border-black/10 bg-white/60 p-4 text-sm text-black/65">
-        <span className="font-semibold text-black/80">Tip:</span> kalau mau terlihat makin profesional,
-        nanti kita bisa tambahin: ikon kecil per langkah, link template dokumen (PDF), dan CTA “Hubungi PIC”.
+        <span className="font-semibold text-black/80">Tip:</span> Bila ada pertanyaan lebih lanjut bisa menghubungi admin jejaring".
       </div>
     </div>
   );
