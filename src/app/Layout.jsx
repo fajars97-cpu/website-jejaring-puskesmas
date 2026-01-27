@@ -47,18 +47,20 @@ export default function Layout() {
         style={{
           backgroundColor: COLORS.green,
           color: "#ffffff",
-          padding: "14px 24px",
+          padding: "14px 16px",
         }}
       >
         <strong style={{ fontSize: 16 }}>Website Jejaring Puskesmas</strong>
 
         <nav
-          style={{
-            marginTop: 10,
-            display: "flex",
-            alignItems: "center",
-            gap: 16,
-          }}
+         style={{
+         marginTop: 10,
+         display: "flex",
+         alignItems: "center",
+         gap: 12,
+         flexWrap: "wrap",
+         rowGap: 10,
+         }}
         >
           {publicMenu.map((item) => (
             <NavLink
@@ -78,7 +80,7 @@ export default function Layout() {
           ))}
 
           {/* RIGHT SIDE */}
-          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{marginLeft: "auto",display: "flex",alignItems: "center",gap: 10,flexWrap: "wrap",justifyContent: "flex-end",}}>
             {loading ? (
               <span style={{ fontSize: 13, opacity: 0.85 }}>…</span>
             ) : user && isAdmin ? (
