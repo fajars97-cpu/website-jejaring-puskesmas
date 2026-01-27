@@ -8,46 +8,82 @@ import {
   validateJejaring,
   formatCellValue,
   getRowKey,
+  getExpiryBucket,
+  expiryTextClass,
 } from "../features/admin-jejaring/utils";
 import { useJejaringList } from "../features/admin-jejaring/useJejaringList";
 import JejaringFormFields from "../features/admin-jejaring/JejaringFormFields";
 import EditJejaringModal from "../features/admin-jejaring/EditJejaringModal";
 import ConfirmDialog from "../features/admin-jejaring/ConfirmDialog";
+import FilterBar from "../features/admin-jejaring/FilterBar";
 import { useAuth } from "../context/AuthContext";
 
 function userLabel(user) {
   const email = user?.email || "";
-  if (!email) return "Admin";
-  return email;
+  return email || "Admin";
 }
 
 export default function AdminJejaring() {
   const { user, isAdmin, signOut } = useAuth();
-
   const { rows, count, page, setPage, pageCount, loading, refreshing, error, fetchPage } =
     useJejaringList();
 
   const [search, setSearch] = useState("");
 
-  // CREATE state
+  // FILTER state
+  const [filters, setFilters] = useState({
+    kelurahan: "ALL",
+    jenis: "ALL",
+    status: "ALL",
+    mou: "ALL", // GREEN/AMBER/YELLOW/RED/EXPIRED/NA
+  });
+
+  // CREATE
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState(CREATE_DEFAULTS);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
   const [createOk, setCreateOk] = useState("");
 
-  // EDIT state
+  // EDIT
   const [editOpen, setEditOpen] = useState(false);
   const [editRow, setEditRow] = useState(null);
 
-  // DELETE state
+  // DELETE
   const [delOpen, setDelOpen] = useState(false);
   const [delRow, setDelRow] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [delErr, setDelErr] = useState("");
 
   const displayColumns = useMemo(() => pickDisplayColumns(rows), [rows]);
-  const filteredRows = useMemo(() => filterRows(rows, search), [rows, search]);
+
+  const filteredRows = useMemo(() => {
+    // 1) search existing
+    let out = filterRows(rows, search);
+
+    // 2) apply dropdown filters
+    out = out.filter((r) => {
+      if (filters.kelurahan !== "ALL" && r.kelurahan !== filters.kelurahan) return false;
+      if (filters.jenis !== "ALL" && r.jenis_fasyankes !== filters.jenis) return false;
+      if (filters.status !== "ALL" && r.status !== filters.status) return false;
+
+      if (filters.mou !== "ALL") {
+        const b = getExpiryBucket(r.mou_akhir).bucket; // pakai mou_akhir sesuai data kamu
+        const map = {
+          green: "GREEN",
+          amber: "AMBER",
+          yellow: "YELLOW",
+          red: "RED",
+          expired: "EXPIRED",
+          na: "NA",
+        };
+        if ((map[b] || "NA") !== filters.mou) return false;
+      }
+      return true;
+    });
+
+    return out;
+  }, [rows, search, filters]);
 
   async function onCreate(e) {
     e.preventDefault();
@@ -66,8 +102,6 @@ export default function AdminJejaring() {
       setCreateForm(CREATE_DEFAULTS);
       setPage(1);
       await fetchPage({ isRefresh: true });
-
-      // UX: sukses -> tutup form
       setShowCreate(false);
     } catch (e2) {
       const msg = e2?.message || "Gagal menambahkan data.";
@@ -110,9 +144,18 @@ export default function AdminJejaring() {
     }
   }
 
+  // helper: highlight cell kalau kolom tanggal akhir (mou_akhir / izin_berakhir)
+  function renderCell(col, value) {
+    const text = formatCellValue(value);
+    if (col === "mou_akhir" || col === "izin_berakhir") {
+      return <span className={expiryTextClass(value)}>{text}</span>;
+    }
+    return text;
+  }
+
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6">
-      {/* Admin bar (biar terasa area admin) */}
+      {/* Admin bar */}
       <div className="mb-4 flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
@@ -128,15 +171,13 @@ export default function AdminJejaring() {
           ) : null}
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={signOut}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold hover:bg-slate-50"
-          >
-            Logout
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={signOut}
+          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold hover:bg-slate-50"
+        >
+          Logout
+        </button>
       </div>
 
       {/* Header */}
@@ -168,7 +209,6 @@ export default function AdminJejaring() {
             {refreshing ? "Refreshing…" : "Refresh"}
           </button>
 
-          {/* Toggle create */}
           <button
             type="button"
             onClick={() => {
@@ -183,7 +223,10 @@ export default function AdminJejaring() {
         </div>
       </div>
 
-      {/* CREATE (collapsible) */}
+      {/* FILTER BAR */}
+      <FilterBar rows={rows} filters={filters} setFilters={setFilters} />
+
+      {/* CREATE */}
       {showCreate ? (
         <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
           <div className="text-sm font-semibold text-slate-800">Tambah Fasyankes</div>
@@ -248,7 +291,7 @@ export default function AdminJejaring() {
             <span className="mx-2 text-slate-300">•</span>
             Page: <span className="font-semibold">{page}</span> /{" "}
             <span className="font-semibold">{pageCount}</span>
-            {search.trim() ? (
+            {(search.trim() || filters.mou !== "ALL" || filters.status !== "ALL" || filters.jenis !== "ALL" || filters.kelurahan !== "ALL") ? (
               <>
                 <span className="mx-2 text-slate-300">•</span>
                 Hasil filter (di page ini): <span className="font-semibold">{filteredRows.length}</span>
@@ -363,7 +406,7 @@ export default function AdminJejaring() {
                           className="max-w-[320px] truncate px-4 py-3 align-top text-sm text-slate-800"
                           title={formatCellValue(row[col])}
                         >
-                          {formatCellValue(row[col])}
+                          {renderCell(col, row[col])}
                         </td>
                       ))}
                     </tr>

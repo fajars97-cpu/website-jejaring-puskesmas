@@ -189,3 +189,39 @@ export function pickDisplayColumns(rows) {
 
   return cols;
 }
+
+export function getExpiryBucket(dateStr) {
+  if (!dateStr || dateStr === "—") return { bucket: "na", monthsLeft: null };
+
+  const end = new Date(dateStr);
+  if (Number.isNaN(end.getTime())) return { bucket: "na", monthsLeft: null };
+
+  const now = new Date();
+  if (end < now) return { bucket: "expired", monthsLeft: -1 };
+
+  // hitung selisih bulan (cukup stabil untuk rule 3/6/12 bulan)
+  const monthsLeft =
+    (end.getFullYear() - now.getFullYear()) * 12 + (end.getMonth() - now.getMonth());
+
+  if (monthsLeft <= 3) return { bucket: "red", monthsLeft };
+  if (monthsLeft <= 6) return { bucket: "yellow", monthsLeft };
+  if (monthsLeft <= 12) return { bucket: "amber", monthsLeft };
+  return { bucket: "green", monthsLeft };
+}
+
+export function expiryTextClass(dateStr) {
+  const { bucket } = getExpiryBucket(dateStr);
+  switch (bucket) {
+    case "expired":
+    case "red":
+      return "text-red-600 font-semibold";
+    case "yellow":
+      return "text-yellow-600 font-semibold";
+    case "amber":
+      return "text-amber-600 font-semibold";
+    case "green":
+      return "text-emerald-600";
+    default:
+      return "text-slate-500";
+  }
+}
