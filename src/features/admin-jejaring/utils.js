@@ -190,36 +190,37 @@ export function pickDisplayColumns(rows) {
   return cols;
 }
 
-export function getExpiryBucket(dateStr) {
-  if (!dateStr || dateStr === "—") return { bucket: "na", monthsLeft: null };
+export function getExpiryCategory(dateStr) {
+  if (!dateStr || dateStr === "—") return { cat: "NA", monthsLeft: null };
 
   const end = new Date(dateStr);
-  if (Number.isNaN(end.getTime())) return { bucket: "na", monthsLeft: null };
+  if (Number.isNaN(end.getTime())) return { cat: "NA", monthsLeft: null };
 
   const now = new Date();
-  if (end < now) return { bucket: "expired", monthsLeft: -1 };
+  if (end < now) return { cat: "EXPIRED", monthsLeft: -1 };
 
-  // hitung selisih bulan (cukup stabil untuk rule 3/6/12 bulan)
   const monthsLeft =
     (end.getFullYear() - now.getFullYear()) * 12 + (end.getMonth() - now.getMonth());
 
-  if (monthsLeft <= 3) return { bucket: "red", monthsLeft };
-  if (monthsLeft <= 6) return { bucket: "yellow", monthsLeft };
-  if (monthsLeft <= 12) return { bucket: "amber", monthsLeft };
-  return { bucket: "green", monthsLeft };
+  // aturan kategori sesuai request
+  if (monthsLeft <= 3) return { cat: "3M", monthsLeft };
+  if (monthsLeft <= 6) return { cat: "6M", monthsLeft };
+  if (monthsLeft <= 12) return { cat: "12M", monthsLeft };
+  return { cat: "GT12M", monthsLeft };
 }
 
+// Ini tetap dipakai buat warna tanggal di tabel
 export function expiryTextClass(dateStr) {
-  const { bucket } = getExpiryBucket(dateStr);
-  switch (bucket) {
-    case "expired":
-    case "red":
+  const { cat } = getExpiryCategory(dateStr);
+  switch (cat) {
+    case "EXPIRED":
+    case "3M":
       return "text-red-600 font-semibold";
-    case "yellow":
+    case "6M":
       return "text-yellow-600 font-semibold";
-    case "amber":
+    case "12M":
       return "text-amber-600 font-semibold";
-    case "green":
+    case "GT12M":
       return "text-emerald-600";
     default:
       return "text-slate-500";

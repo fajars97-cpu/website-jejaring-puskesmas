@@ -8,7 +8,7 @@ import {
   validateJejaring,
   formatCellValue,
   getRowKey,
-  getExpiryBucket,
+  getExpiryCategory,
   expiryTextClass,
 } from "../features/admin-jejaring/utils";
 import { useJejaringList } from "../features/admin-jejaring/useJejaringList";
@@ -32,11 +32,12 @@ export default function AdminJejaring() {
 
   // FILTER state
   const [filters, setFilters] = useState({
-    kelurahan: "ALL",
-    jenis: "ALL",
-    status: "ALL",
-    mou: "ALL", // GREEN/AMBER/YELLOW/RED/EXPIRED/NA
-  });
+  kelurahan: "ALL",
+  jenis: "ALL",
+  status: "ALL",
+  mou: "ALL",
+  izin: "ALL",
+});
 
   // CREATE
   const [showCreate, setShowCreate] = useState(false);

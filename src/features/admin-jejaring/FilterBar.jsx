@@ -1,5 +1,17 @@
 import React, { useMemo } from "react";
 
+const EXPIRY_OPTIONS = ["ALL", "GT12M", "12M", "6M", "3M", "EXPIRED", "NA"];
+
+const EXPIRY_LABELS = {
+  ALL: "Semua",
+  GT12M: "> 1 tahun",
+  "12M": "6–12 bulan",
+  "6M": "≤ 6 bulan",
+  "3M": "≤ 3 bulan",
+  EXPIRED: "Expired",
+  NA: "NA / Kosong",
+};
+
 export default function FilterBar({ rows, filters, setFilters }) {
   const kelurahanOptions = useMemo(() => {
     const s = new Set(rows.map((r) => r.kelurahan).filter(Boolean));
@@ -26,35 +38,52 @@ export default function FilterBar({ rows, filters, setFilters }) {
           value={filters.kelurahan}
           onChange={(v) => setFilters((p) => ({ ...p, kelurahan: v }))}
           options={kelurahanOptions}
+          labels={{ ALL: "Semua" }}
         />
+
         <Select
           label="Jenis"
           value={filters.jenis}
           onChange={(v) => setFilters((p) => ({ ...p, jenis: v }))}
           options={jenisOptions}
+          labels={{ ALL: "Semua" }}
         />
+
         <Select
           label="Status"
           value={filters.status}
           onChange={(v) => setFilters((p) => ({ ...p, status: v }))}
           options={statusOptions}
+          labels={{ ALL: "Semua" }}
         />
+
         <Select
           label="MOU"
           value={filters.mou}
           onChange={(v) => setFilters((p) => ({ ...p, mou: v }))}
-          options={["ALL", "GREEN", "AMBER", "YELLOW", "RED", "EXPIRED", "NA"]}
+          options={EXPIRY_OPTIONS}
+          labels={EXPIRY_LABELS}
+        />
+
+        <Select
+          label="Izin"
+          value={filters.izin}
+          onChange={(v) => setFilters((p) => ({ ...p, izin: v }))}
+          options={EXPIRY_OPTIONS}
+          labels={EXPIRY_LABELS}
         />
 
         <button
           type="button"
           onClick={() =>
-            setFilters({
+            setFilters((p) => ({
+              ...p,
               kelurahan: "ALL",
               jenis: "ALL",
               status: "ALL",
               mou: "ALL",
-            })
+              izin: "ALL",
+            }))
           }
           className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50"
         >
@@ -65,7 +94,7 @@ export default function FilterBar({ rows, filters, setFilters }) {
   );
 }
 
-function Select({ label, value, onChange, options }) {
+function Select({ label, value, onChange, options, labels }) {
   return (
     <label className="flex items-center gap-2 text-sm">
       <span className="text-slate-600">{label}</span>
@@ -76,7 +105,7 @@ function Select({ label, value, onChange, options }) {
       >
         {options.map((o) => (
           <option key={o} value={o}>
-            {o === "ALL" ? "Semua" : o}
+            {labels?.[o] ?? (o === "ALL" ? "Semua" : o)}
           </option>
         ))}
       </select>
