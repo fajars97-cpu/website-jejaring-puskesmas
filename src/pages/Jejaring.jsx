@@ -1,8 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 
-/* NOTE: Fallback data lokal tetap dipakai sebagai cadangan (anti white blank) */
-import { jejaringList as jejaringFallback } from "../data/jejaring";
-
 /* NOTE: Repo Supabase (adapter snake_case -> camelCase) */
 import { fetchJejaringList } from "../lib/jejaringRepo";
 
@@ -13,7 +10,7 @@ import JejaringMap from "../components/JejaringMap";
 
 /* =========================================================
    SMOOTH SCROLL HELPER
-   NOTE: Ini helper lama kamu, dipertahankan apa adanya.
+   NOTE: helper lama kamu, dipertahankan apa adanya.
 ========================================================= */
 function smoothScrollTo(targetY, duration = 750) {
   const startY = window.scrollY;
@@ -48,39 +45,30 @@ export default function Jejaring() {
   const [filterStatus, setFilterStatus] = useState("Semua");
 
   /* =========================================================
-     DATA SOURCE (SUPABASE + FALLBACK)
+     DATA SOURCE (SUPABASE ONLY)
      NOTE:
-     - Default pakai fallback lokal supaya halaman tidak blank.
-     - Lalu fetch Supabase (read-only).
-     - PERBAIKAN UTAMA: jika Supabase sukses tapi kosong => tetap set []
-       (bukan diam-diam balik ke fallback).
-     - Fallback hanya jika error beneran.
+     - Tidak ada fallback lokal.
+     - Anti white blank: pakai loading + error state.
   ========================================================= */
-  const [jejaringList, setJejaringList] = useState(jejaringFallback);
-  const [isLoading, setIsLoading] = useState(false);
+  const [jejaringList, setJejaringList] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
 
   /* =========================================================
      ACTIVE CARD STATE
-     NOTE: Tetap sama.
   ========================================================= */
   const [activeId, setActiveId] = useState(null);
   const [activeRow, setActiveRow] = useState(null);
 
   /* =========================================================
      REF (AUTO SCROLL EXPANDED)
-     NOTE: Tetap sama.
   ========================================================= */
   const expandedRef = useRef(null);
 
   /* =========================================================
      MAP API BRIDGE (imperative, tapi minimal & aman)
-     NOTE:
-     - Bridge ini kunci untuk sinkronisasi list -> map (flyTo).
-     - Dipertahankan.
   ========================================================= */
   const mapApiRef = useRef(null);
-
   const registerMapApi = useCallback((api) => {
     mapApiRef.current = api;
   }, []);
@@ -88,50 +76,41 @@ export default function Jejaring() {
   /* =========================================================
      FETCH DATA FROM SUPABASE (READ-ONLY)
      NOTE:
-     - Hanya ambil data sekali (mount).
-     - Anti setState setelah unmount (isMounted guard).
-     - PERBAIKAN: sukses fetch => set data walaupun kosong.
-     - Fallback hanya saat error.
+     - Fetch sekali (mount).
+     - Jika error: tampilkan error + tombol retry.
   ========================================================= */
-  useEffect(() => {
-    let isMounted = true;
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
 
-    async function loadData() {
-      setIsLoading(true);
-      setLoadError(null);
-
-      try {
-        const data = await fetchJejaringList();
-
-        // NOTE: sukses fetch => set data walau kosong
-        if (isMounted) {
-          setJejaringList(Array.isArray(data) ? data : []);
-        }
-      } catch (err) {
-        console.error("Gagal load jejaring dari Supabase:", err);
-
-        // NOTE: fallback hanya saat error
-        if (isMounted) {
-          setLoadError(err);
-          setJejaringList(jejaringFallback);
-        }
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
+    try {
+      const data = await fetchJejaringList();
+      setJejaringList(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Gagal load jejaring dari Supabase:", err);
+      setLoadError(err);
+      setJejaringList([]);
+      setActiveId(null);
+      setActiveRow(null);
+    } finally {
+      setIsLoading(false);
     }
-
-    loadData();
-
-    return () => {
-      isMounted = false;
-    };
   }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (!mounted) return;
+      await loadData();
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [loadData]);
 
   /* =========================================================
      FILTER OPTIONS (ANTI DUPLIKASI)
-     NOTE:
-     - Dependency harus [jejaringList] supaya options ikut update
-       saat Supabase load.
+     NOTE: options ikut update saat data berubah
   ========================================================= */
   const jenisOptions = useMemo(() => {
     return [...new Set((jejaringList ?? []).map((i) => i.jenisFasyankes).filter(Boolean))];
@@ -146,9 +125,7 @@ export default function Jejaring() {
   }, [jejaringList]);
 
   /* =========================================================
-     FILTERED DATA (MAX 10)
-     NOTE:
-     - Dependency include jejaringList supaya refresh saat Supabase masuk.
+     FILTERED DATA (MAX 10) - tetap
   ========================================================= */
   const filteredData = useMemo(() => {
     return (jejaringList ?? [])
@@ -165,9 +142,6 @@ export default function Jejaring() {
 
   /* =========================================================
      HANDLER: CARD CLICK (LIST)
-     NOTE:
-     - tetap expand inline
-     - plus: flyTo marker / lokasi bila ada
   ========================================================= */
   const handleCardClick = (id, rowIndex) => {
     if (activeId === id) {
@@ -179,15 +153,12 @@ export default function Jejaring() {
     setActiveId(id);
     setActiveRow(rowIndex);
 
-    // NOTE: FlyTo ke titik jejaring (kalau ada)
+    // FlyTo ke titik jejaring (kalau ada)
     mapApiRef.current?.flyToJejaringById?.(id);
   };
 
   /* =========================================================
      HANDLER: MAP → LIST (KELURAHAN)
-     NOTE:
-     - set filter => list sinkron
-     - reset active card biar UX bersih
   ========================================================= */
   const handleKelurahanSelect = (kelurahanName) => {
     setFilterKelurahan(kelurahanName);
@@ -196,7 +167,6 @@ export default function Jejaring() {
   };
 
   const handleMarkerClick = (id) => {
-    // marker click => auto expand card
     const index = filteredData.findIndex((item) => item.id === id);
     if (index === -1) return;
 
@@ -206,7 +176,6 @@ export default function Jejaring() {
 
   /* =========================================================
      AUTO SCROLL KE EXPANDED CARD
-     NOTE: Tetap sama.
   ========================================================= */
   useEffect(() => {
     if (!activeId || activeRow === null) return;
@@ -226,8 +195,7 @@ export default function Jejaring() {
   }, [activeId, activeRow]);
 
   /* =========================================================
-     AUTO SCROLL KE ATAS SAAT KELURAHAN DARI MAP / FILTER DIPILIH
-     NOTE: Tetap sama.
+     AUTO SCROLL KE ATAS SAAT KELURAHAN DIPILIH
   ========================================================= */
   useEffect(() => {
     if (filterKelurahan !== "Semua") {
@@ -236,10 +204,7 @@ export default function Jejaring() {
   }, [filterKelurahan]);
 
   /* =========================================================
-     RENDER
-     NOTE:
-     - UI utama tidak diubah.
-     - indikator loading/error ringan & tidak mengganggu.
+     RENDER (UI utama dipertahankan)
   ========================================================= */
   return (
     <main className="min-h-screen bg-gray-50">
@@ -254,14 +219,23 @@ export default function Jejaring() {
             Puskesmas dan telah diverifikasi.
           </p>
 
-          {/* NOTE: indikator fetch data (ringan, non-intrusive) */}
           {isLoading && (
-            <p className="mt-3 text-sm text-gray-500">Memuat data terbaru…</p>
+            <p className="mt-3 text-sm text-gray-500">Memuat data dari database…</p>
           )}
+
           {loadError && !isLoading && (
-            <p className="mt-3 text-sm text-orange-600">
-              Gagal memuat data terbaru. Menampilkan data cadangan.
-            </p>
+            <div className="mt-3 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3">
+              <p className="text-sm text-orange-700">
+                Gagal memuat data dari database. Coba lagi.
+              </p>
+              <button
+                type="button"
+                onClick={loadData}
+                className="mt-2 rounded-lg bg-orange-700 px-3 py-2 text-xs font-semibold text-white hover:bg-orange-600"
+              >
+                Coba lagi
+              </button>
+            </div>
           )}
         </header>
 
@@ -338,7 +312,7 @@ export default function Jejaring() {
             }
           )}
 
-          {filteredData.length === 0 && (
+          {!isLoading && !loadError && filteredData.length === 0 && (
             <p className="text-sm text-gray-500">Data tidak ditemukan.</p>
           )}
         </section>

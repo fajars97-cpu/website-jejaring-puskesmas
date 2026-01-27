@@ -27,7 +27,7 @@ function readAdminCache(uid) {
     const parsed = JSON.parse(raw);
     if (typeof parsed?.isAdmin !== "boolean") return null;
 
-    // cache valid 7 hari (boleh kamu ubah)
+    // cache valid 7 hari
     const maxAgeMs = 7 * 24 * 60 * 60 * 1000;
     if (parsed?.ts && Date.now() - parsed.ts > maxAgeMs) return null;
 
@@ -59,7 +59,11 @@ export function AuthProvider({ children }) {
 
   const [loading, setLoading] = useState(true);
 
+  // guard anti race
   const seqRef = useRef(0);
+
+  // IMPORTANT: untuk mencegah re-check admin saat tab focus / token refresh
+  const lastUserIdRef = useRef(null);
 
   async function resolveIsAdmin(userId) {
     if (!userId) return { ok: false, err: "" };
@@ -81,7 +85,7 @@ export function AuthProvider({ children }) {
     }
   }
 
-  // exposed: paksa cek admin ulang (untuk tombol "Coba lagi" kalau mau)
+  // exposed: paksa cek admin ulang
   async function refreshAdminCheck() {
     if (!user?.id) return;
     const mySeq = ++seqRef.current;
@@ -99,7 +103,7 @@ export function AuthProvider({ children }) {
     const res = await resolveIsAdmin(user.id);
     if (mySeq !== seqRef.current) return;
 
-    // jika timeout/slow, jangan paksa non-admin
+    // timeout/slow: jangan paksa non-admin
     if (String(res.err || "").toLowerCase().includes("timeout")) {
       setAdminError(res.err);
       setAdminReady(true);
@@ -114,7 +118,7 @@ export function AuthProvider({ children }) {
     else clearAdminCache(user.id);
   }
 
-  async function applySession(newSession) {
+  async function applySession(newSession, { forceAdminCheck = false } = {}) {
     const mySeq = ++seqRef.current;
 
     setSession(newSession);
@@ -124,24 +128,37 @@ export function AuthProvider({ children }) {
     setAdminError("");
     setAdminReady(false);
 
-    if (!nextUser?.id) {
+    const nextId = nextUser?.id ?? null;
+
+    // signed out / no user
+    if (!nextId) {
+      lastUserIdRef.current = null;
       setIsAdmin(false);
       setAdminReady(true);
       return;
     }
 
-    // 1) optimistik dari cache (biar refresh tidak bounce)
-    const cached = readAdminCache(nextUser.id);
-    if (cached?.isAdmin === true) {
-      setIsAdmin(true);
-      setAdminReady(true); // langsung ready supaya RequireAdmin tidak redirect
+    // ===== KEY CHANGE =====
+    // Kalau userId sama dan tidak dipaksa, JANGAN re-check admin.
+    if (!forceAdminCheck && lastUserIdRef.current === nextId) {
+      // kita anggap status admin terakhir masih valid (cache/hasil sebelumnya)
+      setAdminReady(true);
+      return;
     }
 
-    // 2) revalidate di background
-    const res = await resolveIsAdmin(nextUser.id);
+    lastUserIdRef.current = nextId;
+
+    // 1) optimistik dari cache
+    const cached = readAdminCache(nextId);
+    if (cached?.isAdmin === true) {
+      setIsAdmin(true);
+      setAdminReady(true);
+    }
+
+    // 2) validate sekali untuk user ini
+    const res = await resolveIsAdmin(nextId);
     if (mySeq !== seqRef.current) return;
 
-    // timeout: pertahankan cache (jangan drop)
     if (String(res.err || "").toLowerCase().includes("timeout")) {
       setAdminError(res.err);
       setAdminReady(true);
@@ -152,14 +169,14 @@ export function AuthProvider({ children }) {
     setAdminError(res.err || "");
     setAdminReady(true);
 
-    if (res.ok) writeAdminCache(nextUser.id, true);
-    else clearAdminCache(nextUser.id);
+    if (res.ok) writeAdminCache(nextId, true);
+    else clearAdminCache(nextId);
   }
 
   useEffect(() => {
     let mounted = true;
 
-    // Fail-safe agar UI tidak nyangkut lama
+    // fail-safe agar UI tidak nyangkut lama
     const failSafeTimer = setTimeout(() => {
       if (!mounted) return;
       setAdminReady((v) => (v ? v : true));
@@ -182,10 +199,9 @@ export function AuthProvider({ children }) {
           return;
         }
 
-        await applySession(data.session);
+        await applySession(data.session, { forceAdminCheck: true }); // init cek sekali
       } catch (e) {
         if (!mounted) return;
-        // jangan stuck
         setAdminReady(true);
         setAdminError((prev) => prev || (e?.message || "init failed"));
       } finally {
@@ -202,6 +218,7 @@ export function AuthProvider({ children }) {
         const uid = user?.id;
         if (uid) clearAdminCache(uid);
 
+        lastUserIdRef.current = null;
         setSession(null);
         setUser(null);
         setIsAdmin(false);
@@ -211,13 +228,15 @@ export function AuthProvider({ children }) {
         return;
       }
 
+      // TOKEN_REFRESHED / SIGNED_IN / USER_UPDATED dll:
+      // hanya re-check admin kalau userId berubah
       setLoading(true);
       try {
-        await applySession(newSession);
+        await applySession(newSession, { forceAdminCheck: event === "SIGNED_IN" });
       } catch (e) {
         setSession(newSession);
         setUser(newSession?.user ?? null);
-        setIsAdmin(false);
+        // jangan banting ke non-admin kalau event cuma refresh
         setAdminReady(true);
         setAdminError(e?.message || "applySession error");
       } finally {
@@ -244,6 +263,7 @@ export function AuthProvider({ children }) {
       const uid = user?.id;
       if (uid) clearAdminCache(uid);
 
+      lastUserIdRef.current = null;
       setSession(null);
       setUser(null);
       setIsAdmin(false);
@@ -263,7 +283,7 @@ export function AuthProvider({ children }) {
       loading,
       signIn,
       signOut,
-      refreshAdminCheck, // optional
+      refreshAdminCheck,
     }),
     [session, user, isAdmin, adminReady, adminError, loading]
   );
