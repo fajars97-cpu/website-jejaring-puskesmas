@@ -204,7 +204,7 @@ export default function AdminJejaring() {
     filters.izin !== "ALL";
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-6">
+    <div className="mx-auto w-full max-w-6xl px-3 sm:px-4 py-6">
       {/* Admin bar (mobile compact + desktop detailed) */}
       <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-3">
         {/* MOBILE */}
@@ -450,7 +450,7 @@ export default function AdminJejaring() {
           </div>
         ) : (
           <div className="w-full overflow-x-auto">
-            <table className="w-full min-w-245 border-collapse">
+            <table className="w-full border-collapse md:min-w-245">
               <thead className="bg-slate-50">
                 <tr>
                   <th className="whitespace-nowrap border-b border-slate-200 px-4 py-3 text-left text-xs font-semibold text-slate-700">
