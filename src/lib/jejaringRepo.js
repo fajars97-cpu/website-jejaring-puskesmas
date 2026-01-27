@@ -1,15 +1,8 @@
 // src/lib/jejaringRepo.js
 import { supabase } from "./supabaseClient";
 
-// Nama tabel sesuai Supabase kamu
 const TABLE = "jejaring_fasyankes";
 
-/**
- * Parse kegiatan dari DB:
- * - kalau sudah array => pakai
- * - kalau string => split pakai koma / titik koma / newline
- * - kalau null => []
- */
 function parseKegiatan(value) {
   if (!value) return [];
   if (Array.isArray(value)) return value.filter(Boolean);
@@ -24,13 +17,14 @@ function parseKegiatan(value) {
   return [];
 }
 
-/**
- * Adapter snake_case (DB) -> camelCase (frontend contract)
- * Plus: fallback field yang dibutuhkan UI
- */
+function toNumOrNull(v) {
+  if (v === null || v === undefined) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
 function mapRowToJejaring(row) {
   return {
-    // ID: biarkan number (int8)
     id: row.id,
 
     createdAt: row.created_at ?? null,
@@ -46,8 +40,9 @@ function mapRowToJejaring(row) {
     kecamatan: row.kecamatan ?? "",
     wilayah: row.kota ?? row.wilayah ?? "",
 
-    lat: typeof row.lat === "number" ? row.lat : null,
-    lng: typeof row.lng === "number" ? row.lng : null,
+    // ✅ FIX: numeric/string -> number
+    lat: toNumOrNull(row.lat),
+    lng: toNumOrNull(row.lng),
 
     gmapsUrl: row.gmaps_url ?? "",
     gmapsEmbedUrl: row.gmaps_embed_url ?? "",
@@ -59,7 +54,6 @@ function mapRowToJejaring(row) {
 
     pjNama: row.pj_nama ?? "",
     pjTelp: row.telepon ?? row.pj_telp ?? "",
-    // BUG-FIX via adapter: JejaringExpanded.jsx pakai data.pj
     pj: row.pj ?? row.pj_nama ?? "",
 
     nomorIzin: row.nomor_izin ?? "",
@@ -70,7 +64,6 @@ function mapRowToJejaring(row) {
 
     kegiatan: parseKegiatan(row.kegiatan),
 
-    // MOU kamu sudah pecah kolom; kita satukan lagi seperti contract lama
     mou: {
       nomor: row.mou_nomor ?? "",
       mulai: row.mou_mulai ?? null,
@@ -80,25 +73,18 @@ function mapRowToJejaring(row) {
     foto: row.foto ?? "",
     isVerified: typeof row.is_verified === "boolean" ? row.is_verified : null,
 
-    // simpan juga email kalau suatu saat dipakai
     email: row.email ?? "",
   };
 }
 
-/**
- * List jejaring (read-only)
- * - bisa tambah filter server-side kalau mau (jenis/kelurahan/status)
- * - default urut id asc
- */
 export async function fetchJejaringList({
   jenis = "Semua",
   kelurahan = "Semua",
   status = "Semua",
-  limit = 500, // kamu di UI slice(0,10), tapi ambil agak banyak supaya filter client-side enak
+  limit = 500,
 } = {}) {
   let query = supabase.from(TABLE).select("*").order("id", { ascending: true });
 
-  // Optional server-side filter: aman dipakai kalau datamu besar
   if (jenis !== "Semua") query = query.eq("jenis_fasyankes", jenis);
   if (kelurahan !== "Semua") query = query.eq("kelurahan", kelurahan);
   if (status !== "Semua") query = query.eq("status", status);
@@ -111,7 +97,6 @@ export async function fetchJejaringList({
   return (data ?? []).map(mapRowToJejaring);
 }
 
-// NOTE: Ambil opsi filter (jenis/kelurahan/status) dari Supabase tanpa mengunduh semua kolom
 export async function fetchJejaringFilterOptions({ limit = 2000 } = {}) {
   const { data, error } = await supabase
     .from(TABLE)
@@ -138,9 +123,6 @@ export async function fetchJejaringFilterOptions({ limit = 2000 } = {}) {
   };
 }
 
-/**
- * Ambil detail by id (opsional, kalau nanti kamu mau fetch detail)
- */
 export async function fetchJejaringById(id) {
   const { data, error } = await supabase
     .from(TABLE)

@@ -301,7 +301,9 @@ export default function JejaringMap({
       onMapApi?.({
         flyToJejaringById: (id) => {
           const d = dataByIdRef.current.get(id);
-          if (!d?.lng || !d?.lat) return;
+          const lat = Number(d?.lat);
+          const lng = Number(d?.lng);
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
 
           runWhenReady((m) => {
             m.flyTo({
@@ -332,15 +334,23 @@ export default function JejaringMap({
       const source = map.getSource("jejaring");
       if (!source) return;
 
+      const features = (data ?? [])
+        .map((d) => {
+          const lat = Number(d.lat);
+          const lng = Number(d.lng);
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+          return {
+            type: "Feature",
+            geometry: { type: "Point", coordinates: [lng, lat] },
+            properties: { id: d.id, kelurahan: d.kelurahan },
+          };
+        })
+        .filter(Boolean);
+
       source.setData({
         type: "FeatureCollection",
-        features: data
-          .filter((d) => d.lat && d.lng)
-          .map((d) => ({
-            type: "Feature",
-            geometry: { type: "Point", coordinates: [d.lng, d.lat] },
-            properties: { id: d.id, kelurahan: d.kelurahan },
-          })),
+        features,
       });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
