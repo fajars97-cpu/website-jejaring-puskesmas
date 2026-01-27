@@ -35,6 +35,86 @@ function smoothScrollTo(targetY, duration = 750) {
   requestAnimationFrame(step);
 }
 
+/* =========================================================
+   MOBILE CARD (Traveloka-like)
+   - Foto di atas (object-cover)
+   - Detail di bawah
+   - Badge status di atas foto
+   - Minimal dan aman (no dependency)
+========================================================= */
+function JejaringCardTK({ data, isActive, onClick }) {
+  const foto = data?.foto || "";
+  const nama = data?.namaFasyankes || "-";
+  const status = data?.status || "—";
+  const jenis = data?.jenisFasyankes || "—";
+  const tipe = data?.tipeFasyankes || "—";
+  const kel = data?.kelurahan ? `Kel. ${data.kelurahan}` : "";
+  const kec = data?.kecamatan ? `Kec. ${data.kecamatan}` : "";
+  const alamat = data?.alamat || "";
+
+  const statusLower = String(status).toLowerCase();
+  const statusClass =
+    statusLower === "aktif"
+      ? "bg-emerald-100 text-emerald-800"
+      : "bg-slate-100 text-slate-700";
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={
+        "w-full overflow-hidden rounded-2xl border bg-white text-left shadow-sm transition active:scale-[0.99] " +
+        (isActive
+          ? "border-emerald-300 ring-2 ring-emerald-200"
+          : "border-slate-200 hover:shadow-md")
+      }
+    >
+      {/* Foto */}
+      <div className="relative h-48 w-full bg-slate-100">
+        {foto ? (
+          <img
+            src={foto}
+            alt={nama}
+            className="h-full w-full object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-sm text-slate-500">
+            Foto Fasyankes
+          </div>
+        )}
+
+        {/* Badge status */}
+        <div className="absolute left-3 top-3">
+          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClass}`}>
+            {status}
+          </span>
+        </div>
+      </div>
+
+      {/* Detail */}
+      <div className="p-4">
+        <div className="text-lg font-semibold text-slate-900 leading-snug">
+          {nama}
+        </div>
+
+        <div className="mt-1 text-sm text-slate-600">
+          {jenis} <span className="text-slate-300">•</span> {tipe}
+        </div>
+
+        <div className="mt-3 space-y-1 text-sm text-slate-700">
+          <div className="text-slate-600">{[kel, kec].filter(Boolean).join(", ")}</div>
+
+          {/* Alamat (2 baris-ish) */}
+          <div className="text-slate-700">
+            <span className="block overflow-hidden text-ellipsis">{alamat}</span>
+          </div>
+        </div>
+      </div>
+    </button>
+  );
+}
+
 export default function Jejaring() {
   /* =========================================================
      FILTER STATE (SINGLE SOURCE OF TRUTH)
@@ -75,9 +155,6 @@ export default function Jejaring() {
 
   /* =========================================================
      FETCH DATA FROM SUPABASE (READ-ONLY)
-     NOTE:
-     - Fetch sekali (mount).
-     - Jika error: tampilkan error + tombol retry.
   ========================================================= */
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -110,7 +187,6 @@ export default function Jejaring() {
 
   /* =========================================================
      FILTER OPTIONS (ANTI DUPLIKASI)
-     NOTE: options ikut update saat data berubah
   ========================================================= */
   const jenisOptions = useMemo(() => {
     return [...new Set((jejaringList ?? []).map((i) => i.jenisFasyankes).filter(Boolean))];
@@ -171,6 +247,10 @@ export default function Jejaring() {
     if (index === -1) return;
 
     setActiveId(id);
+
+    // MOBILE sekarang 1 kolom => rowIndex = index
+    // DESKTOP 2 kolom => rowIndex = floor(index/2)
+    // Kita set aman untuk dua mode: pakai floor(index/2) tetap ok.
     setActiveRow(Math.floor(index / 2));
   };
 
@@ -204,17 +284,18 @@ export default function Jejaring() {
   }, [filterKelurahan]);
 
   /* =========================================================
-     RENDER (UI utama dipertahankan)
+     RENDER
   ========================================================= */
   return (
     <main className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-6 py-10 space-y-10">
+      {/* padding mobile dikecilkan biar gak “sumpek” */}
+      <div className="mx-auto max-w-7xl px-4 py-8 space-y-8 md:px-6 md:py-10 md:space-y-10">
         {/* ================= HEADER ================= */}
         <header>
-          <h1 className="text-3xl font-bold text-[#087745]">
+          <h1 className="text-2xl font-bold text-[#087745] md:text-3xl">
             Data Jejaring Fasilitas Kesehatan
           </h1>
-          <p className="mt-2 text-gray-600 max-w-3xl">
+          <p className="mt-2 max-w-3xl text-sm text-gray-600 md:text-base">
             Informasi fasilitas pelayanan kesehatan yang bekerja sama dengan
             Puskesmas dan telah diverifikasi.
           </p>
@@ -240,7 +321,7 @@ export default function Jejaring() {
         </header>
 
         {/* ================= FILTER ================= */}
-        <section className="bg-white rounded-2xl shadow-md border p-6">
+        <section className="rounded-2xl border bg-white p-4 shadow-md md:p-6">
           <JejaringFilter
             jenis={filterJenis}
             setJenis={(v) => {
@@ -271,46 +352,44 @@ export default function Jejaring() {
         </p>
 
         {/* ================= LIST JEJARING ================= */}
-        <section className="space-y-8">
-          {Array.from({ length: Math.ceil(filteredData.length / 2) }).map(
-            (_, rowIndex) => {
-              const left = filteredData[rowIndex * 2];
-              const right = filteredData[rowIndex * 2 + 1];
-
-              return (
-                <div key={rowIndex} className="space-y-4">
-                  <div className="grid md:grid-cols-2 gap-6">
-                    {left && (
-                      <JejaringCard
-                        data={left}
-                        isActive={activeId === left.id}
-                        onClick={() => handleCardClick(left.id, rowIndex)}
-                      />
-                    )}
-                    {right && (
-                      <JejaringCard
-                        data={right}
-                        isActive={activeId === right.id}
-                        onClick={() => handleCardClick(right.id, rowIndex)}
-                      />
-                    )}
-                  </div>
-
-                  {activeRow === rowIndex && activeData && (
-                    <div ref={expandedRef}>
-                      <JejaringExpanded
-                        data={activeData}
-                        onClose={() => {
-                          setActiveId(null);
-                          setActiveRow(null);
-                        }}
-                      />
-                    </div>
-                  )}
+        <section className="space-y-6 md:space-y-8">
+          {/* MOBILE: 1 kolom (Traveloka style), DESKTOP: 2 kolom (existing) */}
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            {filteredData.map((item, index) => (
+              <div key={item.id ?? index} className="space-y-4">
+                {/* Mobile card */}
+                <div className="md:hidden">
+                  <JejaringCardTK
+                    data={item}
+                    isActive={activeId === item.id}
+                    onClick={() => handleCardClick(item.id, index)}
+                  />
                 </div>
-              );
-            }
-          )}
+
+                {/* Desktop card (existing) */}
+                <div className="hidden md:block">
+                  <JejaringCard
+                    data={item}
+                    isActive={activeId === item.id}
+                    onClick={() => handleCardClick(item.id, Math.floor(index / 2))}
+                  />
+                </div>
+
+                {/* Expanded: show right after the active card (works for mobile & desktop) */}
+                {activeId === item.id && activeData && (
+                  <div ref={expandedRef}>
+                    <JejaringExpanded
+                      data={activeData}
+                      onClose={() => {
+                        setActiveId(null);
+                        setActiveRow(null);
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
 
           {!isLoading && !loadError && filteredData.length === 0 && (
             <p className="text-sm text-gray-500">Data tidak ditemukan.</p>
@@ -318,8 +397,8 @@ export default function Jejaring() {
         </section>
 
         {/* ================= MAP ================= */}
-        <section className="bg-white rounded-2xl shadow-md border p-6">
-          <h2 className="text-xl font-bold text-[#087745] mb-3">
+        <section className="rounded-2xl border bg-white p-4 shadow-md md:p-6">
+          <h2 className="mb-3 text-lg font-bold text-[#087745] md:text-xl">
             Peta Jejaring Wilayah Jagakarsa
           </h2>
 
