@@ -1,3 +1,4 @@
+import React, { useMemo, useState } from "react";
 import { Outlet, NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
@@ -10,155 +11,319 @@ const publicMenu = [
   { label: "Perizinan", path: "/perizinan" },
 ];
 
-/**
- * Warna pedoman (Dinkes style)
- */
-const COLORS = {
-  green: "#087745",
-  greenSoft: "#e6f4ee",
-  blue: "#0e7490",
-  textDark: "#1f2937",
-  textMuted: "#64748b",
-  border: "#e5e7eb",
-  bgPage: "#f8fafc",
-};
-
 function getUserLabel(user) {
   const email = user?.email || "";
   if (!email) return "Admin";
   return email.split("@")[0];
 }
 
+function cn(...classes) {
+  return classes.filter(Boolean).join(" ");
+}
+
+function BrandLogo() {
+  // Logo di public/icons/...
+  const src = "/icons/logo-puskesmas-jagakarsa.png";
+  return (
+    <div className="relative h-10 w-10 overflow-hidden rounded-xl bg-white/10 ring-1 ring-white/15">
+      {/* fallback simpel kalau logo belum ada */}
+      <img
+        src={src}
+        alt="Puskesmas Jagakarsa"
+        className="h-full w-full object-contain p-1.5"
+        loading="lazy"
+        onError={(e) => {
+          e.currentTarget.style.display = "none";
+          e.currentTarget.parentElement?.classList.add("flex", "items-center", "justify-center");
+          e.currentTarget.parentElement?.classList.add("text-xs", "font-bold", "text-white/80");
+          e.currentTarget.parentElement.textContent = "PJ";
+        }}
+      />
+    </div>
+  );
+}
+
+function MenuLink({ to, end, children, onClick }) {
+  return (
+    <NavLink
+      to={to}
+      end={end}
+      onClick={onClick}
+      className={({ isActive }) =>
+        cn(
+          "relative text-sm font-semibold tracking-tight transition",
+          "text-white/85 hover:text-white",
+          "after:absolute after:left-0 after:-bottom-2 after:h-0.5 after:w-full after:rounded-full after:transition",
+          isActive ? "text-white after:bg-white" : "after:bg-transparent"
+        )
+      }
+    >
+      {children}
+    </NavLink>
+  );
+}
+
 export default function Layout() {
   const { user, isAdmin, loading, signOut } = useAuth();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const userLabel = useMemo(() => getUserLabel(user), [user]);
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        backgroundColor: "#ffffff",
-        color: COLORS.textDark,
-      }}
-    >
-      {/* HEADER */}
-      <header
-        style={{
-          backgroundColor: COLORS.green,
-          color: "#ffffff",
-          padding: "14px 16px",
-        }}
-      >
-        <strong style={{ fontSize: 16 }}>Website Jejaring Puskesmas</strong>
-
-        <nav
-         style={{
-         marginTop: 10,
-         display: "flex",
-         alignItems: "center",
-         gap: 12,
-         flexWrap: "wrap",
-         rowGap: 10,
-         }}
-        >
-          {publicMenu.map((item) => (
+    <div className="min-h-dvh bg-white text-slate-900 flex flex-col">
+      {/* HEADER / NAVBAR */}
+      <header className="sticky top-0 z-50 border-b border-black/10 bg-emerald-900">
+        <div className="mx-auto max-w-6xl px-4 md:px-6">
+          <div className="flex h-16 items-center justify-between gap-3">
+            {/* Brand */}
             <NavLink
-              key={item.path}
-              to={item.path}
-              end={item.end}
-              style={({ isActive }) => ({
-                textDecoration: "none",
-                color: "#ffffff",
-                paddingBottom: 4,
-                borderBottom: isActive ? "2px solid #ffffff" : "2px solid transparent",
-                fontWeight: isActive ? 600 : 400,
-              })}
+              to="/"
+              className="flex items-center gap-3 min-w-0"
+              onClick={() => setMobileOpen(false)}
             >
-              {item.label}
+              <BrandLogo />
+              <div className="min-w-0">
+                <div className="truncate text-sm font-extrabold text-white">
+                  Website Jejaring Puskesmas
+                </div>
+                <div className="truncate text-xs text-white/70">
+                  Puskesmas Jagakarsa • DKI Jakarta
+                </div>
+              </div>
             </NavLink>
-          ))}
 
-          {/* RIGHT SIDE */}
-          <div style={{marginLeft: "auto",display: "flex",alignItems: "center",gap: 10,flexWrap: "wrap",justifyContent: "flex-end",}}>
-            {loading ? (
-              <span style={{ fontSize: 13, opacity: 0.85 }}>…</span>
-            ) : user && isAdmin ? (
-              <>
+            {/* Desktop menu */}
+            <nav className="hidden md:flex items-center gap-6">
+              {publicMenu.map((item) => (
+                <MenuLink key={item.path} to={item.path} end={item.end}>
+                  {item.label}
+                </MenuLink>
+              ))}
+            </nav>
+
+            {/* Right actions (desktop) */}
+            <div className="hidden md:flex items-center gap-3">
+              {loading ? (
+                <span className="text-sm text-white/80">…</span>
+              ) : user && isAdmin ? (
+                <>
+                  <NavLink
+                    to="/admin"
+                    title={user?.email || ""}
+                    className={cn(
+                      "rounded-xl bg-white/10 px-3 py-2 text-sm font-semibold text-white",
+                      "ring-1 ring-white/15 hover:bg-white/15"
+                    )}
+                  >
+                    {userLabel}
+                  </NavLink>
+
+                  <button
+                    type="button"
+                    onClick={signOut}
+                    className={cn(
+                      "rounded-xl bg-white/10 px-3 py-2 text-sm font-semibold text-white",
+                      "ring-1 ring-white/15 hover:bg-white/15"
+                    )}
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : (
                 <NavLink
-                  to="/admin"
-                  title={user?.email || ""}
-                  style={{
-                    textDecoration: "none",
-                    color: "#ffffff",
-                    fontWeight: 600,
-                    fontSize: 13,
-                    padding: "6px 10px",
-                    borderRadius: 12,
-                    border: "1px solid rgba(255,255,255,0.25)",
-                    background: "rgba(255,255,255,0.12)",
-                  }}
+                  to="/login"
+                  className="rounded-xl bg-white px-3 py-2 text-sm font-bold text-emerald-900 hover:bg-white/95"
                 >
-                  {getUserLabel(user)}
+                  Login
                 </NavLink>
+              )}
+            </div>
 
-                <button
-                  type="button"
-                  onClick={signOut}
-                  style={{
-                    cursor: "pointer",
-                    color: "#ffffff",
-                    fontWeight: 600,
-                    fontSize: 13,
-                    padding: "6px 10px",
-                    borderRadius: 12,
-                    border: "1px solid rgba(255,255,255,0.25)",
-                    background: "rgba(255,255,255,0.12)",
-                  }}
-                >
-                  Logout
-                </button>
-              </>
-            ) : (
-              <NavLink
-                to="/login"
-                style={{
-                  textDecoration: "none",
-                  color: "#ffffff",
-                  fontWeight: 500,
-                }}
-              >
-                Login
-              </NavLink>
-            )}
+            {/* Mobile hamburger */}
+            <button
+              type="button"
+              className="md:hidden rounded-xl bg-white/10 p-2 ring-1 ring-white/15 text-white"
+              onClick={() => setMobileOpen((v) => !v)}
+              aria-label="Toggle menu"
+              aria-expanded={mobileOpen ? "true" : "false"}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M4 6h16v2H4zM4 11h16v2H4zM4 16h16v2H4z" />
+              </svg>
+            </button>
           </div>
-        </nav>
+        </div>
+
+        {/* Mobile drawer */}
+        <div className={cn("md:hidden border-t border-white/10 bg-emerald-950/30", mobileOpen ? "block" : "hidden")}>
+          <div className="mx-auto max-w-6xl px-4 py-3 space-y-2">
+            {publicMenu.map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                end={item.end}
+                onClick={() => setMobileOpen(false)}
+                className={({ isActive }) =>
+                  cn(
+                    "block rounded-xl px-3 py-2 text-sm font-semibold transition",
+                    isActive ? "bg-white/10 text-white" : "text-white/85 hover:bg-white/10"
+                  )
+                }
+              >
+                {item.label}
+              </NavLink>
+            ))}
+
+            <div className="pt-2">
+              {loading ? (
+                <div className="rounded-xl bg-white/10 px-3 py-2 text-sm font-semibold text-white/85 ring-1 ring-white/15">
+                  …
+                </div>
+              ) : user && isAdmin ? (
+                <div className="space-y-2">
+                  <NavLink
+                    to="/admin"
+                    onClick={() => setMobileOpen(false)}
+                    className="block rounded-xl bg-white/10 px-3 py-2 text-sm font-semibold text-white ring-1 ring-white/15 hover:bg-white/15"
+                  >
+                    {userLabel}
+                  </NavLink>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileOpen(false);
+                      signOut();
+                    }}
+                    className="w-full rounded-xl bg-white/10 px-3 py-2 text-sm font-semibold text-white ring-1 ring-white/15 hover:bg-white/15"
+                  >
+                    Logout
+                  </button>
+                </div>
+              ) : (
+                <NavLink
+                  to="/login"
+                  onClick={() => setMobileOpen(false)}
+                  className="block w-full rounded-xl bg-white px-3 py-2 text-center text-sm font-bold text-emerald-900 hover:bg-white/95"
+                >
+                  Login
+                </NavLink>
+              )}
+            </div>
+          </div>
+        </div>
       </header>
 
-      {/* MAIN CONTENT */}
-      <main
-        style={{
-          flex: 1,
-          backgroundColor: COLORS.bgPage,
-          padding: "32px 24px",
-        }}
-      >
-        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+      {/* MAIN */}
+      <main className="flex-1 bg-slate-50 px-4 py-8 md:px-6">
+        <div className="mx-auto max-w-6xl">
           <Outlet />
         </div>
       </main>
 
-      {/* FOOTER */}
-      <footer
-        style={{
-          borderTop: `1px solid ${COLORS.border}`,
-          padding: "12px 24px",
-          fontSize: 12,
-          color: COLORS.textMuted,
-          backgroundColor: "#ffffff",
-        }}
-      >
-        © Puskesmas
+      {/* FOOTER (lebih “portal resmi” versi rapih) */}
+      <footer className="border-t border-black/10 bg-[#E96A58]">
+        <div className="mx-auto max-w-6xl px-4 py-10 md:px-6">
+          <div className="grid gap-6 md:grid-cols-4">
+            {/* 1: Identitas */}
+            <div className="text-white">
+              <div className="flex items-center gap-3">
+                <BrandLogo />
+                <div>
+                  <div className="text-base font-extrabold">Puskesmas Jagakarsa</div>
+                  <div className="text-xs text-white/80">Portal Informasi Jejaring</div>
+                </div>
+              </div>
+
+              <div className="mt-4 space-y-2 text-sm text-white/90">
+                <div>
+                  <div className="font-semibold">Alamat</div>
+                  <div>Jl. Sirsak No 1 RT.001/02 Jagakarsa</div>
+                  <div>Jakarta Selatan, DKI Jakarta 12630</div>
+                </div>
+                <div>
+                  <div className="font-semibold">Telepon</div>
+                  <div>021-22007047 (Senin–Jumat 07:30–15:00 WIB)</div>
+                </div>
+                <div>
+                  <div className="font-semibold">Email</div>
+                  <div className="wrap-break-word">puskesmas.jagakarsa@jakarta.go.id</div>
+                </div>
+              </div>
+            </div>
+
+            {/* 2: Sosmed */}
+            <div className="text-white">
+              <div className="text-base font-extrabold">Media Sosial</div>
+              <div className="mt-3 grid gap-2">
+                {[
+                  ["Instagram", "#"],
+                  ["Facebook", "#"],
+                  ["YouTube", "#"],
+                  ["TikTok", "#"],
+                ].map(([label, href]) => (
+                  <a
+                    key={label}
+                    href={href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-xl bg-black/15 px-3 py-2 text-sm font-semibold text-white hover:bg-black/20"
+                  >
+                    {label} • Puskesmas Jagakarsa
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            {/* 3: Informasi */}
+            <div className="text-white">
+              <div className="text-base font-extrabold">Informasi</div>
+              <div className="mt-3 space-y-3">
+                <div className="rounded-2xl bg-black/15 p-3">
+                  <div className="text-sm font-semibold">Tautan Cepat</div>
+                  <div className="mt-2 grid gap-2 text-sm">
+                    <a className="rounded-xl bg-black/10 px-3 py-2 hover:bg-black/15" href="#">
+                      Profil
+                    </a>
+                    <a className="rounded-xl bg-black/10 px-3 py-2 hover:bg-black/15" href="#">
+                      Layanan
+                    </a>
+                    <a className="rounded-xl bg-black/10 px-3 py-2 hover:bg-black/15" href="#">
+                      PPID
+                    </a>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl bg-black/15 p-3">
+                  <div className="text-sm font-semibold">Catatan</div>
+                  <div className="mt-1 text-sm text-white/90">
+                    Konten footer ini bisa kamu ganti sesuai kebutuhan portal resmi (tanpa ngubah halaman lain).
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 4: Lokasi */}
+            <div className="text-white">
+              <div className="text-base font-extrabold">Lokasi</div>
+              <div className="mt-3 overflow-hidden rounded-2xl bg-black/15">
+                <div className="aspect-4/3">
+                  <iframe
+                    title="Lokasi Puskesmas Jagakarsa"
+                    className="h-full w-full"
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    src="https://www.google.com/maps?q=Puskesmas%20Kecamatan%20Jagakarsa&output=embed"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 flex flex-col gap-2 border-t border-white/20 pt-6 text-sm text-white/85 md:flex-row md:items-center md:justify-between">
+            <div>© {new Date().getFullYear()} Puskesmas Jagakarsa</div>
+            <div className="text-white/75">Jejaring • Perizinan • Monitoring</div>
+          </div>
+        </div>
       </footer>
     </div>
   );
