@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { CREATE_DEFAULTS } from "../features/admin-jejaring/constants";
 import { createJejaring, deleteJejaring } from "../features/admin-jejaring/api";
+import { exportRowsToExcel } from "../features/admin-jejaring/exportExcel";
 import {
   filterRows,
   normalizeJejaringPayload,
@@ -23,6 +24,14 @@ function userLabel(user) {
   return email || "Admin";
 }
 
+function slug(s) {
+  return String(s || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-_]/g, "");
+}
+
 export default function AdminJejaring() {
   const { user, isAdmin, signOut } = useAuth();
   const { rows, count, page, setPage, pageCount, loading, refreshing, error, fetchPage } =
@@ -32,12 +41,12 @@ export default function AdminJejaring() {
 
   // FILTER state
   const [filters, setFilters] = useState({
-  kelurahan: "ALL",
-  jenis: "ALL",
-  status: "ALL",
-  mou: "ALL",
-  izin: "ALL",
-});
+    kelurahan: "ALL",
+    jenis: "ALL",
+    status: "ALL",
+    mou: "ALL",
+    izin: "ALL",
+  });
 
   // CREATE
   const [showCreate, setShowCreate] = useState(false);
@@ -50,6 +59,10 @@ export default function AdminJejaring() {
   const [editOpen, setEditOpen] = useState(false);
   const [editRow, setEditRow] = useState(null);
 
+  // EXPORT
+  const [exporting, setExporting] = useState(false);
+  const [exportErr, setExportErr] = useState("");
+
   // DELETE
   const [delOpen, setDelOpen] = useState(false);
   const [delRow, setDelRow] = useState(null);
@@ -59,24 +72,23 @@ export default function AdminJejaring() {
   const displayColumns = useMemo(() => pickDisplayColumns(rows), [rows]);
 
   const filteredRows = useMemo(() => {
-    // 1) search existing
     let out = filterRows(rows, search);
 
-    // 2) apply dropdown filters
     out = out.filter((r) => {
       if (filters.kelurahan !== "ALL" && r.kelurahan !== filters.kelurahan) return false;
       if (filters.jenis !== "ALL" && r.jenis_fasyankes !== filters.jenis) return false;
       if (filters.status !== "ALL" && r.status !== filters.status) return false;
 
       if (filters.mou !== "ALL") {
-  const cat = getExpiryCategory(r.mou_akhir).cat;
-  if (cat !== filters.mou) return false;
-}
+        const cat = getExpiryCategory(r?.mou_akhir ?? null).cat;
+        if (cat !== filters.mou) return false;
+      }
 
-if (filters.izin !== "ALL") {
-  const cat = getExpiryCategory(r.izin_berakhir).cat;
-  if (cat !== filters.izin) return false;
-}
+      if (filters.izin !== "ALL") {
+        const cat = getExpiryCategory(r?.izin_berakhir ?? null).cat;
+        if (cat !== filters.izin) return false;
+      }
+
       return true;
     });
 
@@ -142,7 +154,39 @@ if (filters.izin !== "ALL") {
     }
   }
 
-  // helper: highlight cell kalau kolom tanggal akhir (mou_akhir / izin_berakhir)
+  async function onExportExcel() {
+    setExportErr("");
+    setExporting(true);
+    try {
+      const rowsToExport = filteredRows;
+
+      if (!rowsToExport?.length) {
+        setExportErr("Tidak ada data untuk diexport (hasil filter kosong).");
+        return;
+      }
+
+      const tagKel =
+        filters.kelurahan !== "ALL" ? `_kel-${slug(filters.kelurahan)}` : "";
+      const tagJenis =
+        filters.jenis !== "ALL" ? `_jenis-${slug(filters.jenis)}` : "";
+      const tagStatus =
+        filters.status !== "ALL" ? `_status-${slug(filters.status)}` : "";
+      const tagMou = filters.mou !== "ALL" ? `_mou-${filters.mou}` : "";
+      const tagIzin = filters.izin !== "ALL" ? `_izin-${filters.izin}` : "";
+
+      await exportRowsToExcel(rowsToExport, {
+        filename: `jejaring${tagKel}${tagJenis}${tagStatus}${tagMou}${tagIzin}_${new Date()
+          .toISOString()
+          .slice(0, 10)}.xlsx`,
+        sheetName: "Jejaring (Filtered)",
+      });
+    } catch (e) {
+      setExportErr(e?.message || "Gagal export Excel.");
+    } finally {
+      setExporting(false);
+    }
+  }
+
   function renderCell(col, value) {
     const text = formatCellValue(value);
     if (col === "mou_akhir" || col === "izin_berakhir") {
@@ -150,6 +194,14 @@ if (filters.izin !== "ALL") {
     }
     return text;
   }
+
+  const anyFilterActive =
+    !!search.trim() ||
+    filters.kelurahan !== "ALL" ||
+    filters.jenis !== "ALL" ||
+    filters.status !== "ALL" ||
+    filters.mou !== "ALL" ||
+    filters.izin !== "ALL";
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6">
@@ -209,6 +261,16 @@ if (filters.izin !== "ALL") {
 
           <button
             type="button"
+            onClick={onExportExcel}
+            disabled={exporting || loading}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-60"
+            title="Export sesuai filter yang aktif"
+          >
+            {exporting ? "Exporting…" : "Export Excel"}
+          </button>
+
+          <button
+            type="button"
             onClick={() => {
               setCreateOk("");
               setCreateError("");
@@ -220,6 +282,12 @@ if (filters.izin !== "ALL") {
           </button>
         </div>
       </div>
+
+      {exportErr ? (
+        <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <span className="font-semibold">Export gagal:</span> {exportErr}
+        </div>
+      ) : null}
 
       {/* FILTER BAR */}
       <FilterBar rows={rows} filters={filters} setFilters={setFilters} />
@@ -289,7 +357,7 @@ if (filters.izin !== "ALL") {
             <span className="mx-2 text-slate-300">•</span>
             Page: <span className="font-semibold">{page}</span> /{" "}
             <span className="font-semibold">{pageCount}</span>
-            {(search.trim() || filters.mou !== "ALL" || filters.izin !== "ALL" || filters.status !== "ALL" || filters.jenis !== "ALL" || filters.kelurahan !== "ALL") ? (
+            {anyFilterActive ? (
               <>
                 <span className="mx-2 text-slate-300">•</span>
                 Hasil filter (di page ini): <span className="font-semibold">{filteredRows.length}</span>
