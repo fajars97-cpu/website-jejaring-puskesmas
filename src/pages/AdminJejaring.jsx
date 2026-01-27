@@ -69,17 +69,14 @@ export default function AdminJejaring() {
       if (filters.status !== "ALL" && r.status !== filters.status) return false;
 
       if (filters.mou !== "ALL") {
-        const b = getExpiryBucket(r.mou_akhir).bucket; // pakai mou_akhir sesuai data kamu
-        const map = {
-          green: "GREEN",
-          amber: "AMBER",
-          yellow: "YELLOW",
-          red: "RED",
-          expired: "EXPIRED",
-          na: "NA",
-        };
-        if ((map[b] || "NA") !== filters.mou) return false;
-      }
+  const cat = getExpiryCategory(r.mou_akhir).cat;
+  if (cat !== filters.mou) return false;
+}
+
+if (filters.izin !== "ALL") {
+  const cat = getExpiryCategory(r.izin_berakhir).cat;
+  if (cat !== filters.izin) return false;
+}
       return true;
     });
 
@@ -292,7 +289,7 @@ export default function AdminJejaring() {
             <span className="mx-2 text-slate-300">•</span>
             Page: <span className="font-semibold">{page}</span> /{" "}
             <span className="font-semibold">{pageCount}</span>
-            {(search.trim() || filters.mou !== "ALL" || filters.status !== "ALL" || filters.jenis !== "ALL" || filters.kelurahan !== "ALL") ? (
+            {(search.trim() || filters.mou !== "ALL" || filters.izin !== "ALL" || filters.status !== "ALL" || filters.jenis !== "ALL" || filters.kelurahan !== "ALL") ? (
               <>
                 <span className="mx-2 text-slate-300">•</span>
                 Hasil filter (di page ini): <span className="font-semibold">{filteredRows.length}</span>
