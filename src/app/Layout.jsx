@@ -221,7 +221,7 @@ export default function Layout() {
       </main>
 
       {/* FOOTER (lebih “portal resmi” versi rapih) */}
-      <footer className="border-t border-black/10 bg-[#E96A58]">
+      <footer className="border-t border-black/10 bg-emerald-950/30">
         <div className="mx-auto max-w-6xl px-4 py-10 md:px-6">
           <div className="grid gap-6 md:grid-cols-4">
             {/* 1: Identitas */}
@@ -242,11 +242,11 @@ export default function Layout() {
                 </div>
                 <div>
                   <div className="font-semibold">Telepon</div>
-                  <div>021-22007047 (Senin–Jumat 07:30–15:00 WIB)</div>
+                  <div>081389685271 (Senin–Jumat 07:30–15:00 WIB, Layanan IGD 24 Jam)</div>
                 </div>
                 <div>
-                  <div className="font-semibold">Email</div>
-                  <div className="wrap-break-word">puskesmas.jagakarsa@jakarta.go.id</div>
+                  <div className="font-semibold">Email Jejaring Puskesmas Jagakarsa</div>
+                  <div className="wrap-break-word">jaring.jejaringjagakarsa@gmail.com</div>
                 </div>
               </div>
             </div>
@@ -256,10 +256,10 @@ export default function Layout() {
               <div className="text-base font-extrabold">Media Sosial</div>
               <div className="mt-3 grid gap-2">
                 {[
-                  ["Instagram", "#"],
-                  ["Facebook", "#"],
-                  ["YouTube", "#"],
-                  ["TikTok", "#"],
+                  ["Instagram", "@pkmjagakarsa"],
+                  ["Facebook", "@pkmjagakarsa"],
+                  ["YouTube", "@puskesmasjagakarsa"],
+                  ["TikTok", "@pkmjagakarsa"],
                 ].map(([label, href]) => (
                   <a
                     key={label}
@@ -312,7 +312,7 @@ export default function Layout() {
                     className="h-full w-full"
                     loading="lazy"
                     referrerPolicy="no-referrer-when-downgrade"
-                    src="https://www.google.com/maps?q=Puskesmas%20Kecamatan%20Jagakarsa&output=embed"
+                    src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d15861.904188956349!2d106.8188667!3d-6.3323176!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e69ee7f625bb24b%3A0x7dc3f4d6080c4ee8!2sPUSKESMAS%20KECAMATAN%20JAGAKARSA!5e0!3m2!1sid!2sid!4v1769563441091!5m2!1sid!2sid"
                   />
                 </div>
               </div>
