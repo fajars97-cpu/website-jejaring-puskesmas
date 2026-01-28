@@ -33,6 +33,7 @@ function slug(s) {
 }
 
 const CREATE_DRAFT_KEY = "jp_admin_create_jejaring_draft_v1";
+const CREATE_AUTOSAVE_MS = 1000; // 1 detik setelah user berhenti ngetik
 
 export default function AdminJejaring() {
   const { user, isAdmin, signOut } = useAuth();
@@ -65,6 +66,7 @@ export default function AdminJejaring() {
     // restore draft sekali saat mount
     const saved = sessionStorage.getItem(CREATE_DRAFT_KEY);
     if (!saved) return;
+
     try {
       const parsed = JSON.parse(saved);
       // merge ke defaults biar field baru tetap ada
@@ -75,18 +77,17 @@ export default function AdminJejaring() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const CREATE_DRAFT_KEY = "jp_admin_create_jejaring_draft_v1";
-  const CREATE_AUTOSAVE_MS = 1000; // 1 detik setelah user berhenti ngetik
-
   useEffect(() => {
-  const t = setTimeout(() => {
-    try {
-      sessionStorage.setItem(CREATE_DRAFT_KEY, JSON.stringify(createForm));
-    } catch {}
-   }, CREATE_AUTOSAVE_MS);
+    const t = setTimeout(() => {
+      try {
+        sessionStorage.setItem(CREATE_DRAFT_KEY, JSON.stringify(createForm));
+      } catch {
+        // ignore
+      }
+    }, CREATE_AUTOSAVE_MS);
 
-   return () => clearTimeout(t);
-   }, [createForm]);
+    return () => clearTimeout(t);
+  }, [createForm]);
 
   // EDIT
   const [editOpen, setEditOpen] = useState(false);
@@ -191,6 +192,7 @@ export default function AdminJejaring() {
   async function onExportExcel() {
     setExportErr("");
     setExporting(true);
+
     try {
       const rowsToExport = filteredRows;
 
@@ -303,7 +305,9 @@ export default function AdminJejaring() {
               placeholder="Search (client-side)…"
               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 pr-10 text-sm outline-none focus:border-slate-300 sm:w-65"
             />
-            <div className="pointer-events-none absolute right-3 top-2.5 text-slate-400">⌕</div>
+            <div className="pointer-events-none absolute right-3 top-2.5 text-slate-400">
+              ⌕
+            </div>
           </div>
 
           {/* Buttons: grid on mobile */}
@@ -368,9 +372,7 @@ export default function AdminJejaring() {
       {showCreate ? (
         <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
           <div className="text-sm font-semibold text-slate-800">Tambah Fasyankes</div>
-          <div className="mt-1 text-xs text-slate-500">
-            * Bertanda bintang wajib diisi.
-          </div>
+          <div className="mt-1 text-xs text-slate-500">* Bertanda bintang wajib diisi.</div>
 
           <form onSubmit={onCreate} className="mt-4 space-y-3">
             <JejaringFormFields
