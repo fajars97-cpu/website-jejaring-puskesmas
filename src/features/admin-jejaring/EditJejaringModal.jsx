@@ -7,7 +7,6 @@ import { getRowKey, normalizeJejaringPayload, validateJejaring } from "./utils";
 import { updateJejaring } from "./api";
 
 const EDIT_DRAFT_KEY = (pk, val) => `jp_admin_edit_jejaring_draft_v1:${pk}:${String(val)}`;
-const EDIT_AUTOSAVE_MS = 1200;
 
 export default function EditJejaringModal({ open, row, onClose, onSaved }) {
   const [saving, setSaving] = useState(false);
@@ -18,8 +17,6 @@ export default function EditJejaringModal({ open, row, onClose, onSaved }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
 // last saved snapshot to avoid saving on every keystroke
   const lastSavedJsonRef = useRef("");
-  // debounce timer
-  const autosaveTimerRef = useRef(null);
   const key = useMemo(() => (row ? getRowKey(row) : null), [row]);
   const draftKey = useMemo(() => {
     if (!key) return null;
@@ -39,17 +36,20 @@ export default function EditJejaringModal({ open, row, onClose, onSaved }) {
     }
   }
 
+  // Close normal (klik X / klik luar): SIMPAN draft (jangan dihapus)
   const safeClose = () => {
+    flushDraftNow(form);
+    onClose?.();
+  };
+
+  // Batal explicit: BUANG draft
+  const cancelEdit = () => {
     try {
       if (draftKey) sessionStorage.removeItem(draftKey);
     } catch {
       // ignore
     }
-    // clear pending debounce timer
-    if (autosaveTimerRef.current) {
-      clearTimeout(autosaveTimerRef.current);
-      autosaveTimerRef.current = null;
-    }
+    lastSavedJsonRef.current = "";
     onClose?.();
   };
 
@@ -133,24 +133,6 @@ export default function EditJejaringModal({ open, row, onClose, onSaved }) {
 
   const setField = (k, v) => setForm((p) => ({ ...(p || {}), [k]: v }));
 
-  // autosave draft saat user mengetik (hanya saat modal open)
-  useEffect(() => {
-    if (!open) return;
-    if (!draftKey) return;
-    if (!form) return;
-    // debounce: save setelah user berhenti ngetik
-    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
-    autosaveTimerRef.current = setTimeout(() => {
-      flushDraftNow(form);
-    }, EDIT_AUTOSAVE_MS);
-
-    return () => {
-      if (autosaveTimerRef.current) {
-        clearTimeout(autosaveTimerRef.current);
-        autosaveTimerRef.current = null;
-      }
-    };
-  }, [open, draftKey, form]);
   function requestSave(e) {
     e.preventDefault();
     setErr("");
@@ -206,7 +188,15 @@ export default function EditJejaringModal({ open, row, onClose, onSaved }) {
         {!form ? (
           <div className="text-sm text-slate-600">Menyiapkan form…</div>
         ) : (
-          <form onSubmit={requestSave} className="space-y-3">
+          <form
+            onSubmit={requestSave}
+            className="space-y-3"
+            onBlurCapture={() => {
+              // Autosave HALUS: hanya saat user keluar dari field (blur),
+              // termasuk saat pindah tab / klik area lain
+              flushDraftNow(form);
+            }}
+          >
             <JejaringFormFields value={form} onChange={setField} />
 
             {err ? (
@@ -218,7 +208,7 @@ export default function EditJejaringModal({ open, row, onClose, onSaved }) {
             <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 type="button"
-                onClick={safeClose}
+                onClick={cancelEdit}
                 disabled={saving}
                 className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold hover:bg-slate-50 disabled:opacity-60"
               >
