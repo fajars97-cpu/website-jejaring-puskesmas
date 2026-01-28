@@ -283,6 +283,49 @@ export default function JejaringFormFields({ value, onChange }) {
         </div>
       </div>
 
+       {/* Akreditasi */}
+       <div className="grid gap-2">
+       <label className="text-xs font-semibold">Terakreditasi</label>
+       <select
+        value={value.terakreditasi ? "YA" : "TIDAK"}
+        onChange={(e) =>
+        onChange("terakreditasi", e.target.value === "YA")
+       }
+      className="rounded-lg border px-3 py-2 text-sm"
+      >
+      <option value="TIDAK">Tidak</option>
+      <option value="YA">Ya</option>
+      </select>
+      </div>
+
+      {value.terakreditasi && (
+      <>
+      <div className="grid gap-2">
+      <label className="text-xs font-semibold">Nomor Akreditasi</label>
+      <input
+        value={value.nomor_akreditasi}
+        onChange={(e) => onChange("nomor_akreditasi", e.target.value)}
+        className="rounded-lg border px-3 py-2 text-sm"
+      />
+      </div>
+
+      <div className="grid gap-2">
+      <label className="text-xs font-semibold">Hasil Akreditasi</label>
+      <select
+        value={value.hasil_akreditasi}
+        onChange={(e) => onChange("hasil_akreditasi", e.target.value)}
+        className="rounded-lg border px-3 py-2 text-sm"
+      >
+        <option value="">— Pilih —</option>
+        <option value="Paripurna">Paripurna</option>
+        <option value="Utama">Utama</option>
+        <option value="Madya">Madya</option>
+        <option value="Dasar">Dasar</option>
+      </select>
+      </div>
+      </>
+   )}
+
       {/* MoU */}
       <div className="rounded-2xl border border-slate-200 p-4">
         <div className="text-sm font-semibold text-slate-900">MoU</div>

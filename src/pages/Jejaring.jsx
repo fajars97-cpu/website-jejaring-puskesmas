@@ -45,6 +45,8 @@ function smoothScrollTo(targetY, duration = 750) {
 function JejaringCardTK({ data, isActive, onClick }) {
   const foto = data?.foto || "";
   const nama = data?.namaFasyankes || "-";
+  const isAkreditasi = data?.terakreditasi === true;
+  const hasilAkreditasi = data?.hasilAkreditasi || "";
   const status = data?.status || "—";
   const jenis = data?.jenisFasyankes || "—";
   const tipe = data?.tipeFasyankes || "—";
@@ -83,7 +85,14 @@ function JejaringCardTK({ data, isActive, onClick }) {
             Foto Fasyankes
           </div>
         )}
-
+        {/* Badge akreditasi */}
+          {isAkreditasi && (
+          <div className="absolute right-3 top-3">
+          <span className="rounded-md bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white shadow">
+          Terakreditasi {hasilAkreditasi}
+          </span>
+          </div>
+       )}
         {/* Badge status */}
         <div className="absolute left-3 top-3">
           <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClass}`}>
