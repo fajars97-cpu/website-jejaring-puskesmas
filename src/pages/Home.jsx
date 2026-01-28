@@ -108,12 +108,12 @@ export default function Home() {
     {
       title: "Permenkes Puskesmas",
       desc: "Ketentuan penyelenggaraan Puskesmas",
-      url: "https://drive.google.com/",
+      url: "https://drive.google.com/file/d/1AL-SvFQBR7TBuNqQtf8rszrJ-SS5FY6m/view?usp=drive_link",
     },
     {
       title: "Akreditasi Fasyankes",
       desc: "Standar & masa berlaku akreditasi",
-      url: "https://drive.google.com/",
+      url: "https://drive.google.com/drive/folders/1K0l6fhubuARHBBvSjMSuyVhudEX-zcF0?usp=sharing",
     },
     {
       title: "Jejaring & Rujukan",
