@@ -57,13 +57,7 @@ export function AuthProvider({ children }) {
   const [adminReady, setAdminReady] = useState(false);
   const [adminError, setAdminError] = useState("");
 
-  // loading = ada proses auth/admin check sedang berjalan (bisa token refresh)
   const [loading, setLoading] = useState(true);
-
-  // UX: phase pemulihan sesi agar RequireAdmin tidak “kedip login”
-  // restoring = app baru buka/refresh dan sedang memulihkan sesi
-  // ready = sudah melewati fase pemulihan
-  const [authPhase, setAuthPhase] = useState("restoring"); // "restoring" | "ready"
 
   // guard anti race
   const seqRef = useRef(0);
@@ -91,10 +85,9 @@ export function AuthProvider({ children }) {
     }
   }
 
-  // exposed: paksa cek admin ulang (misalnya tombol "Refresh akses")
+  // exposed: paksa cek admin ulang
   async function refreshAdminCheck() {
     if (!user?.id) return;
-
     const mySeq = ++seqRef.current;
 
     setAdminError("");
@@ -145,10 +138,10 @@ export function AuthProvider({ children }) {
       return;
     }
 
-    // ===== KEY CHANGE (tetap dipertahankan) =====
+    // ===== KEY CHANGE =====
     // Kalau userId sama dan tidak dipaksa, JANGAN re-check admin.
     if (!forceAdminCheck && lastUserIdRef.current === nextId) {
-      // anggap status admin terakhir masih valid (cache/hasil sebelumnya)
+      // kita anggap status admin terakhir masih valid (cache/hasil sebelumnya)
       setAdminReady(true);
       return;
     }
@@ -166,7 +159,6 @@ export function AuthProvider({ children }) {
     const res = await resolveIsAdmin(nextId);
     if (mySeq !== seqRef.current) return;
 
-    // timeout/slow: jangan banting akses jadi non-admin
     if (String(res.err || "").toLowerCase().includes("timeout")) {
       setAdminError(res.err);
       setAdminReady(true);
@@ -184,20 +176,11 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let mounted = true;
 
-    // UX: app mulai dari "restoring session"
-    setAuthPhase("restoring");
-
-    // fail-safe agar UI tidak nyangkut lama (tetap dipertahankan)
+    // fail-safe agar UI tidak nyangkut lama
     const failSafeTimer = setTimeout(() => {
       if (!mounted) return;
-
-      // jangan biarkan admin guard menggantung
       setAdminReady((v) => (v ? v : true));
       setLoading((v) => (v ? false : v));
-
-      // kalau sedang restoring dan terlalu lama, tetap lanjutkan UI
-      setAuthPhase((p) => (p === "ready" ? p : "ready"));
-
       setAdminError((v) => v || "verification slow");
     }, 8000);
 
@@ -216,16 +199,13 @@ export function AuthProvider({ children }) {
           return;
         }
 
-        // init cek admin sekali untuk session awal
-        await applySession(data.session, { forceAdminCheck: true });
+        await applySession(data.session, { forceAdminCheck: true }); // init cek sekali
       } catch (e) {
         if (!mounted) return;
         setAdminReady(true);
         setAdminError((prev) => prev || (e?.message || "init failed"));
       } finally {
-        if (!mounted) return;
-        setLoading(false);
-        setAuthPhase("ready");
+        if (mounted) setLoading(false);
       }
     }
 
@@ -245,26 +225,22 @@ export function AuthProvider({ children }) {
         setAdminReady(true);
         setAdminError("");
         setLoading(false);
-        setAuthPhase("ready");
         return;
       }
 
       // TOKEN_REFRESHED / SIGNED_IN / USER_UPDATED dll:
-      // hanya re-check admin kalau userId berubah atau SIGNED_IN (dipaksa)
+      // hanya re-check admin kalau userId berubah
       setLoading(true);
       try {
         await applySession(newSession, { forceAdminCheck: event === "SIGNED_IN" });
       } catch (e) {
-        // jangan banting ke non-admin kalau event cuma refresh
         setSession(newSession);
         setUser(newSession?.user ?? null);
+        // jangan banting ke non-admin kalau event cuma refresh
         setAdminReady(true);
         setAdminError(e?.message || "applySession error");
       } finally {
-        if (!mounted) return;
-        setLoading(false);
-        // event apapun -> kita sudah "ready" (UX)
-        setAuthPhase("ready");
+        if (mounted) setLoading(false);
       }
     });
 
@@ -277,8 +253,6 @@ export function AuthProvider({ children }) {
   }, []);
 
   async function signIn(email, password) {
-    // UX: saat sign-in, phase dianggap ready (bukan restoring), tapi loading true saat proses
-    setAuthPhase("ready");
     return supabase.auth.signInWithPassword({ email, password });
   }
 
@@ -296,7 +270,6 @@ export function AuthProvider({ children }) {
       setAdminReady(true);
       setAdminError("");
       setLoading(false);
-      setAuthPhase("ready");
     }
   }
 
@@ -308,12 +281,11 @@ export function AuthProvider({ children }) {
       adminReady,
       adminError,
       loading,
-      authPhase, // 👈 baru: untuk UX guard
       signIn,
       signOut,
       refreshAdminCheck,
     }),
-    [session, user, isAdmin, adminReady, adminError, loading, authPhase]
+    [session, user, isAdmin, adminReady, adminError, loading]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
