@@ -91,6 +91,7 @@ function DetailList({ title, items }) {
     </div>
   );
 }
+const BASE = import.meta.env.BASE_URL; // penting untuk deploy subpath (GitHub Pages)
 
 export default function Perizinan() {
   const [openId, setOpenId] = useState("mou"); // default buka 1st card biar ga “kosong”
@@ -102,7 +103,7 @@ export default function Perizinan() {
         subtitle:
           "Untuk kerja sama jejaring (rujukan, layanan, kolaborasi program).",
         authority: "Puskesmas Jagakarsa",
-        logoSrc: "/icons/logo-puskesmas-jagakarsa.png",
+        logoSrc: `${BASE}icons/logo-puskesmas-jagakarsa.png`,
         logoAlt: "Puskesmas Jagakarsa",
         logoFallback: "PKM",
         theme: {
@@ -142,7 +143,7 @@ export default function Perizinan() {
         subtitle:
           "Pendataan/registrasi fasilitas kesehatan sesuai sistem Kemenkes.",
         authority: "Kementerian Kesehatan RI",
-        logoSrc: "/icons/logo-kemenkes.png",
+        logoSrc: `${BASE}icons/logo-kemenkes.png`,
         logoAlt: "Kementerian Kesehatan RI",
         logoFallback: "KMK",
         theme: {
@@ -182,7 +183,7 @@ export default function Perizinan() {
         subtitle:
           "Akses sistem SDM Kesehatan untuk fasyankes/tenaga (sesuai kebutuhan).",
         authority: "Sudinkes Jakarta Selatan",
-        logoSrc: "/icons/logo-sudinkes-jaksel.jpg",
+        logoSrc: `${BASE}icons/logo-sudinkes-jaksel.jpg`,
         logoAlt: "Sudinkes Jakarta Selatan",
         logoFallback: "SDK",
         theme: {
