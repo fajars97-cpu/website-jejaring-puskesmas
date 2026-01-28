@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Outlet, NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
+const BASE = import.meta.env.BASE_URL; // penting untuk deploy subpath (GitHub Pages)
 /**
  * ====== KONFIGURASI LINK (INI YANG KAMU EDIT) ======
  */
@@ -38,7 +39,7 @@ function cn(...classes) {
 }
 
 function BrandLogo() {
-  const src = "/icons/logo-puskesmas-jagakarsa.png";
+  const src = `${BASE}icons/logo-puskesmas-jagakarsa.png`;
   return (
     <div className="relative h-10 w-10 overflow-hidden rounded-xl bg-white/10 ring-1 ring-white/15">
       <img
