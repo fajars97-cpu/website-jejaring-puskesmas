@@ -75,14 +75,18 @@ export default function AdminJejaring() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const CREATE_DRAFT_KEY = "jp_admin_create_jejaring_draft_v1";
+  const CREATE_AUTOSAVE_MS = 1000; // 1 detik setelah user berhenti ngetik
+
   useEffect(() => {
-    // autosave tiap perubahan form (ringan)
+  const t = setTimeout(() => {
     try {
       sessionStorage.setItem(CREATE_DRAFT_KEY, JSON.stringify(createForm));
-    } catch {
-      // ignore quota/blocked
-    }
-  }, [createForm]);
+    } catch {}
+   }, CREATE_AUTOSAVE_MS);
+
+   return () => clearTimeout(t);
+   }, [createForm]);
 
   // EDIT
   const [editOpen, setEditOpen] = useState(false);
