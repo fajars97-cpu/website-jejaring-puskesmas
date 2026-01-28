@@ -3,6 +3,22 @@ import { Outlet, NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 /**
+ * ====== KONFIGURASI LINK (INI YANG KAMU EDIT) ======
+ */
+const SOCIAL_LINKS = [
+  { label: "Instagram", text: "Puskesmas Jagakarsa", href: "https://instagram.com/pkmjagakarsa" },
+  { label: "Facebook", text: "Puskesmas Jagakarsa", href: "https://facebook.com/pkmjagakarsa" },
+  { label: "YouTube", text: "Puskesmas Jagakarsa", href: "https://youtube.com/puskesmasjagakarsa" },
+  { label: "TikTok", text: "Puskesmas Jagakarsa", href: "https://www.tiktok.com/@pkmjagakarsa?_t=8Wn1WIynL4z&_r=1" },
+];
+
+const QUICK_LINKS = [
+  { label: "Profil", href: "https://www.pkmjagakarsa.com/" },
+  { label: "Layanan", href: "https://fajars97-cpu.github.io/alurlayanan/" },
+  { label: "PPID", href: "https://ppid-dinkes.jakarta.go.id/sudinkes-jaksel/" },
+];
+
+/**
  * Menu publik
  */
 const publicMenu = [
@@ -22,11 +38,9 @@ function cn(...classes) {
 }
 
 function BrandLogo() {
-  // Logo di public/icons/...
   const src = "/icons/logo-puskesmas-jagakarsa.png";
   return (
     <div className="relative h-10 w-10 overflow-hidden rounded-xl bg-white/10 ring-1 ring-white/15">
-      {/* fallback simpel kalau logo belum ada */}
       <img
         src={src}
         alt="Puskesmas Jagakarsa"
@@ -34,9 +48,10 @@ function BrandLogo() {
         loading="lazy"
         onError={(e) => {
           e.currentTarget.style.display = "none";
-          e.currentTarget.parentElement?.classList.add("flex", "items-center", "justify-center");
-          e.currentTarget.parentElement?.classList.add("text-xs", "font-bold", "text-white/80");
-          e.currentTarget.parentElement.textContent = "PJ";
+          const p = e.currentTarget.parentElement;
+          if (!p) return;
+          p.classList.add("flex", "items-center", "justify-center", "text-xs", "font-bold", "text-white/80");
+          p.textContent = "PJ";
         }}
       />
     </div>
@@ -155,7 +170,7 @@ export default function Layout() {
         </div>
 
         {/* Mobile drawer */}
-        <div className={cn("md:hidden border-t border-white/10 bg-emerald-950/30", mobileOpen ? "block" : "hidden")}>
+        <div className={cn("md:hidden border-t border-white/10 bg-emerald-950", mobileOpen ? "block" : "hidden")}>
           <div className="mx-auto max-w-6xl px-4 py-3 space-y-2">
             {publicMenu.map((item) => (
               <NavLink
@@ -220,92 +235,89 @@ export default function Layout() {
         </div>
       </main>
 
-      {/* FOOTER (lebih “portal resmi” versi rapih) */}
-      <footer className="border-t border-black/10 bg-emerald-950/30">
+      {/* FOOTER */}
+      <footer className="border-t border-black/10 bg-emerald-950 text-white">
         <div className="mx-auto max-w-6xl px-4 py-10 md:px-6">
-          <div className="grid gap-6 md:grid-cols-4">
+          <div className="grid gap-8 md:grid-cols-4">
             {/* 1: Identitas */}
-            <div className="text-white">
+            <div>
               <div className="flex items-center gap-3">
                 <BrandLogo />
                 <div>
                   <div className="text-base font-extrabold">Puskesmas Jagakarsa</div>
-                  <div className="text-xs text-white/80">Portal Informasi Jejaring</div>
+                  <div className="text-xs text-white/70">Portal Informasi Jejaring</div>
                 </div>
               </div>
 
-              <div className="mt-4 space-y-2 text-sm text-white/90">
+              <div className="mt-4 space-y-2 text-sm text-white/80">
                 <div>
-                  <div className="font-semibold">Alamat</div>
+                  <div className="font-semibold text-white/90">Alamat</div>
                   <div>Jl. Sirsak No 1 RT.001/02 Jagakarsa</div>
                   <div>Jakarta Selatan, DKI Jakarta 12630</div>
                 </div>
                 <div>
-                  <div className="font-semibold">Telepon</div>
-                  <div>081389685271 (Senin–Jumat 07:30–15:00 WIB, Layanan IGD 24 Jam)</div>
+                  <div className="font-semibold text-white/90">Telepon</div>
+                  <div>081389685271 (Senin–Jumat 07:30–15:00 WIB, IGD 24 Jam)</div>
                 </div>
                 <div>
-                  <div className="font-semibold">Email Jejaring Puskesmas Jagakarsa</div>
+                  <div className="font-semibold text-white/90">Email Jejaring</div>
                   <div className="wrap-break-word">jaring.jejaringjagakarsa@gmail.com</div>
                 </div>
               </div>
             </div>
 
             {/* 2: Sosmed */}
-            <div className="text-white">
+            <div>
               <div className="text-base font-extrabold">Media Sosial</div>
               <div className="mt-3 grid gap-2">
-                {[
-                  ["Instagram", "@pkmjagakarsa"],
-                  ["Facebook", "@pkmjagakarsa"],
-                  ["YouTube", "@puskesmasjagakarsa"],
-                  ["TikTok", "@pkmjagakarsa"],
-                ].map(([label, href]) => (
+                {SOCIAL_LINKS.map((s) => (
                   <a
-                    key={label}
-                    href={href}
+                    key={s.label}
+                    href={s.href}
                     target="_blank"
                     rel="noreferrer"
-                    className="rounded-xl bg-black/15 px-3 py-2 text-sm font-semibold text-white hover:bg-black/20"
+                    className="rounded-xl bg-white/10 px-3 py-2 text-sm font-semibold text-white hover:bg-white/15"
                   >
-                    {label} • Puskesmas Jagakarsa
+                    {s.label} • {s.text}
                   </a>
                 ))}
               </div>
             </div>
 
             {/* 3: Informasi */}
-            <div className="text-white">
+            <div>
               <div className="text-base font-extrabold">Informasi</div>
               <div className="mt-3 space-y-3">
-                <div className="rounded-2xl bg-black/15 p-3">
+                <div className="rounded-2xl bg-white/10 p-3">
                   <div className="text-sm font-semibold">Tautan Cepat</div>
                   <div className="mt-2 grid gap-2 text-sm">
-                    <a className="rounded-xl bg-black/10 px-3 py-2 hover:bg-black/15" href="#">
-                      Profil
-                    </a>
-                    <a className="rounded-xl bg-black/10 px-3 py-2 hover:bg-black/15" href="#">
-                      Layanan
-                    </a>
-                    <a className="rounded-xl bg-black/10 px-3 py-2 hover:bg-black/15" href="#">
-                      PPID
-                    </a>
+                    {QUICK_LINKS.map((q) => (
+                      <a
+                        key={q.label}
+                        className="rounded-xl bg-white/10 px-3 py-2 hover:bg-white/15"
+                        href={q.href}
+                        target={q.href?.startsWith("http") ? "_blank" : undefined}
+                        rel={q.href?.startsWith("http") ? "noreferrer" : undefined}
+                      >
+                        {q.label}
+                      </a>
+                    ))}
                   </div>
                 </div>
 
-                <div className="rounded-2xl bg-black/15 p-3">
+                <div className="rounded-2xl bg-white/10 p-3">
                   <div className="text-sm font-semibold">Catatan</div>
-                  <div className="mt-1 text-sm text-white/90">
-                    Konten footer ini bisa kamu ganti sesuai kebutuhan portal resmi (tanpa ngubah halaman lain).
+                  <div className="mt-1 text-sm text-white/80">
+                    Footer ini bisa kamu sesuaikan ke format “portal resmi” tanpa ganggu halaman lain.
                   </div>
                 </div>
               </div>
             </div>
 
             {/* 4: Lokasi */}
-            <div className="text-white">
+            <div>
               <div className="text-base font-extrabold">Lokasi</div>
-              <div className="mt-3 overflow-hidden rounded-2xl bg-black/15">
+              <div className="mt-3 overflow-hidden rounded-2xl bg-white/10">
                 <div className="aspect-4/3">
                   <iframe
                     title="Lokasi Puskesmas Jagakarsa"
@@ -319,9 +331,9 @@ export default function Layout() {
             </div>
           </div>
 
-          <div className="mt-8 flex flex-col gap-2 border-t border-white/20 pt-6 text-sm text-white/85 md:flex-row md:items-center md:justify-between">
+          <div className="mt-8 flex flex-col gap-2 border-t border-white/15 pt-6 text-sm text-white/75 md:flex-row md:items-center md:justify-between">
             <div>© {new Date().getFullYear()} Puskesmas Jagakarsa</div>
-            <div className="text-white/75">Jejaring • Perizinan • Monitoring</div>
+            <div className="text-white/60">Jejaring • Perizinan • Monitoring</div>
           </div>
         </div>
       </footer>
