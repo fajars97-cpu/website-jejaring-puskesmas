@@ -27,8 +27,7 @@ function readAdminCache(uid) {
     const parsed = JSON.parse(raw);
     if (typeof parsed?.isAdmin !== "boolean") return null;
 
-    // cache valid 7 hari
-    const maxAgeMs = 7 * 24 * 60 * 60 * 1000;
+    const maxAgeMs = 7 * 24 * 60 * 60 * 1000; // 7 hari
     if (parsed?.ts && Date.now() - parsed.ts > maxAgeMs) return null;
 
     return parsed;
@@ -57,12 +56,16 @@ export function AuthProvider({ children }) {
   const [adminReady, setAdminReady] = useState(false);
   const [adminError, setAdminError] = useState("");
 
+  // loading: hanya untuk "restore awal" / "proses login" yang memang layak blocking
   const [loading, setLoading] = useState(true);
 
-  // guard anti race
-  const seqRef = useRef(0);
+  // UX: restoring = true hanya saat app baru load dan memulihkan session pertama kali
+  const [restoring, setRestoring] = useState(true);
 
-  // IMPORTANT: untuk mencegah re-check admin saat tab focus / token refresh
+  // optional: indikator sync background (tidak dipakai guard)
+  const [bgSyncing, setBgSyncing] = useState(false);
+
+  const seqRef = useRef(0);
   const lastUserIdRef = useRef(null);
 
   async function resolveIsAdmin(userId) {
@@ -85,7 +88,6 @@ export function AuthProvider({ children }) {
     }
   }
 
-  // exposed: paksa cek admin ulang
   async function refreshAdminCheck() {
     if (!user?.id) return;
     const mySeq = ++seqRef.current;
@@ -95,7 +97,6 @@ export function AuthProvider({ children }) {
 
     const cached = readAdminCache(user.id);
     if (cached?.isAdmin === true) {
-      // optimistik: jangan drop akses saat recheck
       setIsAdmin(true);
       setAdminReady(true);
     }
@@ -103,7 +104,6 @@ export function AuthProvider({ children }) {
     const res = await resolveIsAdmin(user.id);
     if (mySeq !== seqRef.current) return;
 
-    // timeout/slow: jangan paksa non-admin
     if (String(res.err || "").toLowerCase().includes("timeout")) {
       setAdminError(res.err);
       setAdminReady(true);
@@ -130,7 +130,6 @@ export function AuthProvider({ children }) {
 
     const nextId = nextUser?.id ?? null;
 
-    // signed out / no user
     if (!nextId) {
       lastUserIdRef.current = null;
       setIsAdmin(false);
@@ -138,24 +137,21 @@ export function AuthProvider({ children }) {
       return;
     }
 
-    // ===== KEY CHANGE =====
-    // Kalau userId sama dan tidak dipaksa, JANGAN re-check admin.
+    // Jangan re-check admin bila userId sama (kecuali dipaksa)
     if (!forceAdminCheck && lastUserIdRef.current === nextId) {
-      // kita anggap status admin terakhir masih valid (cache/hasil sebelumnya)
       setAdminReady(true);
       return;
     }
 
     lastUserIdRef.current = nextId;
 
-    // 1) optimistik dari cache
+    // Optimistik dari cache
     const cached = readAdminCache(nextId);
     if (cached?.isAdmin === true) {
       setIsAdmin(true);
       setAdminReady(true);
     }
 
-    // 2) validate sekali untuk user ini
     const res = await resolveIsAdmin(nextId);
     if (mySeq !== seqRef.current) return;
 
@@ -176,16 +172,19 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let mounted = true;
 
-    // fail-safe agar UI tidak nyangkut lama
+    setRestoring(true);
+    setLoading(true);
+
     const failSafeTimer = setTimeout(() => {
       if (!mounted) return;
+      // jangan nyangkut
       setAdminReady((v) => (v ? v : true));
       setLoading((v) => (v ? false : v));
+      setRestoring((v) => (v ? false : v));
       setAdminError((v) => v || "verification slow");
     }, 8000);
 
     async function init() {
-      setLoading(true);
       try {
         const { data, error } = await supabase.auth.getSession();
         if (!mounted) return;
@@ -199,13 +198,16 @@ export function AuthProvider({ children }) {
           return;
         }
 
-        await applySession(data.session, { forceAdminCheck: true }); // init cek sekali
+        // init: cek admin sekali
+        await applySession(data.session, { forceAdminCheck: true });
       } catch (e) {
         if (!mounted) return;
         setAdminReady(true);
         setAdminError((prev) => prev || (e?.message || "init failed"));
       } finally {
-        if (mounted) setLoading(false);
+        if (!mounted) return;
+        setLoading(false);
+        setRestoring(false);
       }
     }
 
@@ -225,22 +227,30 @@ export function AuthProvider({ children }) {
         setAdminReady(true);
         setAdminError("");
         setLoading(false);
+        setRestoring(false);
         return;
       }
 
-      // TOKEN_REFRESHED / SIGNED_IN / USER_UPDATED dll:
-      // hanya re-check admin kalau userId berubah
-      setLoading(true);
+      // 🔥 INI KUNCI UX:
+      // TOKEN_REFRESHED / USER_UPDATED dll itu event background.
+      // Jangan bikin loading=true (karena RequireAdmin akan ngunci UI).
+      const isForegroundBlocking = event === "SIGNED_IN";
+
+      if (isForegroundBlocking) setLoading(true);
+      else setBgSyncing(true);
+
       try {
         await applySession(newSession, { forceAdminCheck: event === "SIGNED_IN" });
       } catch (e) {
         setSession(newSession);
         setUser(newSession?.user ?? null);
-        // jangan banting ke non-admin kalau event cuma refresh
         setAdminReady(true);
         setAdminError(e?.message || "applySession error");
       } finally {
-        if (mounted) setLoading(false);
+        if (!mounted) return;
+        if (isForegroundBlocking) setLoading(false);
+        else setBgSyncing(false);
+        setRestoring(false);
       }
     });
 
@@ -253,7 +263,13 @@ export function AuthProvider({ children }) {
   }, []);
 
   async function signIn(email, password) {
-    return supabase.auth.signInWithPassword({ email, password });
+    // login memang boleh blocking
+    setLoading(true);
+    try {
+      return await supabase.auth.signInWithPassword({ email, password });
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function signOut() {
@@ -270,6 +286,7 @@ export function AuthProvider({ children }) {
       setAdminReady(true);
       setAdminError("");
       setLoading(false);
+      setRestoring(false);
     }
   }
 
@@ -281,11 +298,13 @@ export function AuthProvider({ children }) {
       adminReady,
       adminError,
       loading,
+      restoring,   // 👈 baru (dipakai guard)
+      bgSyncing,   // 👈 opsional untuk indikator kecil
       signIn,
       signOut,
       refreshAdminCheck,
     }),
-    [session, user, isAdmin, adminReady, adminError, loading]
+    [session, user, isAdmin, adminReady, adminError, loading, restoring, bgSyncing]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
