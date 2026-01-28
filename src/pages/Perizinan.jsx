@@ -8,12 +8,12 @@ import React, { useMemo, useState } from "react";
  * - Tailwind v4 only
  *
  * NOTE LOGO:
- * Taruh logo di: src/assets/perizinan/
- * - puskesmas-jagakarsa.png (atau svg)
- * - kemenkes.png
- * - sudinkes-jaksel.png
+ * Taruh logo di: public/icons/
+ * - logo-puskesmas-jagakarsa.png
+ * - logo-kemenkes.png
+ * - logo-sudinkes-jaksel.jpg
  *
- * Lalu sesuaikan path di data `cards`.
+ * Pakai BASE_URL untuk deploy subpath (GitHub Pages).
  */
 
 function Badge({ children, className = "" }) {
@@ -51,7 +51,6 @@ function Chevron({ open }) {
 }
 
 function LogoCircle({ src, alt, fallback }) {
-  // fallback: string 2-4 chars, misal "PKM", "KMK", "SDK"
   return (
     <div className="flex items-center gap-3">
       <div className="relative h-12 w-12 overflow-hidden rounded-2xl border border-black/10 bg-white/70 shadow-sm">
@@ -84,6 +83,7 @@ function DetailList({ title, items }) {
         {items.map((it, idx) => (
           <li key={idx} className="flex gap-2 text-sm text-black/75">
             <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-black/35" />
+            {/* item boleh string atau ReactNode (mis. link) */}
             <span className="leading-relaxed">{it}</span>
           </li>
         ))}
@@ -91,6 +91,7 @@ function DetailList({ title, items }) {
     </div>
   );
 }
+
 const BASE = import.meta.env.BASE_URL; // penting untuk deploy subpath (GitHub Pages)
 
 export default function Perizinan() {
@@ -107,14 +108,13 @@ export default function Perizinan() {
         logoAlt: "Puskesmas Jagakarsa",
         logoFallback: "PKM",
         theme: {
-          // wewenang puskesmas → hijau/teal vibes
           wrap: "bg-gradient-to-br from-emerald-50 via-teal-50 to-sky-50",
           ring: "ring-emerald-200/60",
           accent: "text-emerald-700",
           badge: "border-emerald-200 bg-emerald-50/70 text-emerald-700",
         },
         details: {
-          "Ringkasannya": [
+          Ringkasannya: [
             "MOU/PKS dipakai sebagai dasar formal kerja sama jejaring dengan Puskesmas (program, rujukan, layanan, edukasi, dll).",
             "Proses biasanya melibatkan penyiapan draft, verifikasi dokumen, paraf, penandatanganan, dan arsip.",
           ],
@@ -130,8 +130,8 @@ export default function Perizinan() {
             "Penyusunan / finalisasi draft MOU/PKS.",
             "Penandatanganan + penomoran + arsip digital/fisik.",
           ],
-          "Output": ["Dokumen MOU/PKS aktif + arsip (PDF) untuk monitoring."],
-          "Catatan": [
+          Output: ["Dokumen MOU/PKS aktif + arsip (PDF) untuk monitoring."],
+          Catatan: [
             "Isi detail persyaratan bisa beda tergantung jenis kerja sama.",
             "Kalau butuh cepat: siapkan data PJ, ruang lingkup, dan legalitas dari awal (biar nggak bolak-balik 🤝).",
           ],
@@ -147,33 +147,46 @@ export default function Perizinan() {
         logoAlt: "Kementerian Kesehatan RI",
         logoFallback: "KMK",
         theme: {
-          // wewenang kemenkes → biru navy vibes
           wrap: "bg-gradient-to-br from-sky-50 via-blue-50 to-indigo-50",
           ring: "ring-blue-200/60",
           accent: "text-blue-700",
           badge: "border-blue-200 bg-blue-50/70 text-blue-700",
         },
         details: {
-          "Ringkasannya": [
-            "Registrasi fasyankes dipakai untuk pencatatan resmi di sistem Kemenkes (untuk pelaporan, integrasi, dan validasi data).",
-            "Biasanya butuh data identitas fasilitas, penanggung jawab, layanan, dan legalitas.",
+          Ringkasannya: [
+            "Registrasi Fasyankes adalah pencatatan resmi fasilitas pelayanan kesehatan di Kemenkes dan menghasilkan kode fasyankes (sesuai jenis fasilitas).",
+            "Akses aplikasi berbasis web melalui portal Registrasi Fasyankes.",
           ],
-          "Yang biasanya diminta": [
-            "Data identitas fasyankes (nama, jenis, alamat, koordinat bila perlu).",
-            "Data penanggung jawab (NIK/identitas, STR/SIP bila relevan).",
-            "Legalitas (izin operasional/NIB/dokumen pendukung).",
-            "Kontak aktif (email/nomor) untuk verifikasi/notifikasi.",
+          "Website resmi": [
+            <a
+              key="regfasyankes"
+              href="https://registrasifasyankes.kemkes.go.id/Landing"
+              target="_blank"
+              rel="noreferrer"
+              className="font-semibold text-blue-700 underline underline-offset-4 hover:text-blue-800"
+            >
+              Buka portal Registrasi Fasyankes (Kemenkes)
+            </a>,
           ],
-          "Alur singkat": [
-            "Siapkan data + dokumen pendukung (scan PDF/JPG).",
-            "Registrasi/entry data di sistem Kemenkes sesuai jalur yang berlaku.",
-            "Verifikasi/validasi (jika ada) + perbaikan data bila diminta.",
-            "Data aktif dan bisa dipakai untuk kebutuhan pelaporan/rujukan sistem.",
+          "Yang perlu disiapkan": [
+            "Email aktif (ini akan jadi username) + nomor HP aktif untuk notifikasi/verifikasi.",
+            "Data identitas fasyankes (nama, jenis/kelas, alamat, wilayah).",
+            "Data penanggung jawab/pimpinan (NIK, nama, jabatan) — sesuai ketentuan aplikasi.",
+            "Dokumen softcopy (umumnya PDF, ukuran terbatas) seperti surat permohonan registrasi dan izin operasional/sertifikat standar (sesuai jenis fasyankes).",
           ],
-          "Output": ["Status registrasi aktif di sistem + data fasilitas tervalidasi."],
-          "Catatan": [
-            "Kalau mentok, biasanya masalahnya: dokumen belum sesuai format atau data PJ belum match.",
-            "Pastikan email/nomor yang dipakai itu yang beneran hidup—jangan email ‘cuma buat daftar’ terus lupa password 😭.",
+          "Alur singkat (sesuai mekanisme aplikasi)": [
+            "Daftar User Fasyankes: isi formulir pendaftaran user untuk mendapat akun (username = email, password dibuat saat daftar).",
+            "Verifikasi pendaftaran user: Dinkes Kab/Kota memverifikasi (kalau valid, sistem mengirim tautan aktivasi ke email).",
+            "Aktivasi akun: klik tautan aktivasi dari email (cek spam kalau belum masuk).",
+            "Login → Registrasi fasyankes: lengkapi form registrasi sesuai jenis fasyankes, upload dokumen, lalu kirim untuk validasi.",
+            "Validasi/Perbaikan: jika diminta perbaikan, lakukan revisi sesuai catatan verifikator; jika disetujui, kode registrasi/kode fasyankes muncul dan biasanya diberitahukan via email.",
+          ],
+          Output: [
+            "Kode registrasi/kode fasyankes terbit + data fasyankes tercatat dan tervalidasi di sistem.",
+          ],
+          "Catatan penting": [
+            "Validasi mengikuti kewenangan/jenis fasilitas (umumnya melibatkan Dinkes Kab/Kota, dan pada jenis tertentu bisa berjenjang ke Provinsi/Kemenkes).",
+            "Paling sering gagal karena: dokumen tidak sesuai format/ukuran, email tidak aktif, atau data PJ tidak konsisten.",
           ],
         },
       },
@@ -187,14 +200,13 @@ export default function Perizinan() {
         logoAlt: "Sudinkes Jakarta Selatan",
         logoFallback: "SDK",
         theme: {
-          // wewenang sudinkes → ungu/purple vibes
           wrap: "bg-gradient-to-br from-fuchsia-50 via-purple-50 to-violet-50",
           ring: "ring-purple-200/60",
           accent: "text-purple-700",
           badge: "border-purple-200 bg-purple-50/70 text-purple-700",
         },
         details: {
-          "Ringkasannya": [
+          Ringkasannya: [
             "Akun SISDMK dibutuhkan untuk akses/administrasi data SDM kesehatan sesuai ketentuan yang berlaku.",
             "Kewenangan fasilitasi akun/koordinasi biasanya melalui Sudinkes setempat (Jaksel).",
           ],
@@ -209,8 +221,8 @@ export default function Perizinan() {
             "Akun dibuat/diaktifkan + kredensial diberikan ke admin fasyankes.",
             "Login awal + ganti password + uji akses modul yang diperlukan.",
           ],
-          "Output": ["Akun SISDMK aktif untuk admin fasyankes/tenaga sesuai kewenangan."],
-          "Catatan": [
+          Output: ["Akun SISDMK aktif untuk admin fasyankes/tenaga sesuai kewenangan."],
+          Catatan: [
             "Pastikan admin akun itu orang yang beneran pegang operasional, bukan ‘anak magang yang besok cabut’ 🫠.",
             "Simpan kredensial di password manager (atau minimal catatan aman).",
           ],
@@ -227,8 +239,9 @@ export default function Perizinan() {
           Perizinan & Registrasi Fasyankes
         </h1>
         <p className="max-w-3xl text-sm leading-relaxed text-black/60 md:text-base">
-          Pilih kartu di bawah untuk melihat ringkasan <span className="font-semibold">alur</span>{" "}
-          dan <span className="font-semibold">dokumen umum</span> yang dibutuhkan.
+          Pilih kartu di bawah untuk melihat ringkasan{" "}
+          <span className="font-semibold">alur</span> dan{" "}
+          <span className="font-semibold">dokumen umum</span> yang dibutuhkan.
         </p>
       </div>
 
@@ -246,7 +259,6 @@ export default function Perizinan() {
                 c.theme.wrap,
               ].join(" ")}
             >
-              {/* Header Card (Clickable) */}
               <button
                 type="button"
                 onClick={() => setOpenId((prev) => (prev === c.id ? "" : c.id))}
@@ -286,12 +298,19 @@ export default function Perizinan() {
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Badge className={c.theme.badge}>Klik untuk detail</Badge>
                   <Badge className="bg-white/70">
-                    Status: <span className={["ml-1 font-semibold", c.theme.accent].join(" ")}>Informasi</span>
+                    Status:{" "}
+                    <span
+                      className={[
+                        "ml-1 font-semibold",
+                        c.theme.accent,
+                      ].join(" ")}
+                    >
+                      Informasi
+                    </span>
                   </Badge>
                 </div>
               </button>
 
-              {/* Detail (Accordion Content) */}
               <div
                 className={[
                   "grid transition-[grid-template-rows] duration-200 ease-out",
@@ -311,8 +330,9 @@ export default function Perizinan() {
                     </div>
 
                     <div className="mt-4 text-xs text-black/50">
-                      *Catatan: ini ringkasan umum. Jika kamu mau, aku bisa sesuaikan detailnya
-                      dengan SOP/format internal Jagakarsa biar 100% “sesuai lapangan”.
+                      *Catatan: ini ringkasan umum. Jika kamu mau, aku bisa
+                      sesuaikan detailnya dengan SOP/format internal Jagakarsa biar
+                      100% “sesuai lapangan”.
                     </div>
                   </div>
                 </div>
@@ -322,9 +342,9 @@ export default function Perizinan() {
         })}
       </div>
 
-      {/* Footer hint */}
       <div className="mt-6 rounded-2xl border border-black/10 bg-white/60 p-4 text-sm text-black/65">
-        <span className="font-semibold text-black/80">Tip:</span> Bila ada pertanyaan lebih lanjut bisa menghubungi admin jejaring".
+        <span className="font-semibold text-black/80">Tip:</span> Bila ada
+        pertanyaan lebih lanjut, bisa menghubungi admin jejaring.
       </div>
     </div>
   );
