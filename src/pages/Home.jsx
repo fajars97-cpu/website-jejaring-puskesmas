@@ -25,6 +25,17 @@ function Badge({ children }) {
   );
 }
 
+function AkreditasiBadge({ r }) {
+  if (!r?.terakreditasi) return null;
+  const hasil = r?.hasilAkreditasi ? ` ${r.hasilAkreditasi}` : "";
+  const nomor = r?.nomorAkreditasi ? ` • ${r.nomorAkreditasi}` : "";
+  return (
+    <div className="absolute top-2 right-2 rounded-full bg-emerald-600 px-3 py-1 text-[11px] font-extrabold text-white shadow">
+      ✓ TERAKREDITASI{hasil}{nomor}
+    </div>
+  );
+}
+
 /* ---------- CAROUSEL CONTROLS ---------- */
 function CarouselControls({ containerRef }) {
   const scroll = (dir) => {
@@ -74,18 +85,17 @@ export default function Home() {
     const byJenis = (jenis) =>
       rows.filter((r) => r?.jenisFasyankes === jenis).length;
 
-    const terakreditasi = rows.filter(
-      (r) =>
-        r?.statusAkreditasi === "Terakreditasi" ||
-        r?.akreditasi === true
-    ).length;
+    const byTipe = (tipe) =>
+      rows.filter((r) => (r?.tipeFasyankes || "") === tipe).length;
+
+    const terakreditasi = rows.filter((r) => r?.terakreditasi === true).length;
 
     return {
       total,
       terakreditasi,
-      klinikUmum: byJenis("Klinik Umum"),
-      klinikGigi: byJenis("Klinik Gigi"),
-      apotek: byJenis("Apotek"),
+      klinikUmum: byTipe("Klinik Umum"),
+      klinikGigi: byTipe("Klinik Gigi"),
+      apotek: byTipe("Apotek"),
     };
   }, [rows]);
 
@@ -178,19 +188,12 @@ export default function Home() {
     </div>
   )}
 
-  {/* BADGE TERAKREDITASI (future-proof) */}
-  {(r.statusAkreditasi === "Terakreditasi" ||
-    r.akreditasi === true ||
-    r.isTerakreditasi === true) && (
-    <div className="absolute top-2 right-2 rounded-full bg-emerald-600 px-3 py-1 text-xs font-extrabold text-white shadow">
-      ✓ TERAKREDITASI
-    </div>
-  )}
+  <AkreditasiBadge r={r} />
 </div>
 
               <div className="p-4 space-y-2">
                 <div className="flex gap-2">
-                  <Badge>{r.jenisFasyankes}</Badge>
+                  <Badge>{r.tipeFasyankes || r.jenisFasyankes || "-"}</Badge>
                   {r.kelurahan && <Badge>Kel. {r.kelurahan}</Badge>}
                 </div>
                 <div className="font-extrabold text-black/90">
