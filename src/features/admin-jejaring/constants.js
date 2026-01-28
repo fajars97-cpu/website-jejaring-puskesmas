@@ -13,7 +13,8 @@ export const JENIS_OPTIONS = [
 ];
 
 export const TIPE_OPTIONS = [
-  "Klinik",
+  "Rumah Sakit",
+  "Klinik Umum",
   "Klinik Kecantikan",
   "Klinik Gigi",
   "Apotek",
@@ -69,6 +70,10 @@ export const CREATE_DEFAULTS = {
   // kegiatan + foto
   kegiatan: "",
   foto: "",
+  // === AKREDITASI ===
+  terakreditasi: false,
+  nomor_akreditasi: "",
+  hasil_akreditasi: "",
 };
 
 export const FOTO_MAX_MB = 3;

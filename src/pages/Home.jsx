@@ -71,6 +71,7 @@ export default function Home() {
 
   const jejaringRef = useRef(null);
   const regulasiRef = useRef(null);
+  const dashboardRef = useRef(null);
 
   useEffect(() => {
     fetchJejaringList()
@@ -79,24 +80,27 @@ export default function Home() {
   }, []);
 
   /* ---------- DASHBOARD HITUNGAN ---------- */
-  const stats = useMemo(() => {
+  const dashboardItems = useMemo(() => {
     const total = rows.length;
-
-    const byJenis = (jenis) =>
-      rows.filter((r) => r?.jenisFasyankes === jenis).length;
-
-    const byTipe = (tipe) =>
-      rows.filter((r) => (r?.tipeFasyankes || "") === tipe).length;
-
     const terakreditasi = rows.filter((r) => r?.terakreditasi === true).length;
 
-    return {
-      total,
-      terakreditasi,
-      klinikUmum: byTipe("Klinik Umum"),
-      klinikGigi: byTipe("Klinik Gigi"),
-      apotek: byTipe("Apotek"),
-    };
+    // hitung per tipe_fasyankes (scalable)
+    const byTipe = new Map();
+    for (const r of rows) {
+      const tipe = (r?.tipeFasyankes || "Lainnya").trim() || "Lainnya";
+      byTipe.set(tipe, (byTipe.get(tipe) || 0) + 1);
+    }
+
+    const tipeSorted = Array.from(byTipe.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([title, value]) => ({ key: `tipe:${title}`, title, value }));
+
+    // dashboard = 2 card utama + semua tipe
+    return [
+      { key: "total", title: "Total Fasyankes", value: total },
+      { key: "akreditasi", title: "Terakreditasi", value: terakreditasi },
+      ...tipeSorted,
+    ];
   }, [rows]);
 
   /* ---------- DATA REGULASI (DUMMY LINK) ---------- */
@@ -138,22 +142,26 @@ export default function Home() {
 
       {/* DASHBOARD */}
       <section>
-        <h2 className="mb-3 text-lg font-extrabold">Ringkasan Jejaring</h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          <StatCard title="Total Fasyankes" value={loading ? "…" : stats.total} />
-          <StatCard
-            title="Terakreditasi"
-            value={loading ? "…" : stats.terakreditasi}
-          />
-          <StatCard
-            title="Klinik Umum"
-            value={loading ? "…" : stats.klinikUmum}
-          />
-          <StatCard
-            title="Klinik Gigi"
-            value={loading ? "…" : stats.klinikGigi}
-          />
-          <StatCard title="Apotek" value={loading ? "…" : stats.apotek} />
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-extrabold">Ringkasan Jejaring</h2>
+          <CarouselControls containerRef={dashboardRef} />
+        </div>
+
+        <div
+          ref={dashboardRef}
+          className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-2 [&::-webkit-scrollbar]:hidden"
+        >
+          {(loading ? Array.from({ length: 8 }) : dashboardItems).map((it, idx) => (
+            <div
+              key={loading ? idx : it.key}
+              className="snap-start w-[70%] sm:w-65"
+            >
+              <StatCard
+                title={loading ? "Memuat…" : it.title}
+                value={loading ? "…" : it.value}
+              />
+            </div>
+          ))}
         </div>
       </section>
 
