@@ -1,12 +1,10 @@
-import { useEffect, useMemo,useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Modal from "./Modal";
 import JejaringFormFields from "./JejaringFormFields";
 import ConfirmDialog from "./ConfirmDialog";
 import { CREATE_DEFAULTS } from "./constants";
 import { getRowKey, normalizeJejaringPayload, validateJejaring } from "./utils";
 import { updateJejaring } from "./api";
-
-const EDIT_DRAFT_KEY = (pk, val) => `jp_admin_edit_jejaring_draft_v1:${pk}:${String(val)}`;
 
 export default function EditJejaringModal({ open, row, onClose, onSaved }) {
   const [saving, setSaving] = useState(false);
@@ -15,43 +13,8 @@ export default function EditJejaringModal({ open, row, onClose, onSaved }) {
 
   // confirm state
   const [confirmOpen, setConfirmOpen] = useState(false);
-// last saved snapshot to avoid saving on every keystroke
-  const lastSavedJsonRef = useRef("");
+
   const key = useMemo(() => (row ? getRowKey(row) : null), [row]);
-  const draftKey = useMemo(() => {
-    if (!key) return null;
-    return EDIT_DRAFT_KEY(key.pk, key.value);
-  }, [key]);
-
-  function flushDraftNow(nextForm) {
-    if (!draftKey) return;
-    if (!nextForm) return;
-    try {
-      const json = JSON.stringify(nextForm);
-      if (json === lastSavedJsonRef.current) return;
-      sessionStorage.setItem(draftKey, json);
-      lastSavedJsonRef.current = json;
-    } catch {
-      // ignore
-    }
-  }
-
-  // Close normal (klik X / klik luar): SIMPAN draft (jangan dihapus)
-  const safeClose = () => {
-    flushDraftNow(form);
-    onClose?.();
-  };
-
-  // Batal explicit: BUANG draft
-  const cancelEdit = () => {
-    try {
-      if (draftKey) sessionStorage.removeItem(draftKey);
-    } catch {
-      // ignore
-    }
-    lastSavedJsonRef.current = "";
-    onClose?.();
-  };
 
   useEffect(() => {
     if (!open || !row) return;
@@ -59,22 +22,7 @@ export default function EditJejaringModal({ open, row, onClose, onSaved }) {
     setErr("");
     setConfirmOpen(false);
 
-    // 1) Coba restore draft dulu (kalau ada)
-    if (draftKey) {
-      const saved = sessionStorage.getItem(draftKey);
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          setForm({ ...CREATE_DEFAULTS, ...(parsed || {}) });
-          lastSavedJsonRef.current = saved;
-          return;
-        } catch {
-          // ignore corrupted draft, fallback ke DB
-        }
-      }
-    }
-
-    // 2) Hydrate dari row + fallback ke default agar semua field ada
+    // Hydrate dari row + fallback default agar semua field ada
     const initial = {
       ...CREATE_DEFAULTS,
 
@@ -104,7 +52,8 @@ export default function EditJejaringModal({ open, row, onClose, onSaved }) {
       // admin/meta
       is_verified: row?.is_verified ?? CREATE_DEFAULTS.is_verified,
       penyelenggara: row?.penyelenggara ?? CREATE_DEFAULTS.penyelenggara,
-      kelompok_penyelenggara: row?.kelompok_penyelenggara ?? CREATE_DEFAULTS.kelompok_penyelenggara,
+      kelompok_penyelenggara:
+        row?.kelompok_penyelenggara ?? CREATE_DEFAULTS.kelompok_penyelenggara,
 
       // izin + pj
       pj_nama: row?.pj_nama ?? CREATE_DEFAULTS.pj_nama,
@@ -118,20 +67,25 @@ export default function EditJejaringModal({ open, row, onClose, onSaved }) {
       mou_mulai: row?.mou_mulai ?? CREATE_DEFAULTS.mou_mulai,
       mou_akhir: row?.mou_akhir ?? CREATE_DEFAULTS.mou_akhir,
 
+      // akreditasi
+      terakreditasi: row?.terakreditasi ?? CREATE_DEFAULTS.terakreditasi,
+      nomor_akreditasi: row?.nomor_akreditasi ?? CREATE_DEFAULTS.nomor_akreditasi,
+      hasil_akreditasi: row?.hasil_akreditasi ?? CREATE_DEFAULTS.hasil_akreditasi,
+      
       // lain-lain
       kegiatan: row?.kegiatan ?? CREATE_DEFAULTS.kegiatan,
       foto: row?.foto ?? CREATE_DEFAULTS.foto,
     };
+
     setForm(initial);
-    // reset snapshot based on initial form (so we don't immediately autosave same thing)
-    try {
-      lastSavedJsonRef.current = JSON.stringify(initial);
-    } catch {
-      lastSavedJsonRef.current = "";
-    }
-  }, [open, row, draftKey]);
+  }, [open, row]);
 
   const setField = (k, v) => setForm((p) => ({ ...(p || {}), [k]: v }));
+
+  const cancelEdit = () => {
+    // Tidak ada draft. Batal = tutup saja.
+    onClose?.();
+  };
 
   function requestSave(e) {
     e.preventDefault();
@@ -150,8 +104,6 @@ export default function EditJejaringModal({ open, row, onClose, onSaved }) {
       return;
     }
 
-    // flush draft segera (kalau user langsung klik Simpan sebelum debounce)
-    flushDraftNow(form);
     setConfirmOpen(true);
   }
 
@@ -165,14 +117,8 @@ export default function EditJejaringModal({ open, row, onClose, onSaved }) {
     try {
       await updateJejaring(key.pk, key.value, payload);
       await onSaved?.();
+
       setConfirmOpen(false);
-      // clear draft kalau save sukses
-      try {
-        if (draftKey) sessionStorage.removeItem(draftKey);
-      } catch {
-        // ignore
-      }
-      lastSavedJsonRef.current = "";
       onClose?.();
     } catch (e2) {
       setErr(e2?.message || "Gagal menyimpan perubahan.");
@@ -184,19 +130,15 @@ export default function EditJejaringModal({ open, row, onClose, onSaved }) {
 
   return (
     <>
-      <Modal open={open} title="Edit Jejaring" onClose={saving ? undefined : safeClose}>
+      <Modal
+        open={open}
+        title="Edit Jejaring"
+        onClose={saving ? undefined : onClose}
+      >
         {!form ? (
           <div className="text-sm text-slate-600">Menyiapkan form…</div>
         ) : (
-          <form
-            onSubmit={requestSave}
-            className="space-y-3"
-            onBlurCapture={() => {
-              // Autosave HALUS: hanya saat user keluar dari field (blur),
-              // termasuk saat pindah tab / klik area lain
-              flushDraftNow(form);
-            }}
-          >
+          <form onSubmit={requestSave} className="space-y-3">
             <JejaringFormFields value={form} onChange={setField} />
 
             {err ? (

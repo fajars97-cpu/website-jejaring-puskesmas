@@ -142,7 +142,7 @@ export default function AdminJejaring() {
     try {
       await createJejaring(payload);
       setCreateOk("Data berhasil ditambahkan.");
-      essionStorage.removeItem(CREATE_DRAFT_KEY);
+      sessionStorage.removeItem(CREATE_DRAFT_KEY);
       setCreateForm(CREATE_DEFAULTS);
       setPage(1);
       await fetchPage({ isRefresh: true });
@@ -369,7 +369,7 @@ export default function AdminJejaring() {
         <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
           <div className="text-sm font-semibold text-slate-800">Tambah Fasyankes</div>
           <div className="mt-1 text-xs text-slate-500">
-            Form ini masih versi sederhana. Nanti kita lengkapi sesuai struktur database.
+            * Bertanda bintang wajib diisi.
           </div>
 
           <form onSubmit={onCreate} className="mt-4 space-y-3">

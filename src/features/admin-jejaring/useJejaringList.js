@@ -44,7 +44,18 @@ function writeCache(rangeKey, rows, count) {
       ts: Date.now(),
       pages: {
         ...(current.pages || {}),
-        [rangeKey]: { rows: Array.isArray(rows) ? rows : [], count: Number(count || 0) },
+        [rangeKey]: {
+          rows: Array.isArray(rows)
+            ? rows.map((r) => ({
+                ...r,
+                // kolom baru: aman kalau cache lama belum punya
+                terakreditasi: r?.terakreditasi ?? false,
+                nomor_akreditasi: r?.nomor_akreditasi ?? null,
+                hasil_akreditasi: r?.hasil_akreditasi ?? null,
+              }))
+            : [],
+          count: Number(count || 0),
+        },
       },
     };
     localStorage.setItem(CACHE_KEY, JSON.stringify(next));
@@ -56,7 +67,18 @@ function writeCache(rangeKey, rows, count) {
 function readPageFromCache(rangeKey) {
   const c = readCache();
   if (!c?.pages?.[rangeKey]) return null;
-  return c.pages[rangeKey];
+  const p = c.pages[rangeKey];
+  return {
+    ...p,
+    rows: Array.isArray(p?.rows)
+      ? p.rows.map((r) => ({
+          ...r,
+          terakreditasi: r?.terakreditasi ?? false,
+          nomor_akreditasi: r?.nomor_akreditasi ?? null,
+          hasil_akreditasi: r?.hasil_akreditasi ?? null,
+        }))
+      : [],
+  };
 }
 
 export function useJejaringList() {
