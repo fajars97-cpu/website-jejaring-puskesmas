@@ -1,280 +1,236 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { fetchJejaringList } from "../lib/jejaringRepo";
 
-function cn(...classes) {
-  return classes.filter(Boolean).join(" ");
+function cn(...c) {
+  return c.filter(Boolean).join(" ");
 }
 
-function StatCard({ title, value, sub, tone = "emerald" }) {
-  const tones = {
-    emerald: "border-emerald-200/60 bg-white",
-    blue: "border-blue-200/60 bg-white",
-    amber: "border-amber-200/60 bg-white",
-    violet: "border-violet-200/60 bg-white",
-    slate: "border-black/10 bg-white",
-  };
+/* ---------- DASHBOARD CARD ---------- */
+function StatCard({ title, value }) {
   return (
-    <div className={cn("rounded-2xl border p-4 shadow-sm", tones[tone] || tones.slate)}>
-      <div className="text-sm font-semibold text-black/70">{title}</div>
-      <div className="mt-2 text-2xl font-extrabold tracking-tight text-black/90">{value}</div>
-      {sub ? <div className="mt-1 text-xs text-black/55">{sub}</div> : null}
+    <div className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm">
+      <div className="text-sm font-semibold text-black/60">{title}</div>
+      <div className="mt-2 text-3xl font-extrabold text-emerald-900">{value}</div>
     </div>
   );
 }
 
+/* ---------- BADGE ---------- */
 function Badge({ children }) {
   return (
-    <span className="inline-flex items-center rounded-full border border-black/10 bg-white/70 px-2.5 py-1 text-xs font-semibold text-black/70">
+    <span className="rounded-full border border-black/10 bg-white/70 px-2.5 py-1 text-xs font-semibold text-black/70">
       {children}
     </span>
   );
 }
 
-function Photo({ src, alt }) {
-  if (!src) {
-    return (
-      <div className="flex h-full w-full items-center justify-center bg-black/5 text-xs font-semibold text-black/40">
-        Tanpa Foto
-      </div>
-    );
-  }
-  return <img src={src} alt={alt} className="h-full w-full object-cover" loading="lazy" />;
+/* ---------- CAROUSEL CONTROLS ---------- */
+function CarouselControls({ containerRef }) {
+  const scroll = (dir) => {
+    if (!containerRef.current) return;
+    const w = containerRef.current.clientWidth;
+    containerRef.current.scrollBy({
+      left: dir === "left" ? -w : w,
+      behavior: "smooth",
+    });
+  };
+
+  return (
+    <div className="hidden md:flex gap-2">
+      <button
+        onClick={() => scroll("left")}
+        className="rounded-xl border border-black/10 bg-white px-3 py-2 hover:bg-black/5"
+      >
+        ◀
+      </button>
+      <button
+        onClick={() => scroll("right")}
+        className="rounded-xl border border-black/10 bg-white px-3 py-2 hover:bg-black/5"
+      >
+        ▶
+      </button>
+    </div>
+  );
 }
 
 export default function Home() {
-  const [loading, setLoading] = useState(true);
-  const [errMsg, setErrMsg] = useState("");
   const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const jejaringRef = useRef(null);
+  const regulasiRef = useRef(null);
 
   useEffect(() => {
-    let mounted = true;
-
-    async function run() {
-      setLoading(true);
-      setErrMsg("");
-
-      try {
-        // Ikuti sumber data yang SUDAH stabil dipakai Jejaring.jsx
-        const data = await fetchJejaringList();
-        if (!mounted) return;
-        setRows(Array.isArray(data) ? data : []);
-      } catch (e) {
-        if (!mounted) return;
-        setErrMsg(e?.message || "Gagal memuat data dari database.");
-        setRows([]);
-      } finally {
-        if (!mounted) return;
-        setLoading(false);
-      }
-    }
-
-    run();
-    return () => {
-      mounted = false;
-    };
+    fetchJejaringList()
+      .then((d) => setRows(Array.isArray(d) ? d : []))
+      .finally(() => setLoading(false));
   }, []);
 
+  /* ---------- DASHBOARD HITUNGAN ---------- */
   const stats = useMemo(() => {
     const total = rows.length;
 
-    const byJenis = rows.reduce((acc, r) => {
-      const jenis = r?.jenisFasyankes || "Lainnya";
-      acc[jenis] = (acc[jenis] || 0) + 1;
-      return acc;
-    }, {});
+    const byJenis = (jenis) =>
+      rows.filter((r) => r?.jenisFasyankes === jenis).length;
 
-    const kelSet = new Set(
-      rows
-        .map((r) => r?.kelurahan || "")
-        .filter(Boolean)
-        .map((x) => String(x).toLowerCase())
-    );
-
-    const topJenis = Object.entries(byJenis)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3);
+    const terakreditasi = rows.filter(
+      (r) =>
+        r?.statusAkreditasi === "Terakreditasi" ||
+        r?.akreditasi === true
+    ).length;
 
     return {
       total,
-      kelurahanCount: kelSet.size,
-      byJenis,
-      topJenis,
+      terakreditasi,
+      klinikUmum: byJenis("Klinik Umum"),
+      klinikGigi: byJenis("Klinik Gigi"),
+      apotek: byJenis("Apotek"),
     };
   }, [rows]);
 
-  const featured = useMemo(() => rows.slice(0, 12), [rows]);
+  /* ---------- DATA REGULASI (DUMMY LINK) ---------- */
+  const regulasi = [
+    {
+      title: "Permenkes Puskesmas",
+      desc: "Ketentuan penyelenggaraan Puskesmas",
+      url: "https://drive.google.com/",
+    },
+    {
+      title: "Akreditasi Fasyankes",
+      desc: "Standar & masa berlaku akreditasi",
+      url: "https://drive.google.com/",
+    },
+    {
+      title: "Jejaring & Rujukan",
+      desc: "Pengaturan jejaring pelayanan",
+      url: "https://drive.google.com/",
+    },
+    {
+      title: "SISDMK",
+      desc: "Sistem Informasi SDM Kesehatan",
+      url: "https://drive.google.com/",
+    },
+  ];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       {/* HERO */}
-      <section className="rounded-3xl border border-black/10 bg-white p-6 shadow-sm md:p-8">
-        <h1 className="text-2xl font-extrabold tracking-tight text-emerald-900 md:text-3xl">
+      <section className="rounded-3xl border border-black/10 bg-white p-6 shadow-sm">
+        <h1 className="text-2xl font-extrabold text-emerald-900">
           Website Jejaring & Perizinan Puskesmas
         </h1>
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-black/60 md:text-base">
-          Fondasi sistem informasi jejaring dan perizinan fasilitas kesehatan untuk mendukung pelayanan
-          dan pengawasan yang terintegrasi di Kecamatan Jagakarsa.
+        <p className="mt-3 max-w-2xl text-sm text-black/60">
+          Sistem informasi jejaring dan perizinan fasilitas kesehatan
+          Kecamatan Jagakarsa.
         </p>
-
-        <div className="mt-5 flex flex-wrap gap-2">
-          <NavLink
-            to="/jejaring"
-            className="rounded-xl bg-emerald-900 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-800"
-          >
-            Lihat Jejaring
-          </NavLink>
-          <NavLink
-            to="/perizinan"
-            className="rounded-xl bg-white px-4 py-2 text-sm font-bold text-emerald-900 ring-1 ring-black/10 hover:bg-black/5"
-          >
-            Info Perizinan
-          </NavLink>
-        </div>
-
-        {errMsg ? (
-          <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            Ada kendala memuat data dashboard: <span className="font-semibold">{errMsg}</span>
-          </div>
-        ) : null}
       </section>
 
       {/* DASHBOARD */}
-      <section className="space-y-3">
-        <div className="flex items-end justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-extrabold text-black/90">Ringkasan Jejaring Jagakarsa</h2>
-            <p className="text-sm text-black/55">Snapshot cepat untuk monitoring.</p>
-          </div>
-          <div className="text-xs text-black/45">{loading ? "Memuat…" : "Terbaru"}</div>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard title="Total Fasyankes" value={loading ? "…" : stats.total} sub="Terdaftar di sistem" tone="emerald" />
-          <StatCard title="Jumlah Kelurahan" value={loading ? "…" : stats.kelurahanCount} sub="Ada fasyankes jejaring" tone="blue" />
+      <section>
+        <h2 className="mb-3 text-lg font-extrabold">Ringkasan Jejaring</h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <StatCard title="Total Fasyankes" value={loading ? "…" : stats.total} />
           <StatCard
-            title="Top Jenis #1"
-            value={loading ? "…" : (stats.topJenis[0]?.[0] || "—")}
-            sub={loading ? "" : (stats.topJenis[0] ? `${stats.topJenis[0][1]} fasyankes` : "Tidak ada data")}
-            tone="amber"
+            title="Terakreditasi"
+            value={loading ? "…" : stats.terakreditasi}
           />
           <StatCard
-            title="Top Jenis #2"
-            value={loading ? "…" : (stats.topJenis[1]?.[0] || "—")}
-            sub={loading ? "" : (stats.topJenis[1] ? `${stats.topJenis[1][1]} fasyankes` : "—")}
-            tone="violet"
+            title="Klinik Umum"
+            value={loading ? "…" : stats.klinikUmum}
           />
-        </div>
-
-        <div className="rounded-3xl border border-black/10 bg-white p-5 shadow-sm">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div className="text-sm font-bold text-black/80">Breakdown Jenis Fasyankes</div>
-            <NavLink to="/jejaring" className="text-sm font-semibold text-emerald-900 hover:underline">
-              Buka halaman Jejaring →
-            </NavLink>
-          </div>
-
-          {loading ? (
-            <div className="text-sm text-black/50">Memuat ringkasan…</div>
-          ) : rows.length === 0 ? (
-            <div className="text-sm text-black/50">Belum ada data fasyankes.</div>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {Object.entries(stats.byJenis)
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 12)
-                .map(([jenis, n]) => (
-                  <Badge key={jenis}>
-                    {jenis} • {n}
-                  </Badge>
-                ))}
-            </div>
-          )}
+          <StatCard
+            title="Klinik Gigi"
+            value={loading ? "…" : stats.klinikGigi}
+          />
+          <StatCard title="Apotek" value={loading ? "…" : stats.apotek} />
         </div>
       </section>
 
-      {/* FEATURED CAROUSEL */}
-      <section className="space-y-3">
-        <div className="flex items-end justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-extrabold text-black/90">Sorotan Jejaring</h2>
-            <p className="text-sm text-black/55">Geser untuk lihat beberapa fasyankes terbaru.</p>
-          </div>
-          <NavLink to="/jejaring" className="text-sm font-semibold text-emerald-900 hover:underline">
-            Lihat semua →
-          </NavLink>
+      {/* JEJARING CAROUSEL */}
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-extrabold">Sorotan Jejaring</h2>
+          <CarouselControls containerRef={jejaringRef} />
         </div>
 
-        <div className="relative">
-          <div
-            className={cn(
-              "flex gap-4 overflow-x-auto pb-2",
-              "snap-x snap-mandatory",
-              "[-ms-overflow-style:none] [scrollbar-width:none]",
-              "[&::-webkit-scrollbar]:hidden"
-            )}
-          >
-            {loading ? (
-              Array.from({ length: 6 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="snap-start shrink-0 w-[78%] sm:w-90 rounded-3xl border border-black/10 bg-white shadow-sm overflow-hidden"
-                >
-                  <div className="h-40 bg-black/5 animate-pulse" />
-                  <div className="p-4 space-y-2">
-                    <div className="h-4 w-2/3 bg-black/10 rounded animate-pulse" />
-                    <div className="h-3 w-1/2 bg-black/10 rounded animate-pulse" />
-                    <div className="h-3 w-1/3 bg-black/10 rounded animate-pulse" />
-                  </div>
+        <div
+          ref={jejaringRef}
+          className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-2 [&::-webkit-scrollbar]:hidden"
+        >
+          {rows.slice(0, 10).map((r) => (
+            <NavLink
+              key={r.id}
+              to="/jejaring"
+              className="snap-start w-[80%] sm:w-90 rounded-3xl border border-black/10 bg-white shadow-sm"
+            >
+              <div className="relative h-40 overflow-hidden rounded-t-3xl bg-black/5">
+  {r.foto ? (
+    <img
+      src={r.foto}
+      alt={r.namaFasyankes}
+      className="h-full w-full object-cover"
+      loading="lazy"
+    />
+  ) : (
+    <div className="flex h-full w-full items-center justify-center text-xs text-black/40">
+      Tanpa Foto
+    </div>
+  )}
+
+  {/* BADGE TERAKREDITASI (future-proof) */}
+  {(r.statusAkreditasi === "Terakreditasi" ||
+    r.akreditasi === true ||
+    r.isTerakreditasi === true) && (
+    <div className="absolute top-2 right-2 rounded-full bg-emerald-600 px-3 py-1 text-xs font-extrabold text-white shadow">
+      ✓ TERAKREDITASI
+    </div>
+  )}
+</div>
+
+              <div className="p-4 space-y-2">
+                <div className="flex gap-2">
+                  <Badge>{r.jenisFasyankes}</Badge>
+                  {r.kelurahan && <Badge>Kel. {r.kelurahan}</Badge>}
                 </div>
-              ))
-            ) : featured.length === 0 ? (
-              <div className="rounded-3xl border border-black/10 bg-white p-5 text-sm text-black/60 shadow-sm">
-                Belum ada fasyankes untuk ditampilkan.
+                <div className="font-extrabold text-black/90">
+                  {r.namaFasyankes}
+                </div>
+                <div className="text-sm text-black/60 line-clamp-2">
+                  {r.alamat || "Alamat belum diisi"}
+                </div>
               </div>
-            ) : (
-              featured.map((r) => {
-                const id = r.id;
-                const nama = r?.namaFasyankes || "Nama belum diisi";
-                const jenis = r?.jenisFasyankes || "—";
-                const kel = r?.kelurahan ? `Kel. ${r.kelurahan}` : "—";
-                const alamat = r?.alamat || "";
-                const foto = r?.foto || "";
+            </NavLink>
+          ))}
+        </div>
+      </section>
 
-                return (
-                  <NavLink
-                    key={id}
-                    to="/jejaring"
-                    className="snap-start shrink-0 w-[78%] sm:w-90 rounded-3xl border border-black/10 bg-white shadow-sm overflow-hidden hover:shadow-md transition"
-                    title={nama}
-                  >
-                    <div className="h-44 bg-black/5">
-                      <Photo src={foto} alt={nama} />
-                    </div>
+      {/* REGULASI CAROUSEL */}
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-extrabold">Regulasi & Peraturan</h2>
+          <CarouselControls containerRef={regulasiRef} />
+        </div>
 
-                    <div className="p-4">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge>{jenis}</Badge>
-                        <Badge>{kel}</Badge>
-                      </div>
-
-                      <div className="mt-2 text-base font-extrabold text-black/90 line-clamp-2">{nama}</div>
-
-                      {alamat ? (
-                        <div className="mt-1 text-sm text-black/60 line-clamp-2">{alamat}</div>
-                      ) : (
-                        <div className="mt-1 text-sm text-black/40">Alamat belum diisi</div>
-                      )}
-
-                      <div className="mt-3 inline-flex items-center text-sm font-semibold text-emerald-900">
-                        Lihat di peta & detail →
-                      </div>
-                    </div>
-                  </NavLink>
-                );
-              })
-            )}
-          </div>
+        <div
+          ref={regulasiRef}
+          className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-2 [&::-webkit-scrollbar]:hidden"
+        >
+          {regulasi.map((r) => (
+            <a
+              key={r.title}
+              href={r.url}
+              target="_blank"
+              rel="noreferrer"
+              className="snap-start w-[80%] sm:w-90 rounded-3xl border border-black/10 bg-white p-4 shadow-sm hover:shadow-md"
+            >
+              <div className="text-sm font-extrabold">{r.title}</div>
+              <div className="mt-1 text-sm text-black/60">{r.desc}</div>
+              <div className="mt-3 text-sm font-semibold text-emerald-900">
+                Buka Dokumen →
+              </div>
+            </a>
+          ))}
         </div>
       </section>
     </div>
