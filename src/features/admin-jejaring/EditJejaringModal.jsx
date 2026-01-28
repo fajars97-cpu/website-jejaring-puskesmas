@@ -6,6 +6,8 @@ import { CREATE_DEFAULTS } from "./constants";
 import { getRowKey, normalizeJejaringPayload, validateJejaring } from "./utils";
 import { updateJejaring } from "./api";
 
+const EDIT_DRAFT_KEY = (pk, val) => `jp_admin_edit_jejaring_draft_v1:${pk}:${String(val)}`;
+
 export default function EditJejaringModal({ open, row, onClose, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
@@ -15,6 +17,19 @@ export default function EditJejaringModal({ open, row, onClose, onSaved }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const key = useMemo(() => (row ? getRowKey(row) : null), [row]);
+  const draftKey = useMemo(() => {
+    if (!key) return null;
+    return EDIT_DRAFT_KEY(key.pk, key.value);
+  }, [key]);
+
+  const safeClose = () => {
+    try {
+      if (draftKey) sessionStorage.removeItem(draftKey);
+    } catch {
+      // ignore
+    }
+    onClose?.();
+  };
 
   useEffect(() => {
     if (!open || !row) return;
@@ -22,8 +37,21 @@ export default function EditJejaringModal({ open, row, onClose, onSaved }) {
     setErr("");
     setConfirmOpen(false);
 
-    // Hydrate form dari row + fallback ke default agar semua field ada
-    // (supaya JejaringFormFields full tidak jadi uncontrolled/undefined)
+    // 1) Coba restore draft dulu (kalau ada)
+    if (draftKey) {
+      const saved = sessionStorage.getItem(draftKey);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          setForm({ ...CREATE_DEFAULTS, ...(parsed || {}) });
+          return;
+        } catch {
+          // ignore corrupted draft, fallback ke DB
+        }
+      }
+    }
+
+    // 2) Hydrate dari row + fallback ke default agar semua field ada
     setForm({
       ...CREATE_DEFAULTS,
 
@@ -75,6 +103,17 @@ export default function EditJejaringModal({ open, row, onClose, onSaved }) {
 
   const setField = (k, v) => setForm((p) => ({ ...(p || {}), [k]: v }));
 
+  // autosave draft saat user mengetik (hanya saat modal open)
+  useEffect(() => {
+    if (!open) return;
+    if (!draftKey) return;
+    if (!form) return;
+    try {
+      sessionStorage.setItem(draftKey, JSON.stringify(form));
+    } catch {
+      // ignore
+    }
+  }, [open, draftKey, form]);
   function requestSave(e) {
     e.preventDefault();
     setErr("");
@@ -106,6 +145,12 @@ export default function EditJejaringModal({ open, row, onClose, onSaved }) {
       await updateJejaring(key.pk, key.value, payload);
       await onSaved?.();
       setConfirmOpen(false);
+      // clear draft kalau save sukses
+      try {
+        if (draftKey) sessionStorage.removeItem(draftKey);
+      } catch {
+        // ignore
+      }
       onClose?.();
     } catch (e2) {
       setErr(e2?.message || "Gagal menyimpan perubahan.");
@@ -117,7 +162,7 @@ export default function EditJejaringModal({ open, row, onClose, onSaved }) {
 
   return (
     <>
-      <Modal open={open} title="Edit Jejaring" onClose={saving ? undefined : onClose}>
+      <Modal open={open} title="Edit Jejaring" onClose={saving ? undefined : safeClose}>
         {!form ? (
           <div className="text-sm text-slate-600">Menyiapkan form…</div>
         ) : (

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { CREATE_DEFAULTS } from "../features/admin-jejaring/constants";
 import { createJejaring, deleteJejaring } from "../features/admin-jejaring/api";
 import { exportRowsToExcel } from "../features/admin-jejaring/exportExcel";
@@ -32,6 +32,8 @@ function slug(s) {
     .replace(/[^a-z0-9-_]/g, "");
 }
 
+const CREATE_DRAFT_KEY = "jp_admin_create_jejaring_draft_v1";
+
 export default function AdminJejaring() {
   const { user, isAdmin, signOut } = useAuth();
   const { rows, count, page, setPage, pageCount, loading, refreshing, error, fetchPage } =
@@ -57,6 +59,30 @@ export default function AdminJejaring() {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
   const [createOk, setCreateOk] = useState("");
+
+  // ===== Draft autosave (CREATE) =====
+  useEffect(() => {
+    // restore draft sekali saat mount
+    const saved = sessionStorage.getItem(CREATE_DRAFT_KEY);
+    if (!saved) return;
+    try {
+      const parsed = JSON.parse(saved);
+      // merge ke defaults biar field baru tetap ada
+      setCreateForm({ ...CREATE_DEFAULTS, ...(parsed || {}) });
+    } catch {
+      // ignore corrupted draft
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    // autosave tiap perubahan form (ringan)
+    try {
+      sessionStorage.setItem(CREATE_DRAFT_KEY, JSON.stringify(createForm));
+    } catch {
+      // ignore quota/blocked
+    }
+  }, [createForm]);
 
   // EDIT
   const [editOpen, setEditOpen] = useState(false);
@@ -112,6 +138,7 @@ export default function AdminJejaring() {
     try {
       await createJejaring(payload);
       setCreateOk("Data berhasil ditambahkan.");
+      essionStorage.removeItem(CREATE_DRAFT_KEY);
       setCreateForm(CREATE_DEFAULTS);
       setPage(1);
       await fetchPage({ isRefresh: true });
@@ -299,6 +326,7 @@ export default function AdminJejaring() {
             <button
               type="button"
               onClick={() => {
+                sessionStorage.removeItem(CREATE_DRAFT_KEY);
                 setCreateOk("");
                 setCreateError("");
                 setShowCreate((v) => !v);

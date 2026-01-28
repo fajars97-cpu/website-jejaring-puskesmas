@@ -169,6 +169,11 @@ export function AuthProvider({ children }) {
     else clearAdminCache(nextId);
   }
 
+  function applySessionSoft(newSession) {
+    setSession(newSession);
+    setUser(newSession?.user ?? null);
+  }
+
   useEffect(() => {
     let mounted = true;
 
@@ -214,45 +219,64 @@ export function AuthProvider({ children }) {
     init();
 
     const { data: listener } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+  if (!mounted) return;
+
+  if (event === "SIGNED_OUT") {
+    const uid = user?.id;
+    if (uid) clearAdminCache(uid);
+
+    lastUserIdRef.current = null;
+    setSession(null);
+    setUser(null);
+    setIsAdmin(false);
+    setAdminReady(true);
+    setAdminError("");
+    setLoading(false);
+    setRestoring(false);
+    setBgSyncing(false);
+    return;
+  }
+
+  const nextId = newSession?.user?.id ?? null;
+  const prevId = lastUserIdRef.current;
+
+  // ✅ Background event + userId sama:
+  // hanya update session/user secara soft (NO reset adminReady -> NO unmount -> form aman)
+  const isBackground = event !== "SIGNED_IN";
+  const sameUser = !!nextId && !!prevId && nextId === prevId;
+
+  if (isBackground && sameUser) {
+    setBgSyncing(true);
+    try {
+      applySessionSoft(newSession);
+    } finally {
       if (!mounted) return;
+      setBgSyncing(false);
+      setRestoring(false);
+    }
+    return;
+  }
 
-      if (event === "SIGNED_OUT") {
-        const uid = user?.id;
-        if (uid) clearAdminCache(uid);
+  // Selain itu (login baru / user berubah) -> boleh verifikasi admin
+  const isForegroundBlocking = event === "SIGNED_IN";
 
-        lastUserIdRef.current = null;
-        setSession(null);
-        setUser(null);
-        setIsAdmin(false);
-        setAdminReady(true);
-        setAdminError("");
-        setLoading(false);
-        setRestoring(false);
-        return;
-      }
+  if (isForegroundBlocking) setLoading(true);
+  else setBgSyncing(true);
 
-      // 🔥 INI KUNCI UX:
-      // TOKEN_REFRESHED / USER_UPDATED dll itu event background.
-      // Jangan bikin loading=true (karena RequireAdmin akan ngunci UI).
-      const isForegroundBlocking = event === "SIGNED_IN";
-
-      if (isForegroundBlocking) setLoading(true);
-      else setBgSyncing(true);
-
-      try {
-        await applySession(newSession, { forceAdminCheck: event === "SIGNED_IN" });
-      } catch (e) {
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
-        setAdminReady(true);
-        setAdminError(e?.message || "applySession error");
-      } finally {
-        if (!mounted) return;
-        if (isForegroundBlocking) setLoading(false);
-        else setBgSyncing(false);
-        setRestoring(false);
-      }
-    });
+  try {
+    await applySession(newSession, { forceAdminCheck: event === "SIGNED_IN" });
+  } catch (e) {
+    // kalau gagal, tetap jangan banting UI
+    applySessionSoft(newSession);
+    setAdminReady(true);
+    setAdminError(e?.message || "applySession error");
+  } finally {
+    if (!mounted) return;
+    if (isForegroundBlocking) setLoading(false);
+    else setBgSyncing(false);
+    setRestoring(false);
+  }
+});
 
     return () => {
       mounted = false;
