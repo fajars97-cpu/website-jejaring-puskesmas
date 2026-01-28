@@ -8,7 +8,7 @@ import { useAuth } from "../context/AuthContext";
 const SOCIAL_LINKS = [
   { label: "Instagram", text: "Puskesmas Jagakarsa", href: "https://instagram.com/pkmjagakarsa" },
   { label: "Facebook", text: "Puskesmas Jagakarsa", href: "https://facebook.com/pkmjagakarsa" },
-  { label: "YouTube", text: "Puskesmas Jagakarsa", href: "https://youtube.com/puskesmasjagakarsa" },
+  { label: "YouTube", text: "Puskesmas Jagakarsa", href: "https://www.youtube.com/channel/UC6inZ3DXzmX_ha-Sc8j3qgA/featured" },
   { label: "TikTok", text: "Puskesmas Jagakarsa", href: "https://www.tiktok.com/@pkmjagakarsa?_t=8Wn1WIynL4z&_r=1" },
 ];
 
