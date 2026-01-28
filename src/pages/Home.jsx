@@ -1,15 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { NavLink } from "react-router-dom";
-import { supabase } from "../lib/supabaseClient";
-
-// Util kecil biar aman kalau nama kolom beda-beda
-function pick(obj, keys, fallback = "") {
-  for (const k of keys) {
-    const v = obj?.[k];
-    if (v !== undefined && v !== null && String(v).trim() !== "") return v;
-  }
-  return fallback;
-}
+import { fetchJejaringList } from "../lib/jejaringRepo";
 
 function cn(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -56,21 +47,48 @@ export default function Home() {
   const [errMsg, setErrMsg] = useState("");
   const [rows, setRows] = useState([]);
 
-  // Dashboard angka
+  useEffect(() => {
+    let mounted = true;
+
+    async function run() {
+      setLoading(true);
+      setErrMsg("");
+
+      try {
+        // Ikuti sumber data yang SUDAH stabil dipakai Jejaring.jsx
+        const data = await fetchJejaringList();
+        if (!mounted) return;
+        setRows(Array.isArray(data) ? data : []);
+      } catch (e) {
+        if (!mounted) return;
+        setErrMsg(e?.message || "Gagal memuat data dari database.");
+        setRows([]);
+      } finally {
+        if (!mounted) return;
+        setLoading(false);
+      }
+    }
+
+    run();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const stats = useMemo(() => {
     const total = rows.length;
 
     const byJenis = rows.reduce((acc, r) => {
-      const jenis = pick(r, ["jenis", "jenis_fasyankes", "tipe", "kategori"], "Lainnya");
+      const jenis = r?.jenisFasyankes || "Lainnya";
       acc[jenis] = (acc[jenis] || 0) + 1;
       return acc;
     }, {});
 
     const kelSet = new Set(
       rows
-        .map((r) => pick(r, ["kelurahan", "nama_kelurahan"], ""))
-        .filter((x) => x)
-        .map((x) => x.toLowerCase())
+        .map((r) => r?.kelurahan || "")
+        .filter(Boolean)
+        .map((x) => String(x).toLowerCase())
     );
 
     const topJenis = Object.entries(byJenis)
@@ -85,48 +103,6 @@ export default function Home() {
     };
   }, [rows]);
 
-  useEffect(() => {
-    let mounted = true;
-
-    async function run() {
-      setLoading(true);
-      setErrMsg("");
-
-      try {
-        // Ambil data fasyankes untuk:
-        // 1) dashboard (count)
-        // 2) carousel (tampilkan sebagian)
-        //
-        // Minimal kolom: id, nama, jenis, kelurahan, foto, alamat
-        const { data, error } = await supabase
-          .from("jejaring_fasyankes")
-          .select(
-            "id, nama, nama_fasyankes, jenis, jenis_fasyankes, kelurahan, nama_kelurahan, alamat, alamat_lengkap, photo_url, foto_url, foto, image_url, created_at, updated_at"
-          )
-          .order("updated_at", { ascending: false })
-          .limit(200); // cukup untuk dashboard ringkas
-
-        if (error) throw error;
-
-        if (!mounted) return;
-        setRows(Array.isArray(data) ? data : []);
-      } catch (e) {
-        if (!mounted) return;
-        setErrMsg(e?.message || "Gagal memuat data.");
-        setRows([]);
-      } finally {
-        if (!mounted) return;
-        setLoading(false);
-      }
-    }
-
-    run();
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  // Untuk carousel: ambil 12 item terbaru
   const featured = useMemo(() => rows.slice(0, 12), [rows]);
 
   return (
@@ -174,18 +150,8 @@ export default function Home() {
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            title="Total Fasyankes"
-            value={loading ? "…" : stats.total}
-            sub="Terdaftar di sistem"
-            tone="emerald"
-          />
-          <StatCard
-            title="Jumlah Kelurahan"
-            value={loading ? "…" : stats.kelurahanCount}
-            sub="Ada fasyankes jejaring"
-            tone="blue"
-          />
+          <StatCard title="Total Fasyankes" value={loading ? "…" : stats.total} sub="Terdaftar di sistem" tone="emerald" />
+          <StatCard title="Jumlah Kelurahan" value={loading ? "…" : stats.kelurahanCount} sub="Ada fasyankes jejaring" tone="blue" />
           <StatCard
             title="Top Jenis #1"
             value={loading ? "…" : (stats.topJenis[0]?.[0] || "—")}
@@ -200,7 +166,6 @@ export default function Home() {
           />
         </div>
 
-        {/* Breakdown kecil */}
         <div className="rounded-3xl border border-black/10 bg-white p-5 shadow-sm">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div className="text-sm font-bold text-black/80">Breakdown Jenis Fasyankes</div>
@@ -270,11 +235,11 @@ export default function Home() {
             ) : (
               featured.map((r) => {
                 const id = r.id;
-                const nama = pick(r, ["nama", "nama_fasyankes"], "Nama belum diisi");
-                const jenis = pick(r, ["jenis", "jenis_fasyankes", "tipe", "kategori"], "—");
-                const kel = pick(r, ["kelurahan", "nama_kelurahan"], "—");
-                const alamat = pick(r, ["alamat", "alamat_lengkap"], "");
-                const foto = pick(r, ["photo_url", "foto_url", "foto", "image_url"], "");
+                const nama = r?.namaFasyankes || "Nama belum diisi";
+                const jenis = r?.jenisFasyankes || "—";
+                const kel = r?.kelurahan ? `Kel. ${r.kelurahan}` : "—";
+                const alamat = r?.alamat || "";
+                const foto = r?.foto || "";
 
                 return (
                   <NavLink
@@ -293,9 +258,7 @@ export default function Home() {
                         <Badge>{kel}</Badge>
                       </div>
 
-                      <div className="mt-2 text-base font-extrabold text-black/90 line-clamp-2">
-                        {nama}
-                      </div>
+                      <div className="mt-2 text-base font-extrabold text-black/90 line-clamp-2">{nama}</div>
 
                       {alamat ? (
                         <div className="mt-1 text-sm text-black/60 line-clamp-2">{alamat}</div>
@@ -311,59 +274,6 @@ export default function Home() {
                 );
               })
             )}
-          </div>
-        </div>
-      </section>
-
-      {/* REGULASI (dummy dulu) */}
-      <section className="rounded-3xl border border-black/10 bg-white p-6 shadow-sm">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-extrabold text-black/90">Regulasi & Panduan</h2>
-            <p className="text-sm text-black/55">
-              Placeholder dulu—nanti kita isi link resmi (Permenkes/KMK/SE) yang paling relevan.
-            </p>
-          </div>
-          <Badge>Dummy</Badge>
-        </div>
-
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
-          {[
-            { title: "Permenkes terkait Puskesmas", desc: "Ringkasan aturan penyelenggaraan layanan puskesmas." },
-            { title: "Akreditasi Fasyankes", desc: "Pedoman akreditasi & masa berlaku." },
-            { title: "SIO / Izin Operasional", desc: "Ketentuan umum izin operasional fasilitas." },
-            { title: "SISDMK", desc: "Panduan akses & administrasi SDM kesehatan." },
-          ].map((x) => (
-            <div key={x.title} className="rounded-2xl border border-black/10 bg-black/2 p-4">
-              <div className="text-sm font-bold text-black/80">{x.title}</div>
-              <div className="mt-1 text-sm text-black/55">{x.desc}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="rounded-3xl border border-emerald-200/60 bg-emerald-50 p-6">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <div className="text-lg font-extrabold text-emerald-900">Mulai dari mana?</div>
-            <div className="text-sm text-emerald-900/70">
-              Lihat sebaran jejaring atau baca info perizinan fasyankes.
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <NavLink
-              to="/jejaring"
-              className="rounded-xl bg-emerald-900 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-800"
-            >
-              Jejaring
-            </NavLink>
-            <NavLink
-              to="/perizinan"
-              className="rounded-xl bg-white px-4 py-2 text-sm font-bold text-emerald-900 ring-1 ring-black/10 hover:bg-black/5"
-            >
-              Perizinan
-            </NavLink>
           </div>
         </div>
       </section>
