@@ -47,6 +47,7 @@ export default function AppRoutes() {
 
         {/* Login (ikut Layout) */}
         <Route path="/login" element={<Login />} />
+        <Route path="/login-admin" element={<Login mode="admin" />} />
 
         {/* Pemohon */}
         <Route

@@ -1,9 +1,9 @@
 // src/pages/Login.jsx
 import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-export default function Login() {
+export default function Login({ mode = "any" }) {
   const nav = useNavigate();
   const location = useLocation();
 
@@ -16,18 +16,30 @@ export default function Login() {
 
   const redirectTo = useMemo(() => {
     const from = location?.state?.from?.pathname;
-    // kalau user datang dari page yang di-guard, balik ke sana
     if (from) return from;
-    // default: admin -> /admin, pemohon -> /pemohon/mou
+    // default route
     return isAdmin ? "/admin" : "/pemohon/mou";
   }, [location, isAdmin]);
 
-  // Kalau sudah login & status role sudah siap => redirect
+  // ✅ Kalau sudah login & role ready:
+  // - mode any: redirect biasa
+  // - mode admin: kalau bukan admin => signOut + error (biar bisa login admin beneran)
   useEffect(() => {
-    if (!loading && user && adminReady) {
-      nav(redirectTo, { replace: true });
+    if (loading) return;
+    if (!user) return;
+    if (!adminReady) return;
+
+    if (mode === "admin" && !isAdmin) {
+      (async () => {
+        await signOut();
+        setPassword("");
+        setErr("Akun ini bukan admin. Silakan login dengan akun admin.");
+      })();
+      return;
     }
-  }, [loading, user, adminReady, nav, redirectTo]);
+
+    nav(redirectTo, { replace: true });
+  }, [loading, user, adminReady, mode, isAdmin, nav, redirectTo, signOut]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -37,13 +49,12 @@ export default function Login() {
     try {
       const raw = String(usernameOrEmail).trim().toLowerCase();
       const email = raw.includes("@") ? raw : `${raw}@jejaring.local`;
-
       const { error } = await signIn(email, password);
       if (error) {
         setErr("Username/email atau password salah.");
         return;
       }
-      // redirect ditangani useEffect ketika adminReady sudah true
+      // redirect ditangani useEffect setelah adminReady
     } catch (e2) {
       console.error(e2);
       setErr("Gagal login. Coba lagi.");
@@ -56,7 +67,7 @@ export default function Login() {
     setErr("");
     setBusy(true);
     try {
-      await signOut();
+      await signOut(); // penting: bersihin session biar bisa ganti akun
       setPassword("");
     } finally {
       setBusy(false);
@@ -65,13 +76,16 @@ export default function Login() {
 
   const showForm = !loading && !user;
 
-  // NB: Karena login sekarang ikut Layout, jangan pakai min-h-screen lagi (biar nggak double layout).
   return (
     <div className="mx-auto w-full max-w-md rounded-2xl border bg-white p-6 shadow-sm">
       <div className="mb-4">
-        <h1 className="text-2xl font-bold text-[#087745]">Login</h1>
+        <h1 className="text-2xl font-bold text-[#087745]">
+          {mode === "admin" ? "Login Admin" : "Login"}
+        </h1>
         <p className="mt-2 text-sm text-gray-600">
-          Login untuk pemohon maupun admin pengelola jejaring.
+          {mode === "admin"
+            ? "Khusus pengelola jejaring (admin/super admin)."
+            : "Login untuk pemohon maupun admin pengelola jejaring."}
         </p>
       </div>
 
@@ -126,20 +140,32 @@ export default function Login() {
             disabled={busy}
             title="Membersihkan sesi Supabase di browser."
           >
-            Reset sesi
+            Reset sesi / Ganti akun
           </button>
+
+          {mode !== "admin" ? (
+            <div className="pt-2 text-xs text-gray-600">
+              Admin?{" "}
+              <Link className="font-semibold text-[#087745] hover:underline" to="/login-admin">
+                Masuk sebagai Admin
+              </Link>
+            </div>
+          ) : (
+            <div className="pt-2 text-xs text-gray-600">
+              Pemohon?{" "}
+              <Link className="font-semibold text-[#087745] hover:underline" to="/login">
+                Kembali ke Login Umum
+              </Link>
+            </div>
+          )}
         </form>
       )}
 
-      {/* Info state */}
       {!loading && user && !adminReady && (
         <div className="mt-3 text-sm text-gray-600">Memvalidasi akses…</div>
       )}
-
       {!loading && user && adminReady && (
-        <div className="mt-3 text-sm text-gray-700">
-          Sudah login. Mengalihkan…
-        </div>
+        <div className="mt-3 text-sm text-gray-700">Sudah login. Mengalihkan…</div>
       )}
     </div>
   );
