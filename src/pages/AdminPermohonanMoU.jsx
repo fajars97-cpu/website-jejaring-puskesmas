@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { supabase } from "../lib/supabaseClient"; // <-- sesuaikan path kalau beda
+import { Link } from "react-router-dom";
+import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../context/AuthContext";
 
 const STATUS = [
@@ -164,10 +165,24 @@ export default function AdminPermohonanMoU() {
   return (
     <div className="mx-auto w-full max-w-6xl px-3 sm:px-4 py-6">
       <div className="rounded-2xl border border-slate-200 bg-white p-4">
-        <h1 className="text-lg font-semibold text-slate-900">Rekap Permohonan MoU</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Hanya super admin yang bisa review dan finalize (pindah ke jejaring & hapus permohonan).
-        </p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-lg font-semibold text-slate-900">Rekap Permohonan MoU</h1>
+            <p className="mt-1 text-sm text-slate-600">
+              Hanya super admin yang bisa review dan finalize (pindah ke jejaring & hapus permohonan).
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Link
+              to="/admin"
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold hover:bg-slate-50"
+              title="Kembali ke tabel Admin Jejaring"
+            >
+              ← Admin Jejaring
+            </Link>
+          </div>
+        </div>
       </div>
 
       <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
@@ -229,6 +244,7 @@ export default function AdminPermohonanMoU() {
                   <Th>Jenis</Th>
                   <Th>Tipe</Th>
                   <Th>Kelurahan</Th>
+                  <Th>Berkas</Th>
                   <Th>Status</Th>
                   <Th>Diajukan</Th>
                 </tr>
@@ -263,6 +279,20 @@ export default function AdminPermohonanMoU() {
                     <Td>{formatCell(r.jenis_fasyankes)}</Td>
                     <Td>{formatCell(r.tipe_fasyankes)}</Td>
                     <Td>{formatCell(r.kelurahan)}</Td>
+                    <Td>
+                      {isLikelyUrl(r.gdrive_url) ? (
+                        <a
+                          href={r.gdrive_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold hover:bg-slate-50"
+                        >
+                          Buka
+                        </a>
+                      ) : (
+                        <span className="text-xs text-slate-500">—</span>
+                      )}
+                    </Td>
 
                     <Td>
                       <select
@@ -301,6 +331,7 @@ export default function AdminPermohonanMoU() {
             <Row label="Telepon" value={detailRow.telepon} />
             <Row label="Email" value={detailRow.email} />
             <Row label="Gmaps URL" value={detailRow.gmaps_url} />
+            <Row label="Berkas (GDrive)" value={detailRow.gdrive_url} />
           </div>
 
           <div className="mt-4 flex justify-end">
