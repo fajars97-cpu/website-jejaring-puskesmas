@@ -85,7 +85,7 @@ export default function Login({ mode = "any" }) {
         <p className="mt-2 text-sm text-gray-600">
           {mode === "admin"
             ? "Khusus pengelola jejaring (admin/super admin)."
-            : "Login untuk pemohon maupun admin pengelola jejaring."}
+            : "Login untuk pemohon MoU jejaring puskesmas."}
         </p>
       </div>
 

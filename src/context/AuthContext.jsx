@@ -80,36 +80,37 @@ export function AuthProvider({ children }) {
       const ADMIN_TIMEOUT_MS = 15000;
 
       // 1) Prefer: profiles.role (super_admin / admin / pemohon)
-      // NOTE: sebagian schema pakai profiles.id, sebagian pakai profiles.user_id
-      // Coba id dulu (paling umum), fallback user_id supaya nggak break.
-      const qRoleById = supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", userId)
-        .maybeSingle();
-
-      let roleRes = await withTimeout(qRoleById, ADMIN_TIMEOUT_MS, "admin check timeout");
-
-      // kalau tidak ada row/role dan tidak error -> coba fallback user_id
-      const foundRoleById = (roleRes?.data?.role || "").trim();
-      if (!roleRes?.error && !foundRoleById) {
-        const qRoleByUserId = supabase
-          .from("profiles")
-          .select("role")
-          .eq("user_id", userId)
-          .maybeSingle();
-        roleRes = await withTimeout(qRoleByUserId, ADMIN_TIMEOUT_MS, "admin check timeout");
+      // Support both schemas: profiles.user_id OR profiles.id
+      async function fetchProfileRoleBy(col) {
+        const q = supabase.from("profiles").select("role").eq(col, userId).maybeSingle();
+        return await withTimeout(q, ADMIN_TIMEOUT_MS, "admin check timeout");
       }
 
+      let roleRes = await fetchProfileRoleBy("user_id");
       if (roleRes?.error) {
+        // kalau schema pakai kolom lain, jangan langsung fail
+        // lanjut coba kolom "id"
+        roleRes = await fetchProfileRoleBy("id");
+      } else if (!roleRes?.data?.role) {
+        // kalau kosong, coba juga "id"
+        const roleRes2 = await fetchProfileRoleBy("id");
+        if (!roleRes2?.error && roleRes2?.data?.role) roleRes = roleRes2;
+      }
+
+      if (roleRes?.error && String(roleRes.error.message || "").length) {
         return { ok: false, err: roleRes.error.message || "admin check error", role: "", isSuper: false };
       }
 
-      const foundRole = (roleRes?.data?.role || "").trim();
-      if (foundRole) {
-        const isSuper = foundRole === "super_admin";
-        const isAdm = foundRole === "admin" || foundRole === "super_admin";
-        return { ok: isAdm, err: "", role: foundRole, isSuper };
+      const rawRole = (roleRes?.data?.role || "").trim().toLowerCase();
+      const normRole =
+        rawRole === "superadmin" || rawRole === "super admin" || rawRole === "super-admin"
+          ? "super_admin"
+          : rawRole;
+
+      if (normRole) {
+        const isSuper = normRole === "super_admin";
+        const isAdm = normRole === "admin" || normRole === "super_admin";
+        return { ok: isAdm, err: "", role: normRole, isSuper };
       }
 
       // 2) Fallback legacy: admin_users (biar admin lama tetap jalan)
