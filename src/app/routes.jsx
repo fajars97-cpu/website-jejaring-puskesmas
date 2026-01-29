@@ -1,90 +1,85 @@
-// src/app/routes.jsx
 import React from "react";
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 
-import Layout from "../app/Layout";
+import Layout from "../layout/Layout";
+
+// pages (flat)
 import Home from "../pages/Home";
 import Jejaring from "../pages/Jejaring";
 import Perizinan from "../pages/Perizinan";
-import Login from "../pages/Login";
-import NotFound from "../pages/NotFound";
-import Signup from "../pages/Signup";
-import RequireAdmin from "./RequireAdmin";
-import PemohonMoU from "../pages/PemohonMoU";
-import AdminPermohonanMoU from "../pages/AdminPermohonanMoU";
-import AdminJejaring from "../pages/AdminJejaring"; // pastikan path benar
-import AppShell from "../layouts/AppShell";
 
+import Login from "../pages/Login";
+import Signup from "../pages/Signup";
+
+import AdminJejaring from "../pages/AdminJejaring";
+import AdminPermohonanMoU from "../pages/AdminPermohonanMoU";
+import PemohonMoU from "../pages/PemohonMoU";
+
+import NotFound from "../pages/NotFound";
+
+// ⚠️ Sesuaikan ini kalau file context kamu beda lokasinya:
 import { useAuth } from "../context/AuthContext";
 
+/* =====================
+   Guards (minimal, no refactor besar)
+===================== */
 function RequireAuth({ children }) {
   const { user, loading } = useAuth();
-  const loc = useLocation();
-
-  if (loading) {
-    return (
-      <div className="min-h-[50vh] flex items-center justify-center">
-        <div className="text-sm opacity-70">Memuat…</div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Navigate to="/login" replace state={{ from: loc, reason: "not_logged_in" }} />;
-  }
-
-  return children;
+  if (loading) return null;
+  return user ? children : <Navigate to="/login" replace />;
 }
 
+function RequireAdmin({ children }) {
+  const { user, isAdmin, loading } = useAuth();
+  if (loading) return null;
+  return user && isAdmin ? children : <Navigate to="/" replace />;
+}
+
+/* =====================
+   Routes
+===================== */
 export default function AppRoutes() {
   return (
     <Routes>
-      {/* Semua halaman (termasuk login) ikut Layout supaya navbar+footer tampil */}
       <Route element={<Layout />}>
-        {/* Publik */}
+        {/* PUBLIC */}
         <Route path="/" element={<Home />} />
         <Route path="/jejaring" element={<Jejaring />} />
         <Route path="/perizinan" element={<Perizinan />} />
 
-        {/* Login (ikut Layout) */}
+        {/* AUTH */}
         <Route path="/login" element={<Login />} />
-        <Route path="/login-admin" element={<Login mode="admin" />} />
         <Route path="/signup" element={<Signup />} />
-        {/* Pemohon */}
+
+        {/* PEMOHON */}
         <Route
-        path="/pemohon"
-        element={
-        <RequireAuth>
-        <AppShell role="pemohon" />
-        </RequireAuth>
-       }
-       >
-   <Route index element={<PemohonMoU />} />
-   <Route path="mou" element={<PemohonMoU />} />
- </Route>
+          path="/pemohon/mou"
+          element={
+            <RequireAuth>
+              <PemohonMoU />
+            </RequireAuth>
+          }
+        />
 
-        {/* Admin Jejaring */}
+        {/* ADMIN */}
         <Route
-         path="/admin"
-         element={
-        <RequireAdmin>
-        <AppShell role="super_admin" />
-        </RequireAdmin>
-        }
-        >
-       <Route index element={<AdminJejaring />} />
+          path="/admin/permohonan-mou"
+          element={
+            <RequireAdmin>
+              <AdminPermohonanMoU />
+            </RequireAdmin>
+          }
+        />
+        <Route
+          path="/admin/jejaring"
+          element={
+            <RequireAdmin>
+              <AdminJejaring />
+            </RequireAdmin>
+          }
+        />
 
-       <Route
-       path="permohonan-mou"
-       element={
-       <RequireAdmin requireSuperAdmin>
-         <AdminPermohonanMoU />
-       </RequireAdmin>
-       }
-       />
-       </Route>
-
-        {/* Fallback di dalam layout */}
+        {/* 404 */}
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
