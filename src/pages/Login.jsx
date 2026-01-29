@@ -17,13 +17,12 @@ export default function Login({ mode = "any" }) {
   const redirectTo = useMemo(() => {
     const from = location?.state?.from?.pathname;
     if (from) return from;
-    // default route
     return isAdmin ? "/admin" : "/pemohon/mou";
   }, [location, isAdmin]);
 
-  // ✅ Kalau sudah login & role ready:
-  // - mode any: redirect biasa
-  // - mode admin: kalau bukan admin => signOut + error (biar bisa login admin beneran)
+  // Jika sudah login dan role sudah ready:
+  // - mode any: redirect sesuai role/from
+  // - mode admin: kalau bukan admin -> signOut + error, supaya bisa login admin beneran
   useEffect(() => {
     if (loading) return;
     if (!user) return;
@@ -49,6 +48,7 @@ export default function Login({ mode = "any" }) {
     try {
       const raw = String(usernameOrEmail).trim().toLowerCase();
       const email = raw.includes("@") ? raw : `${raw}@jejaring.local`;
+
       const { error } = await signIn(email, password);
       if (error) {
         setErr("Username/email atau password salah.");
@@ -67,7 +67,7 @@ export default function Login({ mode = "any" }) {
     setErr("");
     setBusy(true);
     try {
-      await signOut(); // penting: bersihin session biar bisa ganti akun
+      await signOut(); // bersihin session biar bisa ganti akun
       setPassword("");
     } finally {
       setBusy(false);

@@ -3,6 +3,7 @@ import { Outlet, NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const BASE = import.meta.env.BASE_URL; // penting untuk deploy subpath (GitHub Pages)
+
 /**
  * ====== KONFIGURASI LINK (INI YANG KAMU EDIT) ======
  */
@@ -30,7 +31,7 @@ const publicMenu = [
 
 function getUserLabel(user) {
   const email = user?.email || "";
-  if (!email) return "Admin";
+  if (!email) return "User";
   return email.split("@")[0];
 }
 
@@ -92,19 +93,11 @@ export default function Layout() {
         <div className="mx-auto max-w-6xl px-4 md:px-6">
           <div className="flex h-16 items-center justify-between gap-3">
             {/* Brand */}
-            <NavLink
-              to="/"
-              className="flex items-center gap-3 min-w-0"
-              onClick={() => setMobileOpen(false)}
-            >
+            <NavLink to="/" className="flex items-center gap-3 min-w-0" onClick={() => setMobileOpen(false)}>
               <BrandLogo />
               <div className="min-w-0">
-                <div className="truncate text-sm font-extrabold text-white">
-                  Website Jejaring Puskesmas
-                </div>
-                <div className="truncate text-xs text-white/70">
-                  Puskesmas Jagakarsa • DKI Jakarta
-                </div>
+                <div className="truncate text-sm font-extrabold text-white">Website Jejaring Puskesmas</div>
+                <div className="truncate text-xs text-white/70">Puskesmas Jagakarsa • DKI Jakarta</div>
               </div>
             </NavLink>
 
@@ -121,10 +114,10 @@ export default function Layout() {
             <div className="hidden md:flex items-center gap-3">
               {loading ? (
                 <span className="text-sm text-white/80">…</span>
-              ) : user && isAdmin ? (
+              ) : user ? (
                 <>
                   <NavLink
-                    to="/admin"
+                    to={isAdmin ? "/admin" : "/pemohon/mou"}
                     title={user?.email || ""}
                     className={cn(
                       "rounded-xl bg-white/10 px-3 py-2 text-sm font-semibold text-white",
@@ -146,12 +139,21 @@ export default function Layout() {
                   </button>
                 </>
               ) : (
-                <NavLink
-                  to="/login"
-                  className="rounded-xl bg-white px-3 py-2 text-sm font-bold text-emerald-900 hover:bg-white/95"
-                >
-                  Login
-                </NavLink>
+                <>
+                  <NavLink
+                    to="/login"
+                    className="rounded-xl bg-white px-3 py-2 text-sm font-bold text-emerald-900 hover:bg-white/95"
+                  >
+                    Login
+                  </NavLink>
+                  <NavLink
+                    to="/login-admin"
+                    className="rounded-xl bg-white/10 px-3 py-2 text-sm font-semibold text-white ring-1 ring-white/15 hover:bg-white/15"
+                    title="Khusus admin/super admin"
+                  >
+                    Login Admin
+                  </NavLink>
+                </>
               )}
             </div>
 
@@ -195,10 +197,10 @@ export default function Layout() {
                 <div className="rounded-xl bg-white/10 px-3 py-2 text-sm font-semibold text-white/85 ring-1 ring-white/15">
                   …
                 </div>
-              ) : user && isAdmin ? (
+              ) : user ? (
                 <div className="space-y-2">
                   <NavLink
-                    to="/admin"
+                    to={isAdmin ? "/admin" : "/pemohon/mou"}
                     onClick={() => setMobileOpen(false)}
                     className="block rounded-xl bg-white/10 px-3 py-2 text-sm font-semibold text-white ring-1 ring-white/15 hover:bg-white/15"
                   >
@@ -216,13 +218,22 @@ export default function Layout() {
                   </button>
                 </div>
               ) : (
-                <NavLink
-                  to="/login"
-                  onClick={() => setMobileOpen(false)}
-                  className="block w-full rounded-xl bg-white px-3 py-2 text-center text-sm font-bold text-emerald-900 hover:bg-white/95"
-                >
-                  Login
-                </NavLink>
+                <div className="grid gap-2">
+                  <NavLink
+                    to="/login"
+                    onClick={() => setMobileOpen(false)}
+                    className="block w-full rounded-xl bg-white px-3 py-2 text-center text-sm font-bold text-emerald-900 hover:bg-white/95"
+                  >
+                    Login
+                  </NavLink>
+                  <NavLink
+                    to="/login-admin"
+                    onClick={() => setMobileOpen(false)}
+                    className="block w-full rounded-xl bg-white/10 px-3 py-2 text-center text-sm font-semibold text-white ring-1 ring-white/15 hover:bg-white/15"
+                  >
+                    Login Admin
+                  </NavLink>
+                </div>
               )}
             </div>
           </div>
