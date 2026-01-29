@@ -2,9 +2,8 @@ export const MENU = {
   pemohon: [
     { label: "Beranda", to: "/pemohon" },
     { type: "group", label: "Permohonan" },
-    { label: "Ajukan MoU", to: "/pemohon/mou" },
+    { label: "Pengajuan MoU", to: "/pemohon/mou" },
   ],
-
   super_admin: [
     { label: "Beranda", to: "/admin" },
     { type: "group", label: "Permohonan" },

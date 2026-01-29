@@ -172,16 +172,6 @@ export default function AdminPermohonanMoU() {
               Hanya super admin yang bisa review dan finalize (pindah ke jejaring & hapus permohonan).
             </p>
           </div>
-
-          <div className="flex items-center gap-2">
-            <Link
-              to="/admin"
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold hover:bg-slate-50"
-              title="Kembali ke tabel Admin Jejaring"
-            >
-              ← Admin Jejaring
-            </Link>
-          </div>
         </div>
       </div>
 
