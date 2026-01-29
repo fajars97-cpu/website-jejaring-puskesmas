@@ -13,6 +13,7 @@ import RequireAdmin from "./RequireAdmin";
 import PemohonMoU from "../pages/PemohonMoU";
 import AdminPermohonanMoU from "../pages/AdminPermohonanMoU";
 import AdminJejaring from "../pages/AdminJejaring"; // pastikan path benar
+import AppShell from "../layouts/AppShell";
 
 import { useAuth } from "../context/AuthContext";
 
@@ -51,33 +52,37 @@ export default function AppRoutes() {
         <Route path="/signup" element={<Signup />} />
         {/* Pemohon */}
         <Route
-          path="/pemohon/mou"
-          element={
-            <RequireAuth>
-              <PemohonMoU />
-            </RequireAuth>
-          }
-        />
+        path="/pemohon"
+        element={
+        <RequireAuth>
+        <AppShell role="pemohon" />
+        </RequireAuth>
+       }
+       >
+   <Route index element={<PemohonMoU />} />
+   <Route path="mou" element={<PemohonMoU />} />
+ </Route>
 
         {/* Admin Jejaring */}
         <Route
-          path="/admin"
-          element={
-            <RequireAdmin>
-              <AdminJejaring />
-            </RequireAdmin>
-          }
-        />
+         path="/admin"
+         element={
+        <RequireAdmin>
+        <AppShell role="super_admin" />
+        </RequireAdmin>
+        }
+        >
+       <Route index element={<AdminJejaring />} />
 
-        {/* Super Admin - Rekap Permohonan MoU */}
-        <Route
-          path="/admin/permohonan-mou"
-          element={
-            <RequireAdmin requireSuperAdmin>
-              <AdminPermohonanMoU />
-            </RequireAdmin>
-          }
-        />
+       <Route
+       path="permohonan-mou"
+       element={
+       <RequireAdmin requireSuperAdmin>
+         <AdminPermohonanMoU />
+       </RequireAdmin>
+       }
+       />
+       </Route>
 
         {/* Fallback di dalam layout */}
         <Route path="*" element={<NotFound />} />
