@@ -25,7 +25,7 @@ function readAdminCache(uid) {
     const raw = localStorage.getItem(adminCacheKey(uid));
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (typeof parsed?.isAdmin !== "boolean") return null;
+    if (!parsed || (typeof parsed?.isAdmin !== "boolean" && typeof parsed?.role !== "string")) return null;
 
     const maxAgeMs = 7 * 24 * 60 * 60 * 1000; // 7 hari
     if (parsed?.ts && Date.now() - parsed.ts > maxAgeMs) return null;
@@ -36,9 +36,12 @@ function readAdminCache(uid) {
   }
 }
 
-function writeAdminCache(uid, isAdmin) {
+function writeAdminCache(uid, { isAdmin, isSuperAdmin, role }) {
   try {
-    localStorage.setItem(adminCacheKey(uid), JSON.stringify({ isAdmin, ts: Date.now() }));
+    localStorage.setItem(
+      adminCacheKey(uid),
+      JSON.stringify({ isAdmin: !!isAdmin, isSuperAdmin: !!isSuperAdmin, role: role || "", ts: Date.now() })
+    );
   } catch {}
 }
 
@@ -53,6 +56,8 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
 
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [role, setRole] = useState("");
   const [adminReady, setAdminReady] = useState(false);
   const [adminError, setAdminError] = useState("");
 
@@ -68,23 +73,57 @@ export function AuthProvider({ children }) {
   const seqRef = useRef(0);
   const lastUserIdRef = useRef(null);
 
-  async function resolveIsAdmin(userId) {
+  async function resolveRoleAndAdmin(userId) {
     if (!userId) return { ok: false, err: "" };
 
     try {
       const ADMIN_TIMEOUT_MS = 15000;
 
-      const q = supabase
+      // 1) Prefer: profiles.role (super_admin / admin / pemohon)
+      // NOTE: sebagian schema pakai profiles.id, sebagian pakai profiles.user_id
+      // Coba id dulu (paling umum), fallback user_id supaya nggak break.
+      const qRoleById = supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", userId)
+        .maybeSingle();
+
+      let roleRes = await withTimeout(qRoleById, ADMIN_TIMEOUT_MS, "admin check timeout");
+
+      // kalau tidak ada row/role dan tidak error -> coba fallback user_id
+      const foundRoleById = (roleRes?.data?.role || "").trim();
+      if (!roleRes?.error && !foundRoleById) {
+        const qRoleByUserId = supabase
+          .from("profiles")
+          .select("role")
+          .eq("user_id", userId)
+          .maybeSingle();
+        roleRes = await withTimeout(qRoleByUserId, ADMIN_TIMEOUT_MS, "admin check timeout");
+      }
+
+      if (roleRes?.error) {
+        return { ok: false, err: roleRes.error.message || "admin check error", role: "", isSuper: false };
+      }
+
+      const foundRole = (roleRes?.data?.role || "").trim();
+      if (foundRole) {
+        const isSuper = foundRole === "super_admin";
+        const isAdm = foundRole === "admin" || foundRole === "super_admin";
+        return { ok: isAdm, err: "", role: foundRole, isSuper };
+      }
+
+      // 2) Fallback legacy: admin_users (biar admin lama tetap jalan)
+      const qLegacy = supabase
         .from("admin_users")
         .select("user_id")
         .eq("user_id", userId)
         .maybeSingle();
 
-      const { data, error } = await withTimeout(q, ADMIN_TIMEOUT_MS, "admin check timeout");
-      if (error) return { ok: false, err: error.message || "admin check error" };
-      return { ok: !!data, err: "" };
+      const legacyRes = await withTimeout(qLegacy, ADMIN_TIMEOUT_MS, "admin check timeout");
+      if (legacyRes?.error) return { ok: false, err: legacyRes.error.message || "admin check error", role: "", isSuper: false };
+      return { ok: !!legacyRes?.data, err: "", role: legacyRes?.data ? "admin" : "pemohon", isSuper: false };
     } catch (e) {
-      return { ok: false, err: e?.message || "admin check error" };
+      return { ok: false, err: e?.message || "admin check error", role: "", isSuper: false };
     }
   }
 
@@ -98,10 +137,12 @@ export function AuthProvider({ children }) {
     const cached = readAdminCache(user.id);
     if (cached?.isAdmin === true) {
       setIsAdmin(true);
+      setIsSuperAdmin(!!cached?.isSuperAdmin);
+      setRole(cached?.role || "");
       setAdminReady(true);
     }
 
-    const res = await resolveIsAdmin(user.id);
+    const res = await resolveRoleAndAdmin(user.id);
     if (mySeq !== seqRef.current) return;
 
     if (String(res.err || "").toLowerCase().includes("timeout")) {
@@ -110,11 +151,13 @@ export function AuthProvider({ children }) {
       return;
     }
 
-    setIsAdmin(res.ok);
+    setIsAdmin(!!res.ok);
+    setIsSuperAdmin(!!res.isSuper);
+    setRole(res.role || "");
     setAdminError(res.err || "");
     setAdminReady(true);
 
-    if (res.ok) writeAdminCache(user.id, true);
+    if (res.ok) writeAdminCache(user.id, { isAdmin: true, isSuperAdmin: !!res.isSuper, role: res.role || "" });
     else clearAdminCache(user.id);
   }
 
@@ -133,6 +176,8 @@ export function AuthProvider({ children }) {
     if (!nextId) {
       lastUserIdRef.current = null;
       setIsAdmin(false);
+      setIsSuperAdmin(false);
+      setRole("");
       setAdminReady(true);
       return;
     }
@@ -149,10 +194,12 @@ export function AuthProvider({ children }) {
     const cached = readAdminCache(nextId);
     if (cached?.isAdmin === true) {
       setIsAdmin(true);
+      setIsSuperAdmin(!!cached?.isSuperAdmin);
+      setRole(cached?.role || "");
       setAdminReady(true);
     }
 
-    const res = await resolveIsAdmin(nextId);
+    const res = await resolveRoleAndAdmin(nextId);
     if (mySeq !== seqRef.current) return;
 
     if (String(res.err || "").toLowerCase().includes("timeout")) {
@@ -161,11 +208,13 @@ export function AuthProvider({ children }) {
       return;
     }
 
-    setIsAdmin(res.ok);
+    setIsAdmin(!!res.ok);
+    setIsSuperAdmin(!!res.isSuper);
+    setRole(res.role || "");
     setAdminError(res.err || "");
     setAdminReady(true);
 
-    if (res.ok) writeAdminCache(nextId, true);
+    if (res.ok) writeAdminCache(nextId, { isAdmin: true, isSuperAdmin: !!res.isSuper, role: res.role || "" });
     else clearAdminCache(nextId);
   }
 
@@ -229,6 +278,8 @@ export function AuthProvider({ children }) {
     setSession(null);
     setUser(null);
     setIsAdmin(false);
+    setIsSuperAdmin(false);
+    setRole("");
     setAdminReady(true);
     setAdminError("");
     setLoading(false);
@@ -307,6 +358,8 @@ export function AuthProvider({ children }) {
       setSession(null);
       setUser(null);
       setIsAdmin(false);
+      setIsSuperAdmin(false);
+      setRole("");
       setAdminReady(true);
       setAdminError("");
       setLoading(false);
@@ -319,6 +372,8 @@ export function AuthProvider({ children }) {
       session,
       user,
       isAdmin,
+      isSuperAdmin,
+      role,
       adminReady,
       adminError,
       loading,
@@ -328,7 +383,7 @@ export function AuthProvider({ children }) {
       signOut,
       refreshAdminCheck,
     }),
-    [session, user, isAdmin, adminReady, adminError, loading, restoring, bgSyncing]
+    [session, user, isAdmin, isSuperAdmin, role, adminReady, adminError, loading, restoring, bgSyncing]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -7,10 +7,11 @@ import { useAuth } from "../context/AuthContext";
  * - Setelah "granted" sekali, JANGAN unmount children lagi saat background auth refresh.
  * - Kalau sedang syncing, tampilkan overlay kecil, tapi children tetap mount.
  */
-export default function RequireAdmin({ children }) {
+export default function RequireAdmin({ children, requireSuperAdmin = false }) {
   const {
     user,
     isAdmin,
+    isSuperAdmin,
     loading,
     adminReady,
     adminError,
@@ -24,14 +25,14 @@ export default function RequireAdmin({ children }) {
   const grantedRef = useRef(false);
 
   useEffect(() => {
-    if (user && isAdmin && adminReady) {
-      grantedRef.current = true;
-    }
+    // IMPORTANT: "granted" harus sesuai kebutuhan route
+    const neededAccess = requireSuperAdmin ? isSuperAdmin : isAdmin;
+    if (user && neededAccess && adminReady) grantedRef.current = true;
     // kalau user benar-benar logout, reset granted
     if (!user) {
       grantedRef.current = false;
     }
-  }, [user, isAdmin, adminReady]);
+  }, [user, isAdmin, isSuperAdmin, adminReady, requireSuperAdmin]);
 
   // 1) Restore awal: boleh blocking (first load only)
   if (restoring) {
@@ -56,9 +57,17 @@ export default function RequireAdmin({ children }) {
     );
   }
 
+  const hasAccess = requireSuperAdmin ? isSuperAdmin : isAdmin;
+
   // 4) Kalau belum pernah granted dan ternyata bukan admin => redirect
-  if (!grantedRef.current && !isAdmin) {
-    return <Navigate to="/login" replace state={{ from: location, reason: "not_admin" }} />;
+  if (!grantedRef.current && !hasAccess) {
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{ from: location, reason: requireSuperAdmin ? "not_super_admin" : "not_admin" }}
+      />
+    );
   }
 
   // 5) Setelah granted: ALWAYS render children (no unmount)

@@ -32,7 +32,7 @@ export default function JejaringExpanded({ data, onClose }) {
 
             <div className="mt-4 space-y-2 text-sm text-gray-700">
               <p><strong>Alamat:</strong> {data.alamat}</p>
-              <p><strong>PJ:</strong> {data.pj || "-"}</p>
+              <p><strong>PJ:</strong> {data.pjNama || data.pj || "-"}</p>
               <p><strong>Status:</strong> {data.status}</p>
             </div>
 

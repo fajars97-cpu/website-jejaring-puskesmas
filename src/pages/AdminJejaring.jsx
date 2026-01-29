@@ -487,7 +487,7 @@ export default function AdminJejaring() {
             <table className="w-full border-collapse md:min-w-245">
               <thead className="bg-slate-50">
                 <tr>
-                  <th className="whitespace-nowrap border-b border-slate-200 px-4 py-3 text-left text-xs font-semibold text-slate-700">
+                  <th className="sticky left-0 z-30 whitespace-nowrap border-b border-slate-200 bg-slate-50 px-4 py-3 text-left text-xs font-semibold text-slate-700">
                     Aksi
                   </th>
                   {displayColumns.map((col) => (
@@ -509,7 +509,7 @@ export default function AdminJejaring() {
 
                   return (
                     <tr key={rowKey} className="border-b border-slate-100 hover:bg-slate-50/60">
-                      <td className="whitespace-nowrap px-4 py-3 align-top text-sm">
+                      <td className="sticky left-0 z-20 whitespace-nowrap border-r border-slate-200 bg-white px-4 py-3 align-top text-sm">
                         <div className="flex items-center gap-2">
                           <button
                             type="button"

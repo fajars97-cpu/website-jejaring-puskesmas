@@ -1,5 +1,5 @@
 // src/pages/Login.jsx
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
@@ -7,55 +7,27 @@ export default function Login() {
   const nav = useNavigate();
   const location = useLocation();
 
-  // ambil adminReady (+ adminError kalau ada)
-  const { user, isAdmin, loading, adminReady, adminError, signIn, signOut } = useAuth();
+  const { user, isAdmin, loading, adminReady, signIn, signOut } = useAuth();
 
   const [usernameOrEmail, setUsernameOrEmail] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const handledNonAdminRef = useRef(false);
-
   const redirectTo = useMemo(() => {
     const from = location?.state?.from?.pathname;
-    return from || "/admin";
-  }, [location]);
+    // kalau user datang dari page yang di-guard, balik ke sana
+    if (from) return from;
+    // default: admin -> /admin, pemohon -> /pemohon/mou
+    return isAdmin ? "/admin" : "/pemohon/mou";
+  }, [location, isAdmin]);
 
-  // Admin -> redirect (tunggu adminReady dulu)
+  // Kalau sudah login & status role sudah siap => redirect
   useEffect(() => {
-    if (!loading && user && adminReady && isAdmin) {
+    if (!loading && user && adminReady) {
       nav(redirectTo, { replace: true });
     }
-  }, [loading, user, adminReady, isAdmin, nav, redirectTo]);
-
-  // Non-admin -> auto signOut (HANYA jika adminReady sudah true)
-  useEffect(() => {
-    if (loading) return;
-
-    if (!user) {
-      handledNonAdminRef.current = false;
-      return;
-    }
-
-    // status admin belum final → jangan ambil keputusan, jangan signOut
-    if (!adminReady) return;
-
-    // kalau admin check timeout/lambat, jangan signOut otomatis
-    if (String(adminError || "").toLowerCase().includes("timeout")) return;
-
-    if (!isAdmin && !handledNonAdminRef.current) {
-      handledNonAdminRef.current = true;
-      (async () => {
-        try {
-          await signOut();
-        } finally {
-          setErr("Akun ini bukan admin. Silakan login dengan akun admin.");
-          setPassword("");
-        }
-      })();
-    }
-  }, [loading, user, adminReady, adminError, isAdmin, signOut]);
+  }, [loading, user, adminReady, nav, redirectTo]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -71,7 +43,7 @@ export default function Login() {
         setErr("Username/email atau password salah.");
         return;
       }
-      // redirect / non-admin ditangani useEffect di atas
+      // redirect ditangani useEffect ketika adminReady sudah true
     } catch (e2) {
       console.error(e2);
       setErr("Gagal login. Coba lagi.");
@@ -80,7 +52,7 @@ export default function Login() {
     }
   }
 
-  async function handleReset() {
+  async function handleResetSession() {
     setErr("");
     setBusy(true);
     try {
@@ -93,83 +65,82 @@ export default function Login() {
 
   const showForm = !loading && !user;
 
+  // NB: Karena login sekarang ikut Layout, jangan pakai min-h-screen lagi (biar nggak double layout).
   return (
-    <main className="min-h-screen bg-gray-50 flex items-center justify-center px-6">
-      <div className="w-full max-w-md bg-white border rounded-2xl shadow-md p-6 space-y-4">
-        <div>
-          <h1 className="text-2xl font-bold text-[#087745]">Login Admin</h1>
-          <p className="text-gray-600 mt-2">
-            Khusus pengelola jejaring (akses tambah/ubah/hapus data).
-          </p>
-        </div>
-
-        {loading && (
-          <div className="text-sm text-gray-600">Memeriksa status login...</div>
-        )}
-
-        {err && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            {err}
-          </div>
-        )}
-
-        {showForm && (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-1">
-              <label className="text-sm text-gray-600">Username atau Email</label>
-              <input
-                className="w-full border rounded-xl px-3 py-2"
-                value={usernameOrEmail}
-                onChange={(e) => setUsernameOrEmail(e.target.value)}
-                placeholder="email admin"
-                autoComplete="username"
-                required
-                disabled={busy}
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-sm text-gray-600">Password</label>
-              <input
-                className="w-full border rounded-xl px-3 py-2"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
-                required
-                disabled={busy}
-              />
-            </div>
-
-            <button
-              className="w-full rounded-xl bg-[#087745] text-white py-2 font-medium disabled:opacity-60"
-              type="submit"
-              disabled={busy}
-            >
-              {busy ? "Memproses..." : "Masuk"}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleReset}
-              className="w-full rounded-xl border py-2 text-sm disabled:opacity-60"
-              disabled={busy}
-              title="Membersihkan sesi Supabase di browser."
-            >
-              Reset sesi
-            </button>
-          </form>
-        )}
-
-        {/* info state */}
-        {!loading && user && !adminReady && (
-          <div className="text-sm text-gray-600">Memvalidasi akses admin…</div>
-        )}
-
-        {!loading && user && adminReady && isAdmin && (
-          <div className="text-sm text-gray-700">Sudah login sebagai admin. Mengalihkan…</div>
-        )}
+    <div className="mx-auto w-full max-w-md rounded-2xl border bg-white p-6 shadow-sm">
+      <div className="mb-4">
+        <h1 className="text-2xl font-bold text-[#087745]">Login</h1>
+        <p className="mt-2 text-sm text-gray-600">
+          Login untuk pemohon maupun admin pengelola jejaring.
+        </p>
       </div>
-    </main>
+
+      {loading && <div className="text-sm text-gray-600">Memeriksa status login...</div>}
+
+      {err && (
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {err}
+        </div>
+      )}
+
+      {showForm && (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1">
+            <label className="text-sm text-gray-600">Username atau Email</label>
+            <input
+              className="w-full rounded-xl border px-3 py-2"
+              value={usernameOrEmail}
+              onChange={(e) => setUsernameOrEmail(e.target.value)}
+              placeholder="email / username"
+              autoComplete="username"
+              required
+              disabled={busy}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-sm text-gray-600">Password</label>
+            <input
+              className="w-full rounded-xl border px-3 py-2"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              required
+              disabled={busy}
+            />
+          </div>
+
+          <button
+            className="w-full rounded-xl bg-[#087745] py-2 font-medium text-white disabled:opacity-60"
+            type="submit"
+            disabled={busy}
+          >
+            {busy ? "Memproses..." : "Masuk"}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleResetSession}
+            className="w-full rounded-xl border py-2 text-sm disabled:opacity-60"
+            disabled={busy}
+            title="Membersihkan sesi Supabase di browser."
+          >
+            Reset sesi
+          </button>
+        </form>
+      )}
+
+      {/* Info state */}
+      {!loading && user && !adminReady && (
+        <div className="mt-3 text-sm text-gray-600">Memvalidasi akses…</div>
+      )}
+
+      {!loading && user && adminReady && (
+        <div className="mt-3 text-sm text-gray-700">
+          Sudah login. Mengalihkan…
+        </div>
+      )}
+    </div>
   );
 }

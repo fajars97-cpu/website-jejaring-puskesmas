@@ -1,6 +1,6 @@
 // src/app/routes.jsx
 import React from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 
 import Layout from "../app/Layout";
 import Home from "../pages/Home";
@@ -10,19 +10,55 @@ import Login from "../pages/Login";
 import NotFound from "../pages/NotFound";
 
 import RequireAdmin from "./RequireAdmin";
-import AdminJejaring from "../pages/AdminJejaring";
+import PemohonMoU from "../pages/PemohonMoU";
+import AdminPermohonanMoU from "../pages/AdminPermohonanMoU";
+import AdminJejaring from "../pages/AdminJejaring"; // pastikan path benar
+
+import { useAuth } from "../context/AuthContext";
+
+function RequireAuth({ children }) {
+  const { user, loading } = useAuth();
+  const loc = useLocation();
+
+  if (loading) {
+    return (
+      <div className="min-h-[50vh] flex items-center justify-center">
+        <div className="text-sm opacity-70">Memuat…</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace state={{ from: loc, reason: "not_logged_in" }} />;
+  }
+
+  return children;
+}
 
 export default function AppRoutes() {
   return (
     <Routes>
-      {/* Semua halaman yang butuh navbar/footer harus jadi anak Layout */}
+      {/* Semua halaman (termasuk login) ikut Layout supaya navbar+footer tampil */}
       <Route element={<Layout />}>
-        {/* Publik (LOCKED) */}
+        {/* Publik */}
         <Route path="/" element={<Home />} />
         <Route path="/jejaring" element={<Jejaring />} />
         <Route path="/perizinan" element={<Perizinan />} />
 
-        {/* Admin (Protected) - ikut layout */}
+        {/* Login (ikut Layout) */}
+        <Route path="/login" element={<Login />} />
+
+        {/* Pemohon */}
+        <Route
+          path="/pemohon/mou"
+          element={
+            <RequireAuth>
+              <PemohonMoU />
+            </RequireAuth>
+          }
+        />
+
+        {/* Admin Jejaring */}
         <Route
           path="/admin"
           element={
@@ -31,13 +67,20 @@ export default function AppRoutes() {
             </RequireAdmin>
           }
         />
+
+        {/* Super Admin - Rekap Permohonan MoU */}
+        <Route
+          path="/admin/permohonan-mou"
+          element={
+            <RequireAdmin requireSuperAdmin>
+              <AdminPermohonanMoU />
+            </RequireAdmin>
+          }
+        />
+
+        {/* Fallback di dalam layout */}
+        <Route path="*" element={<NotFound />} />
       </Route>
-
-      {/* Login biasanya tidak perlu navbar (sesuai Layout.jsx kamu yang menu auth cuma "Login") */}
-      <Route path="/login" element={<Login />} />
-
-      {/* Fallback */}
-      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }
