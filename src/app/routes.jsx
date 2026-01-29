@@ -8,7 +8,7 @@ import Jejaring from "../pages/Jejaring";
 import Perizinan from "../pages/Perizinan";
 import Login from "../pages/Login";
 import NotFound from "../pages/NotFound";
-
+import Signup from "../pages/Signup";
 import RequireAdmin from "./RequireAdmin";
 import PemohonMoU from "../pages/PemohonMoU";
 import AdminPermohonanMoU from "../pages/AdminPermohonanMoU";
@@ -48,7 +48,7 @@ export default function AppRoutes() {
         {/* Login (ikut Layout) */}
         <Route path="/login" element={<Login />} />
         <Route path="/login-admin" element={<Login mode="admin" />} />
-
+        <Route path="/signup" element={<Signup />} />
         {/* Pemohon */}
         <Route
           path="/pemohon/mou"

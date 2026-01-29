@@ -149,6 +149,15 @@ export default function Login({ mode = "any" }) {
               <Link className="font-semibold text-[#087745] hover:underline" to="/login-admin">
                 Masuk sebagai Admin
               </Link>
+              <div className="mt-2">
+                Belum punya akun?{" "}
+                <Link
+                  className="font-semibold text-[#087745] hover:underline"
+                  to="/signup"
+                >
+                  Sign Up
+                </Link>
+              </div>
             </div>
           ) : (
             <div className="pt-2 text-xs text-gray-600">
