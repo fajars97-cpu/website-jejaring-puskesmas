@@ -2,40 +2,57 @@ import React from "react";
 import { NavLink } from "react-router-dom";
 import { cn } from "./utils/cn";
 
-export default function Sidebar({ sidebarMenu, userLabel, isAdmin }) {
+/**
+ * sidebarMenu format:
+ * [
+ *   { title: null | "PERMOHONAN", items: [{ label, path }] }
+ * ]
+ */
+export default function Sidebar({ sidebarMenu = [], isAdmin }) {
   return (
-    <aside className="hidden md:block w-64 shrink-0">
+    <aside className="hidden md:block w-72 shrink-0">
       <div className="sticky top-20">
-        <div className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-between gap-2">
-            <div className="min-w-0">
-              <div className="truncate text-sm font-extrabold text-slate-900">{userLabel}</div>
-              <div className="text-xs text-slate-500">{isAdmin ? "Admin Area" : "Pemohon Area"}</div>
-            </div>
-            <div className="rounded-xl bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-800">
-              {isAdmin ? "ADMIN" : "USER"}
-            </div>
+        <div className="overflow-hidden rounded-2xl bg-emerald-950 text-white ring-1 ring-white/10 shadow-sm">
+          {/* Header */}
+          <div className="px-5 pt-5 pb-4 border-b border-white/10">
+            <div className="text-base font-extrabold leading-tight">Jejaring Puskesmas</div>
+            <div className="mt-1 text-xs text-white/70">Puskesmas Jagakarsa • DKI Jakarta</div>
           </div>
 
-          <div className="mt-4 grid gap-2">
-            {sidebarMenu.map((item) => (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                className={({ isActive }) =>
-                  cn(
-                    "rounded-xl px-3 py-2 text-sm font-semibold transition",
-                    isActive ? "bg-emerald-50 text-emerald-900" : "text-slate-700 hover:bg-slate-50"
-                  )
-                }
-              >
-                {item.label}
-              </NavLink>
+          {/* Nav groups */}
+          <div className="px-3 py-4">
+            {sidebarMenu.map((group, gi) => (
+              <div key={gi} className={cn(gi === 0 ? "" : "mt-4")}>
+                {group?.title ? (
+                  <div className="px-2 pb-2 text-[11px] font-extrabold tracking-widest text-white/55">
+                    {group.title}
+                  </div>
+                ) : null}
+
+                <div className="space-y-2">
+                  {(group?.items || []).map((item) => (
+                    <NavLink
+                      key={item.path}
+                      to={item.path}
+                      className={({ isActive }) =>
+                        cn(
+                          "block rounded-2xl px-4 py-3 text-sm font-extrabold transition",
+                          "ring-1 ring-white/10",
+                          isActive ? "bg-white/12 text-white" : "bg-white/6 text-white/90 hover:bg-white/12"
+                        )
+                      }
+                    >
+                      {item.label}
+                    </NavLink>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
 
-          <div className="mt-4 border-t border-black/10 pt-3 text-xs text-slate-500">
-            Nav ini khusus user login. Nanti kita bisa tambah fitur di sini tanpa nyentuh topbar.
+          {/* Footer mode */}
+          <div className="px-5 py-4 border-t border-white/10 text-xs text-white/60">
+            Mode: {isAdmin ? "Super Admin" : "Pemohon"}
           </div>
         </div>
       </div>

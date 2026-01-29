@@ -1,6 +1,11 @@
-/**
- * ====== KONFIGURASI LINK (INI YANG KAMU EDIT) ======
- */
+// ===== PUBLIC MENU (selalu tampil) =====
+export const publicMenu = [
+  { label: "Home", path: "/", end: true },
+  { label: "Jejaring", path: "/jejaring" },
+  { label: "Perizinan", path: "/perizinan" },
+];
+
+// ===== Footer links (dipakai Footbar) =====
 export const SOCIAL_LINKS = [
   { label: "Instagram", text: "Puskesmas Jagakarsa", href: "https://instagram.com/pkmjagakarsa" },
   { label: "Facebook", text: "Puskesmas Jagakarsa", href: "https://facebook.com/pkmjagakarsa" },
@@ -14,30 +19,18 @@ export const QUICK_LINKS = [
   { label: "PPID", href: "https://ppid-dinkes.jakarta.go.id/sudinkes-jaksel/" },
 ];
 
-/**
- * Menu publik (tetap muncul untuk semua user)
- */
-export const publicMenu = [
-  { label: "Home", path: "/", end: true },
-  { label: "Jejaring", path: "/jejaring" },
-  { label: "Perizinan", path: "/perizinan" },
-];
-
-/**
- * Menu sidebar (hanya muncul untuk user login)
- * Minimal dulu biar aman. Nanti tinggal nambah item.
- */
+// ===== Sidebar menu (login only, grouped) =====
 export function getSidebarMenu({ isAdmin }) {
   if (isAdmin) {
     return [
-      { label: "Dashboard", path: "/admin" },
-      { label: "Permohonan MoU", path: "/admin/permohonan-mou" },
-      // next: jejaring management, perizinan management, dsb
+      { title: null, items: [{ label: "Beranda", path: "/" }] },
+      { title: "PERMOHONAN", items: [{ label: "Rekap Permohonan MoU", path: "/admin/permohonan-mou" }] },
+      { title: "DATABASE", items: [{ label: "Database", path: "/admin/jejaring" }] },
     ];
   }
 
   return [
-    { label: "Pengajuan MoU", path: "/pemohon/mou" },
-    // next: status pengajuan, profil, riwayat, dsb
+    { title: null, items: [{ label: "Beranda", path: "/" }] },
+    { title: "PERMOHONAN", items: [{ label: "Pengajuan MoU", path: "/pemohon/mou" }] },
   ];
 }
