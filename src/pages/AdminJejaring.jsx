@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { CREATE_DEFAULTS } from "../features/admin-jejaring/constants";
 import { createJejaring, deleteJejaring } from "../features/admin-jejaring/api";
 import { exportRowsToExcel } from "../features/admin-jejaring/exportExcel";
@@ -37,7 +36,6 @@ const CREATE_DRAFT_KEY = "jp_admin_create_jejaring_draft_v1";
 const CREATE_AUTOSAVE_MS = 1000; // 1 detik setelah user berhenti ngetik
 
 export default function AdminJejaring() {
-  const nav = useNavigate();
   const { user, isAdmin, isSuperAdmin, signOut } = useAuth();
   const { rows, count, page, setPage, pageCount, loading, refreshing, error, fetchPage } =
     useJejaringList();
@@ -314,16 +312,6 @@ export default function AdminJejaring() {
 
           {/* Buttons: grid on mobile */}
           <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
-            {isSuperAdmin ? (
-              <button
-                type="button"
-                onClick={() => nav("/admin/permohonan-mou")}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50"
-                title="Lihat rekap permohonan MoU dari pemohon (super admin)"
-              >
-                Rekap MoU
-              </button>
-            ) : null}
 
             <button
               type="button"
