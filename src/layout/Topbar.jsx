@@ -1,5 +1,5 @@
 import React from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { cn } from "./utils/cn";
 import BrandLogo from "./parts/BrandLogo";
 import MenuLink from "./parts/MenuLink";
@@ -14,15 +14,16 @@ export default function Topbar({
   onToggleMobile,
   onCloseMobile,
   onSignOut,
+  isAppChrome = false,
 }) {
-  const nav = useNavigate();
   const appsPath = isAdmin ? "/admin/permohonan-mou" : "/pemohon/mou";
 
   return (
     <header className="sticky top-0 z-50 border-b border-black/10 bg-emerald-900">
-      <div className="mx-auto max-w-6xl px-4 md:px-6">
-        <div className="flex h-16 items-center justify-between gap-3">
-          {/* Brand */}
+      {/* PUBLIC: max width (rapi), APP: full width (mentok kiri/kanan) */}
+      <div className={isAppChrome ? "w-full px-4 md:px-6" : "mx-auto max-w-6xl px-4 md:px-6"}>
+        <div className="flex h-16 items-center gap-3">
+          {/* Brand (kiri) */}
           <NavLink to="/" className="flex items-center gap-3 min-w-0" onClick={onCloseMobile}>
             <BrandLogo />
             <div className="min-w-0">
@@ -32,7 +33,13 @@ export default function Topbar({
           </NavLink>
 
           {/* Desktop menu */}
-          <nav className="hidden md:flex items-center gap-6">
+          <nav
+            className={cn(
+              "hidden md:flex items-center gap-6",
+              // APP: dorong menu ke kanan
+              isAppChrome ? "ml-auto" : "mx-auto"
+            )}
+          >
             {publicMenu.map((item) => (
               <MenuLink key={item.path} to={item.path} end={item.end}>
                 {item.label}
@@ -41,15 +48,14 @@ export default function Topbar({
           </nav>
 
           {/* Right actions (desktop) */}
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-3 shrink-0">
             {loading ? (
               <span className="text-sm text-white/80">…</span>
             ) : user ? (
               <>
-                {/* Apps button = nama akun */}
-                <button
-                  type="button"
-                  onClick={() => nav(appsPath)}
+                {/* Tombol Apps = nama akun */}
+                <NavLink
+                  to={appsPath}
                   title={user?.email || ""}
                   className={cn(
                     "rounded-xl bg-white/10 px-3 py-2 text-sm font-semibold text-white",
@@ -57,7 +63,7 @@ export default function Topbar({
                   )}
                 >
                   {userLabel}
-                </button>
+                </NavLink>
 
                 <button
                   type="button"
@@ -83,7 +89,7 @@ export default function Topbar({
           {/* Mobile hamburger */}
           <button
             type="button"
-            className="md:hidden rounded-xl bg-white/10 p-2 ring-1 ring-white/15 text-white"
+            className="md:hidden ml-auto rounded-xl bg-white/10 p-2 ring-1 ring-white/15 text-white"
             onClick={onToggleMobile}
             aria-label="Toggle menu"
             aria-expanded={mobileOpen ? "true" : "false"}

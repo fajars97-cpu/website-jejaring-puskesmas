@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 
 import Topbar from "./Topbar";
@@ -15,82 +15,22 @@ export default function Layout() {
   const { user, isAdmin, loading, signOut } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const touchRef = useRef({
-    startX: 0,
-    startY: 0,
-    lastX: 0,
-    lastY: 0,
-    startT: 0,
-    tracking: false,
-  });
+  // APP area = route kerja (sidebar + footer simple)
+  const isAppArea = loc.pathname.startsWith("/admin") || loc.pathname.startsWith("/pemohon");
 
-  const userLabel = useMemo(() => getUserLabel(user), [user]);
+  // Sidebar hanya muncul ketika user login dan berada di app area
+  const showSidebar = !loading && !!user && isAppArea;
 
+  // Menu sidebar (admin vs pemohon)
   const sidebarMenu = useMemo(() => {
     if (!user) return [];
     return getSidebarMenu({ isAdmin });
   }, [user, isAdmin]);
 
-  const isAppArea = loc.pathname.startsWith("/admin") || loc.pathname.startsWith("/pemohon");
-  const showSidebar = !loading && !!user && isAppArea;
-
-  useEffect(() => setMobileOpen(false), [loc.pathname]);
-
-  useEffect(() => {
-    if (!mobileOpen) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev || "";
-    };
-  }, [mobileOpen]);
-
-  const onTouchStart = (e) => {
-    if (!e.touches?.length) return;
-    const t = e.touches[0];
-    touchRef.current = {
-      startX: t.clientX,
-      startY: t.clientY,
-      lastX: t.clientX,
-      lastY: t.clientY,
-      startT: Date.now(),
-      tracking: true,
-    };
-  };
-
-  const onTouchMove = (e) => {
-    if (!touchRef.current.tracking || !e.touches?.length) return;
-    const t = e.touches[0];
-    touchRef.current.lastX = t.clientX;
-    touchRef.current.lastY = t.clientY;
-  };
-
-  const onTouchEnd = () => {
-    const s = touchRef.current;
-    if (!s.tracking) return;
-    s.tracking = false;
-
-    const dx = s.lastX - s.startX;
-    const dy = s.lastY - s.startY;
-    const adx = Math.abs(dx);
-    const ady = Math.abs(dy);
-    const dt = Date.now() - s.startT;
-
-    if (dt > 700) return;
-    if (ady > 48) return;
-    if (adx < 72) return;
-
-    if (!mobileOpen && s.startX <= 24 && dx > 0) setMobileOpen(true);
-    if (mobileOpen && dx < 0) setMobileOpen(false);
-  };
+  const userLabel = useMemo(() => getUserLabel(user), [user]);
 
   return (
-    <div
-      className="min-h-dvh bg-white text-slate-900"
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
-    >
+    <div className="min-h-dvh bg-white text-slate-900">
       <Topbar
         publicMenu={publicMenu}
         user={user}
@@ -101,6 +41,8 @@ export default function Layout() {
         onToggleMobile={() => setMobileOpen((v) => !v)}
         onCloseMobile={() => setMobileOpen(false)}
         onSignOut={signOut}
+        // Topbar full-width hanya ketika di APP area (setelah login & masuk dashboard)
+        isAppChrome={!!user && isAppArea}
       />
 
       <Burgerbar
@@ -115,10 +57,10 @@ export default function Layout() {
         onSignOut={signOut}
       />
 
-      {/* Viewport minus topbar (h-16 = 4rem) */}
+      {/* Viewport - topbar (h-16) */}
       <div className="h-[calc(100dvh-4rem)] bg-slate-50 overflow-hidden">
+        {/* ========= PUBLIC (Home/Jejaring/Perizinan/Login) ========= */}
         {!isAppArea ? (
-          // ===== PUBLIC =====
           <div className="h-full overflow-y-auto">
             <main className="px-4 py-8 md:px-6">
               <div className="mx-auto max-w-6xl">
@@ -126,30 +68,34 @@ export default function Layout() {
               </div>
             </main>
 
-            {/* Footer rame (PUBLIC) */}
+            {/* Footer PUBLIC (rame) */}
             <Footbar variant="public" SOCIAL_LINKS={SOCIAL_LINKS} QUICK_LINKS={QUICK_LINKS} />
           </div>
         ) : (
-          // ===== APP =====
-          <div className={showSidebar ? "grid h-full md:grid-cols-[260px_1fr]" : "h-full"}>
+          /* ========= APP (Admin/Pemohon) ========= */
+          <div className={showSidebar ? "grid h-full md:grid-cols-[280px_1fr]" : "h-full"}>
+            {/* Sidebar fixed (desktop) */}
             {showSidebar ? (
               <aside className="hidden md:block h-full bg-emerald-900 border-r border-white/10">
-                <div className="h-full p-4 md:p-6">
+                <div className="h-full p-5">
                   <Sidebar sidebarMenu={sidebarMenu} isAdmin={isAdmin} />
                 </div>
               </aside>
             ) : null}
 
-            {/* Content column: scroll only here, footer fixed */}
+            {/* Content column scroll ONLY + footer simple fixed */}
             <section className="relative min-w-0 h-full">
-              <div className="h-full overflow-y-auto pb-14">
+              {/* scroll area: padding bottom supaya tidak ketutup footer fixed */}
+              <div className="h-full overflow-y-auto pb-[56px]">
                 <main className="px-4 py-6 md:px-6">
-                  <div className="max-w-6xl">
+                  {/* Di app area, biarin konten “lapang” (nggak harus max-w super ketat) */}
+                  <div className="mx-auto w-full max-w-6xl">
                     <Outlet />
                   </div>
                 </main>
               </div>
 
+              {/* Footer APP simple fixed (ini yang sebelumnya belum muncul di admin) */}
               <div className="absolute bottom-0 left-0 right-0">
                 <Footbar variant="app" />
               </div>
