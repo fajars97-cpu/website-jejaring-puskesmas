@@ -14,6 +14,8 @@ import Signup from "../pages/Signup";
 import AdminJejaring from "../pages/AdminJejaring";
 import AdminPermohonanMoU from "../pages/AdminPermohonanMoU";
 import PemohonMoU from "../pages/PemohonMoU";
+import AdminAccounts from "../pages/AdminAccounts";
+import PemohonProfile from "../pages/PemohonProfile";
 
 import NotFound from "../pages/NotFound";
 
@@ -61,6 +63,15 @@ export default function AppRoutes() {
           }
         />
 
+        <Route
+          path="/pemohon/profil"
+          element={
+            <RequireAuth>
+              <PemohonProfile />
+            </RequireAuth>
+          }
+        />
+
         {/* ADMIN */}
         <Route
           path="/admin/permohonan-mou"
@@ -75,6 +86,16 @@ export default function AppRoutes() {
           element={
             <RequireAdmin>
               <AdminJejaring />
+            </RequireAdmin>
+          }
+        />
+
+        {/* ADMIN - ACCOUNTS */}
+        <Route
+          path="/admin/akun"
+          element={
+            <RequireAdmin>
+              <AdminAccounts />
             </RequireAdmin>
           }
         />

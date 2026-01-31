@@ -23,14 +23,19 @@ export const QUICK_LINKS = [
 export function getSidebarMenu({ isAdmin }) {
   if (isAdmin) {
     return [
-      { title: null, items: [{ label: "Beranda", path: "/" }] },
-      { title: "PERMOHONAN", items: [{ label: "Rekap Permohonan MoU", path: "/admin/permohonan-mou" }] },
-      { title: "DATABASE", items: [{ label: "Database", path: "/admin/jejaring" }] },
+      // NOTE: Sidebar khusus APP (login). Link Jejaring/Perizinan/Public sudah ada di Topbar.
+      { title: "ADMIN", items: [
+        { label: "Permohonan MoU", path: "/admin/permohonan-mou" },
+        { label: "Admin Jejaring", path: "/admin/jejaring" },
+        { label: "Kelola Akun", path: "/admin/accounts" },
+      ]},
     ];
   }
 
   return [
-    { title: null, items: [{ label: "Beranda", path: "/" }] },
-    { title: "PERMOHONAN", items: [{ label: "Pengajuan MoU", path: "/pemohon/mou" }] },
+     { title: "PEMOHON", items: [
+      { label: "Pengajuan MoU", path: "/pemohon/mou" },
+      { label: "Profil", path: "/pemohon/profile" },
+    ]},
   ];
 }

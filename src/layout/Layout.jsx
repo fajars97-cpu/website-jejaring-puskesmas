@@ -6,7 +6,7 @@ import Sidebar from "./Sidebar";
 import Burgerbar from "./Burgerbar";
 import Footbar from "./Footbar";
 
-import { publicMenu, SOCIAL_LINKS, QUICK_LINKS } from "./config/links";
+import { publicMenu, SOCIAL_LINKS, QUICK_LINKS, getSidebarMenu } from "./config/links";
 import { getUserLabel } from "./utils/getUserLabel";
 import { useAuth } from "../context/AuthContext";
 
@@ -29,26 +29,10 @@ export default function Layout() {
 
   const userLabel = useMemo(() => getUserLabel(user), [user]);
 
-  // ✅ Menu khusus APP (admin vs pemohon). Public menu tetap di Topbar.
+  // ✅ Menu khusus APP (admin vs pemohon) diambil dari config/links biar 1 sumber.
   const sidebarMenu = useMemo(() => {
     if (!user) return [];
-    if (isAdmin) {
-      return [
-        {
-          title: "ADMIN",
-          items: [
-            { label: "Permohonan MoU", path: "/admin/permohonan-mou" },
-            { label: "Admin Jejaring", path: "/admin/jejaring" },
-          ],
-        },
-      ];
-    }
-    return [
-      {
-        title: "PEMOHON",
-        items: [{ label: "Pengajuan MoU", path: "/pemohon/mou" }],
-      },
-    ];
+    return getSidebarMenu({ isAdmin });
   }, [user, isAdmin]);
 
   useEffect(() => setMobileOpen(false), [loc.pathname]);
