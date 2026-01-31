@@ -64,7 +64,7 @@ export default function AppRoutes() {
         />
 
         <Route
-          path="/pemohon/profil"
+          path="/pemohon/profile"
           element={
             <RequireAuth>
               <PemohonProfile />
@@ -92,7 +92,7 @@ export default function AppRoutes() {
 
         {/* ADMIN - ACCOUNTS */}
         <Route
-          path="/admin/akun"
+          path="/admin/accounts"
           element={
             <RequireAdmin>
               <AdminAccounts />
