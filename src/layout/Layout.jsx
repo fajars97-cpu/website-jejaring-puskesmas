@@ -138,8 +138,8 @@ export default function Layout() {
         {!isAppArea ? (
           // ===== PUBLIC =====
           <div className="h-full overflow-y-auto min-h-0">
-            <main className="px-4 py-8 md:px-6">
-              <div className="mx-auto max-w-6xl">
+            <main className="px-3 py-4 md:px-4 md:py-5">
+             <div className="w-full max-w-none">
                 <Outlet />
               </div>
             </main>
@@ -157,7 +157,7 @@ export default function Layout() {
             {/* Sidebar (row 1) */}
             {showSidebar ? (
               <aside className="hidden md:block h-full min-h-0 bg-emerald-900 border-r border-white/10">
-                <div className="h-full p-4 md:p-6">
+                <div className="h-full p-4 md:p-4">
                   <Sidebar sidebarMenu={sidebarMenu} isAdmin={isAdmin} />
                 </div>
               </aside>
@@ -167,7 +167,7 @@ export default function Layout() {
             <section className="min-w-0 h-full min-h-0">
               <div className="h-full min-h-0 overflow-y-auto pb-[calc(48px+env(safe-area-inset-bottom))]">
                 <main className="px-4 py-6 md:px-6">
-                  <div className="mx-auto w-full max-w-[1400px]">
+                  <div className="mx-auto w-full max-w-350">
                     <Outlet />
                   </div>
                 </main>
