@@ -25,7 +25,7 @@ export default function Footbar({ variant = "public", SOCIAL_LINKS = [], QUICK_L
 
   return (
     <footer className="border-t border-black/10 bg-emerald-950 text-white">
-      <div className="mx-auto max-w-6xl px-4 py-10 md:px-6">
+      <div className="w-full px-4 py-10 md:px-6 lg:px-8">
         <div className="grid gap-8 md:grid-cols-4">
           {/* 1: Identitas */}
           <div>
@@ -64,7 +64,7 @@ export default function Footbar({ variant = "public", SOCIAL_LINKS = [], QUICK_L
                   href={s.href}
                   target="_blank"
                   rel="noreferrer"
-                  className="rounded-xl bg-white/10 px-3 py-2 text-sm font-semibold text-white hover:bg-white/15"
+                  className="rounded-xl bg-white/10 px-3 py-2 text-sm font-semibold text-white hover:bg-white/15 active:bg-white/20"
                 >
                   {s.label} • {s.text}
                 </a>

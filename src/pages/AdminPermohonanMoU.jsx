@@ -163,7 +163,7 @@ export default function AdminPermohonanMoU() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-3 sm:px-4 py-6">
+    <div className="w-full px-3 sm:px-4 lg:px-6 2xl:px-8 py-6">
       <div className="rounded-2xl border border-slate-200 bg-white p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
