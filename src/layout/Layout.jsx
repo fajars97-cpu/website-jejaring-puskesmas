@@ -167,7 +167,7 @@ export default function Layout() {
             <section className="min-w-0 h-full min-h-0">
               <div className="h-full min-h-0 overflow-y-auto pb-[calc(48px+env(safe-area-inset-bottom))]">
                 <main className="px-4 py-6 md:px-6">
-                  <div className="mx-auto w-full max-w-350">
+                  <div className="w-full">
                     <Outlet />
                   </div>
                 </main>

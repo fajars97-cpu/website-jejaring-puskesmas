@@ -237,7 +237,7 @@ export default function AdminJejaring() {
     filters.izin !== "ALL";
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-3 sm:px-4 py-6">
+    <div className="w-full px-3 sm:px-4 py-6">
       {/* Admin bar (mobile compact + desktop detailed) */}
       <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-3">
         {/* MOBILE */}

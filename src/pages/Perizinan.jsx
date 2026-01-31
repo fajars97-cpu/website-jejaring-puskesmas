@@ -233,7 +233,7 @@ export default function Perizinan() {
   );
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-6 md:px-6 md:py-10">
+    <div className="w-full px-4 py-6 md:px-6 md:py-10">
       <div className="mb-6 flex flex-col gap-2">
         <h1 className="text-2xl font-bold tracking-tight text-black/90 md:text-3xl">
           Perizinan & Registrasi Fasyankes
