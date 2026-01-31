@@ -2,24 +2,24 @@ import React from "react";
 import BrandLogo from "./parts/BrandLogo";
 
 export default function Footbar({ variant = "public", SOCIAL_LINKS = [], QUICK_LINKS = [] }) {
-  // APP footer simple
+  // ===== APP footer (simple, nyambung sama chrome) =====
   if (variant === "app") {
     return (
-      <footer className="h-14 border-t border-black/10 bg-white">
+      <footer className="h-12 border-t border-white/10 bg-emerald-950 text-white">
         <div className="h-full px-4 md:px-6">
-          <div className="mx-auto h-full max-w-6xl flex items-center justify-between text-[11px] text-slate-500">
+          <div className="h-full flex items-center justify-between text-[11px] text-white/70">
             <div className="flex items-center gap-2 min-w-0">
-              <span className="inline-flex h-2 w-2 rounded-full bg-emerald-600" aria-hidden="true" />
+              <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400" aria-hidden="true" />
               <span className="truncate">© {new Date().getFullYear()} Puskesmas Jagakarsa</span>
             </div>
-            <div className="text-slate-400 truncate">Jejaring • Perizinan • Monitoring</div>
+            <div className="truncate text-white/55">Jejaring • Perizinan • Monitoring</div>
           </div>
         </div>
       </footer>
     );
   }
 
-  // PUBLIC footer rame (konten kamu)
+  // ===== PUBLIC footer (rame, konten kamu) =====
   const social = Array.isArray(SOCIAL_LINKS) ? SOCIAL_LINKS : [];
   const quick = Array.isArray(QUICK_LINKS) ? QUICK_LINKS : [];
 

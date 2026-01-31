@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 
 import Topbar from "./Topbar";
@@ -6,7 +6,7 @@ import Sidebar from "./Sidebar";
 import Burgerbar from "./Burgerbar";
 import Footbar from "./Footbar";
 
-import { publicMenu, SOCIAL_LINKS, QUICK_LINKS, getSidebarMenu } from "./config/links";
+import { publicMenu, SOCIAL_LINKS, QUICK_LINKS } from "./config/links";
 import { getUserLabel } from "./utils/getUserLabel";
 import { useAuth } from "../context/AuthContext";
 
@@ -15,22 +15,101 @@ export default function Layout() {
   const { user, isAdmin, loading, signOut } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // APP area = route kerja (sidebar + footer simple)
+  const touchRef = useRef({
+    startX: 0,
+    startY: 0,
+    lastX: 0,
+    lastY: 0,
+    startT: 0,
+    tracking: false,
+  });
+
   const isAppArea = loc.pathname.startsWith("/admin") || loc.pathname.startsWith("/pemohon");
-
-  // Sidebar hanya muncul ketika user login dan berada di app area
   const showSidebar = !loading && !!user && isAppArea;
-
-  // Menu sidebar (admin vs pemohon)
-  const sidebarMenu = useMemo(() => {
-    if (!user) return [];
-    return getSidebarMenu({ isAdmin });
-  }, [user, isAdmin]);
 
   const userLabel = useMemo(() => getUserLabel(user), [user]);
 
+  // ✅ Sidebar menu khusus APP (tanpa Jejaring/Perizinan public)
+  const sidebarMenu = useMemo(() => {
+    if (!user) return [];
+
+    if (isAdmin) {
+      return [
+        {
+          title: "ADMIN",
+          items: [
+            { label: "Permohonan MoU", path: "/admin/permohonan-mou" },
+            { label: "Admin Jejaring", path: "/admin/jejaring" },
+          ],
+        },
+      ];
+    }
+
+    return [
+      {
+        title: "PEMOHON",
+        items: [{ label: "Pengajuan MoU", path: "/pemohon/mou" }],
+      },
+    ];
+  }, [user, isAdmin]);
+
+  useEffect(() => setMobileOpen(false), [loc.pathname]);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev || "";
+    };
+  }, [mobileOpen]);
+
+  const onTouchStart = (e) => {
+    if (!e.touches?.length) return;
+    const t = e.touches[0];
+    touchRef.current = {
+      startX: t.clientX,
+      startY: t.clientY,
+      lastX: t.clientX,
+      lastY: t.clientY,
+      startT: Date.now(),
+      tracking: true,
+    };
+  };
+
+  const onTouchMove = (e) => {
+    if (!touchRef.current.tracking || !e.touches?.length) return;
+    const t = e.touches[0];
+    touchRef.current.lastX = t.clientX;
+    touchRef.current.lastY = t.clientY;
+  };
+
+  const onTouchEnd = () => {
+    const s = touchRef.current;
+    if (!s.tracking) return;
+    s.tracking = false;
+
+    const dx = s.lastX - s.startX;
+    const dy = s.lastY - s.startY;
+    const adx = Math.abs(dx);
+    const ady = Math.abs(dy);
+    const dt = Date.now() - s.startT;
+
+    if (dt > 700) return;
+    if (ady > 48) return;
+    if (adx < 72) return;
+
+    if (!mobileOpen && s.startX <= 24 && dx > 0) setMobileOpen(true);
+    if (mobileOpen && dx < 0) setMobileOpen(false);
+  };
+
   return (
-    <div className="min-h-dvh bg-white text-slate-900">
+    <div
+      className="min-h-dvh bg-white text-slate-900"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
       <Topbar
         publicMenu={publicMenu}
         user={user}
@@ -41,7 +120,6 @@ export default function Layout() {
         onToggleMobile={() => setMobileOpen((v) => !v)}
         onCloseMobile={() => setMobileOpen(false)}
         onSignOut={signOut}
-        // Topbar full-width hanya ketika di APP area (setelah login & masuk dashboard)
         isAppChrome={!!user && isAppArea}
       />
 
@@ -57,49 +135,46 @@ export default function Layout() {
         onSignOut={signOut}
       />
 
-      {/* Viewport - topbar (h-16) */}
-      <div className="h-[calc(100dvh-4rem)] bg-slate-50 overflow-hidden">
-        {/* ========= PUBLIC (Home/Jejaring/Perizinan/Login) ========= */}
+      {/* body viewport */}
+      <div className="h-[calc(100dvh-4rem)] bg-slate-50 overflow-hidden min-h-0">
         {!isAppArea ? (
-          <div className="h-full overflow-y-auto">
+          // ===== PUBLIC =====
+          <div className="h-full overflow-y-auto min-h-0">
             <main className="px-4 py-8 md:px-6">
               <div className="mx-auto max-w-6xl">
                 <Outlet />
               </div>
             </main>
-
-            {/* Footer PUBLIC (rame) */}
             <Footbar variant="public" SOCIAL_LINKS={SOCIAL_LINKS} QUICK_LINKS={QUICK_LINKS} />
           </div>
         ) : (
-          /* ========= APP (Admin/Pemohon) ========= */
-          <div className={showSidebar ? "grid h-full min-h-0 md:grid-cols-[280px_1fr]" : "h-full min-h-0"}>
-            {/* Sidebar fixed (desktop) */}
+          // ===== APP =====
+          <div className={showSidebar ? "grid h-full min-h-0 md:grid-cols-[260px_1fr] md:grid-rows-[1fr_auto]" : "grid h-full min-h-0 grid-rows-[1fr_auto]"}>
+            {/* Sidebar column (row 1) */}
             {showSidebar ? (
               <aside className="hidden md:block h-full min-h-0 bg-emerald-900 border-r border-white/10">
-                <div className="h-full p-5">
+                <div className="h-full p-4 md:p-6">
                   <Sidebar sidebarMenu={sidebarMenu} isAdmin={isAdmin} />
                 </div>
               </aside>
             ) : null}
 
-            {/* Content column scroll ONLY + footer simple fixed */}
-            <section className="relative min-w-0 h-full min-h-0">
-              {/* scroll area: padding bottom supaya tidak ketutup footer fixed */}
-              <div className="h-full min-h-0 overflow-y-auto pb-[calc(56px+env(safe-area-inset-bottom))]">
+            {/* Content (row 1) */}
+            <section className="min-w-0 h-full min-h-0">
+              <div className="h-full min-h-0 overflow-y-auto pb-[calc(48px+env(safe-area-inset-bottom))]">
                 <main className="px-4 py-6 md:px-6">
-                  {/* Di app area, biarin konten “lapang” (nggak harus max-w super ketat) */}
-                  <div className="w-full">
+                  {/* app content lebih lapang */}
+                  <div className="mx-auto w-full max-w-[1400px]">
                     <Outlet />
                   </div>
                 </main>
               </div>
-
-              {/* Footer APP simple fixed (ini yang sebelumnya belum muncul di admin) */}
-              <div className="absolute bottom-0 left-0 right-0">
-                <Footbar variant="app" />
-              </div>
             </section>
+
+            {/* Footer APP (row 2) — span full supaya nyambung */}
+            <div className={showSidebar ? "md:col-span-2" : ""}>
+              <Footbar variant="app" />
+            </div>
           </div>
         )}
       </div>
