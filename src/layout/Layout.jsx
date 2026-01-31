@@ -73,10 +73,10 @@ export default function Layout() {
           </div>
         ) : (
           /* ========= APP (Admin/Pemohon) ========= */
-          <div className={showSidebar ? "grid h-full md:grid-cols-[280px_1fr]" : "h-full"}>
+          <div className={showSidebar ? "grid h-full min-h-0 md:grid-cols-[280px_1fr]" : "h-full min-h-0"}>
             {/* Sidebar fixed (desktop) */}
             {showSidebar ? (
-              <aside className="hidden md:block h-full bg-emerald-900 border-r border-white/10">
+              <aside className="hidden md:block h-full min-h-0 bg-emerald-900 border-r border-white/10">
                 <div className="h-full p-5">
                   <Sidebar sidebarMenu={sidebarMenu} isAdmin={isAdmin} />
                 </div>
@@ -84,12 +84,12 @@ export default function Layout() {
             ) : null}
 
             {/* Content column scroll ONLY + footer simple fixed */}
-            <section className="relative min-w-0 h-full">
+            <section className="relative min-w-0 h-full min-h-0">
               {/* scroll area: padding bottom supaya tidak ketutup footer fixed */}
-              <div className="h-full overflow-y-auto pb-[56px]">
+              <div className="h-full min-h-0 overflow-y-auto pb-[calc(56px+env(safe-area-inset-bottom))]">
                 <main className="px-4 py-6 md:px-6">
                   {/* Di app area, biarin konten “lapang” (nggak harus max-w super ketat) */}
-                  <div className="mx-auto w-full max-w-6xl">
+                  <div className="w-full">
                     <Outlet />
                   </div>
                 </main>
