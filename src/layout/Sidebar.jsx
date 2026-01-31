@@ -11,19 +11,19 @@ import { cn } from "./utils/cn";
 export default function Sidebar({ sidebarMenu = [], isAdmin }) {
   return (
     <aside className="h-full">
-      <div className="h-full rounded-2xl bg-white/70 backdrop-blur border border-slate-200 overflow-hidden">
+      <div className="h-full rounded-2xl bg-emerald-950 text-white ring-1 ring-white/10 overflow-hidden">
         {/* Header */}
-        <div className="px-4 pt-4 pb-3 border-b border-slate-200 bg-white">
-          <div className="text-sm font-extrabold text-slate-900">Jejaring Puskesmas</div>
-          <div className="text-xs text-slate-500">Puskesmas Jagakarsa • DKI Jakarta</div>
+        <div className="px-4 pt-5 pb-4 border-b border-white/10">
+          <div className="text-sm font-extrabold leading-tight">Website Jejaring Puskesmas</div>
+          <div className="mt-1 text-xs text-white/70">Puskesmas Jagakarsa • DKI Jakarta</div>
         </div>
 
-        {/* Nav (scrollable jika panjang) */}
-        <nav className="h-[calc(100%-52px-44px)] overflow-y-auto px-2 py-3">
+        {/* Nav (scrollable if long) */}
+        <nav className="h-[calc(100%-72px-44px)] overflow-y-auto px-2 py-3">
           {sidebarMenu.map((group, gi) => (
             <div key={gi} className={gi === 0 ? "" : "mt-4"}>
               {group?.title ? (
-                <div className="px-2 pb-2 text-[11px] font-extrabold tracking-widest text-slate-400">
+                <div className="px-3 pb-2 text-[11px] font-extrabold tracking-widest text-white/45">
                   {group.title}
                 </div>
               ) : null}
@@ -35,19 +35,19 @@ export default function Sidebar({ sidebarMenu = [], isAdmin }) {
                     to={item.path}
                     className={({ isActive }) =>
                       cn(
-                        "group relative block rounded-xl px-3 py-2 text-sm font-semibold transition",
-                        isActive ? "bg-emerald-50 text-emerald-900" : "text-slate-700 hover:bg-slate-100"
+                        "group relative block rounded-xl px-3 py-2.5 text-sm font-semibold transition",
+                        isActive
+                          ? "bg-white/12 text-white"
+                          : "text-white/85 hover:bg-white/10"
                       )
                     }
                   >
-                    {/* strip indicator */}
+                    {/* Active/hover strip */}
                     <span
-                      className={({ isActive }) =>
-                        cn(
-                          "absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-full transition",
-                          isActive ? "bg-emerald-500" : "bg-transparent group-hover:bg-slate-300"
-                        )
-                      }
+                      className={cn(
+                        "absolute left-1 top-1/2 -translate-y-1/2 h-5 w-1 rounded-full transition",
+                        "bg-transparent group-hover:bg-white/30"
+                      )}
                     />
                     <span className="pl-2">{item.label}</span>
                   </NavLink>
@@ -58,7 +58,7 @@ export default function Sidebar({ sidebarMenu = [], isAdmin }) {
         </nav>
 
         {/* Footer Mode */}
-        <div className="px-4 py-3 border-t border-slate-200 bg-white text-xs text-slate-500">
+        <div className="px-4 py-3 border-t border-white/10 text-xs text-white/60">
           Mode: {isAdmin ? "Super Admin" : "Pemohon"}
         </div>
       </div>
