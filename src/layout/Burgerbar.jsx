@@ -1,148 +1,122 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { NavLink } from "react-router-dom";
-import { cn } from "./utils/cn";
+import { NAV_ITEMS } from "./Sidebar";
 
-export default function Burgerbar({
-  open,
-  onClose,
-  publicMenu = [],
-  sidebarMenu = [],
-  user,
-  isAdmin,
-  loading,
-  userLabel,
-  onSignOut,
-}) {
-  if (!open) return null;
+export default function Burgerbar({ open, onClose }) {
+  // Close on ESC handled in Layout, tapi aman kalau kamu mau keep di sini juga.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => e.key === "Escape" && onClose?.();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
 
   return (
     <div
-      className="md:hidden fixed inset-0 z-[60] bg-black/40"
-      onClick={onClose}
+      className={[
+        "fixed inset-0 z-[70] md:hidden",
+        open ? "pointer-events-auto" : "pointer-events-none",
+      ].join(" ")}
+      aria-hidden={!open}
     >
-      {/* Drawer */}
+      {/* Backdrop */}
       <div
-        className="absolute inset-y-0 left-0 w-80 max-w-[85vw] bg-emerald-950 text-white shadow-2xl"
+        className={[
+          "absolute inset-0 bg-black/40 transition-opacity duration-200",
+          open ? "opacity-100" : "opacity-0",
+        ].join(" ")}
+        onClick={onClose}
+      />
+
+      {/* Panel */}
+      <div
+        className={[
+          "absolute left-0 top-0 h-full w-[86%] max-w-[340px]",
+          "bg-emerald-800 text-white border-r border-white/10 shadow-2xl",
+          "transition-transform duration-200 ease-out",
+          open ? "translate-x-0" : "-translate-x-full",
+        ].join(" ")}
+        role="dialog"
+        aria-modal="true"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="px-4 pt-5 pb-4 border-b border-white/10 flex items-start justify-between gap-3">
-          <div>
-            <div className="text-sm font-extrabold">Website Jejaring Puskesmas</div>
-            <div className="mt-1 text-xs text-white/70">Puskesmas Jagakarsa • DKI Jakarta</div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl bg-white/10 px-3 py-2 text-xs font-bold ring-1 ring-white/15 hover:bg-white/15"
-          >
-            Tutup
-          </button>
-        </div>
+        <div className="flex h-full flex-col">
+          {/* Header */}
+          <div className="px-5 pt-5 pb-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-white leading-tight">
+                  Website Jejaring Puskesmas
+                </div>
+                <div className="mt-0.5 text-[12px] text-white/70 truncate">
+                  Puskesmas Jagakarsa • DKI Jakarta
+                </div>
+              </div>
 
-        <div className="h-[calc(100%-72px)] overflow-y-auto px-3 py-4 space-y-5">
-          {/* Public */}
-          <div>
-            <div className="px-2 pb-2 text-[11px] font-extrabold tracking-widest text-white/45">
-              NAVIGASI
+              <button
+                type="button"
+                onClick={onClose}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-white/10 hover:bg-white/15 transition"
+                aria-label="Tutup menu"
+              >
+                ✕
+              </button>
             </div>
-            <div className="space-y-1">
-              {publicMenu.map((item) => (
+
+            <div className="mt-4 h-px bg-white/10" />
+          </div>
+
+          {/* Menu */}
+          <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
+            <div className="px-2 pb-2 text-[11px] uppercase tracking-wider text-white/60">
+              Menu
+            </div>
+
+            <nav className="space-y-1">
+              {NAV_ITEMS.map((it) => (
                 <NavLink
-                  key={item.path}
-                  to={item.path}
-                  end={item.end}
+                  key={it.to}
+                  to={it.to}
                   onClick={onClose}
                   className={({ isActive }) =>
-                    cn(
-                      "block rounded-xl px-3 py-2.5 text-sm font-semibold transition",
-                      isActive ? "bg-white/12 text-white" : "text-white/85 hover:bg-white/10"
-                    )
+                    [
+                      "relative flex items-center rounded-md px-3 py-2 text-[13px] font-medium",
+                      "transition-colors",
+                      "text-white/85 hover:text-white hover:bg-white/10",
+                      isActive ? "bg-white/12 text-white" : "",
+                    ].join(" ")
                   }
                 >
-                  {item.label}
+                  {({ isActive }) => (
+                    <>
+                      <span
+                        className={[
+                          "absolute left-0 top-1/2 h-5 -translate-y-1/2 rounded-r",
+                          "transition-all",
+                          isActive ? "w-1 bg-emerald-200 opacity-100" : "w-0 opacity-0",
+                        ].join(" ")}
+                        aria-hidden="true"
+                      />
+                      <span className="truncate">{it.label}</span>
+                    </>
+                  )}
                 </NavLink>
               ))}
+            </nav>
+
+            <div className="mt-6 h-px bg-white/10" />
+
+            <div className="mt-4 rounded-lg bg-white/7 px-3 py-3">
+              <div className="text-[12px] font-semibold text-white/90">Gesture</div>
+              <div className="mt-1 text-[12px] text-white/70 leading-relaxed">
+                Swipe kiri untuk menutup.
+              </div>
             </div>
           </div>
 
-          {/* Login-only */}
-          {!loading && user && sidebarMenu?.length ? (
-            <div>
-              <div className="px-2 pb-2 text-[11px] font-extrabold tracking-widest text-white/45">
-                {isAdmin ? "ADMIN" : "AKUN"}
-              </div>
-
-              <div className="space-y-4">
-                {sidebarMenu.map((group, gi) => (
-                  <div key={gi}>
-                    {group?.title ? (
-                      <div className="px-2 pb-2 text-[11px] font-extrabold tracking-widest text-white/35">
-                        {group.title}
-                      </div>
-                    ) : null}
-
-                    <div className="space-y-1">
-                      {(group?.items || []).map((item) => (
-                        <NavLink
-                          key={item.path}
-                          to={item.path}
-                          onClick={onClose}
-                          className={({ isActive }) =>
-                            cn(
-                              "block rounded-xl px-3 py-2.5 text-sm font-semibold transition",
-                              isActive ? "bg-white/12 text-white" : "text-white/85 hover:bg-white/10"
-                            )
-                          }
-                        >
-                          {item.label}
-                        </NavLink>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          {/* Auth actions */}
-          <div className="pt-3 border-t border-white/10">
-            {loading ? (
-              <div className="rounded-xl bg-white/10 px-3 py-2 text-sm">…</div>
-            ) : user ? (
-              <div className="space-y-2">
-                <div className="rounded-xl bg-white/10 px-3 py-2 text-sm">
-                  <div className="font-extrabold">{userLabel || "User"}</div>
-                  <div className="text-xs text-white/60">Mode: {isAdmin ? "Super Admin" : "Pemohon"}</div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onClose();
-                    onSignOut?.();
-                  }}
-                  className="w-full rounded-xl bg-white/10 px-3 py-2 text-sm font-extrabold ring-1 ring-white/15 hover:bg-white/15"
-                >
-                  Logout
-                </button>
-              </div>
-            ) : (
-              <div className="grid gap-2">
-                <NavLink
-                  to="/login"
-                  onClick={onClose}
-                  className="block rounded-xl bg-white px-3 py-2 text-center text-sm font-extrabold text-emerald-900"
-                >
-                  Login
-                </NavLink>
-                <NavLink
-                  to="/signup"
-                  onClick={onClose}
-                  className="block rounded-xl bg-white/10 px-3 py-2 text-center text-sm font-extrabold ring-1 ring-white/15 hover:bg-white/15"
-                >
-                  Daftar
-                </NavLink>
-              </div>
-            )}
+          {/* Bottom */}
+          <div className="px-5 py-4 border-t border-white/10 text-[11px] text-white/60">
+            Tap di luar untuk menutup
           </div>
         </div>
       </div>

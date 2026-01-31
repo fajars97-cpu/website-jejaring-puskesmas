@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 
 import Topbar from "./Topbar";
@@ -6,86 +6,154 @@ import Sidebar from "./Sidebar";
 import Burgerbar from "./Burgerbar";
 import Footbar from "./Footbar";
 
-import { publicMenu, SOCIAL_LINKS, QUICK_LINKS, getSidebarMenu } from "./config/links";
-import { getUserLabel } from "./utils/getUserLabel";
-import { useAuth } from "../context/AuthContext";
-
 export default function Layout() {
-  const loc = useLocation();
-  const { user, isAdmin, loading, signOut } = useAuth();
+  const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const userLabel = useMemo(() => getUserLabel(user), [user]);
+  // Kamu bisa sesuaikan pattern app area tanpa ubah routing inti
+  const isAppArea = useMemo(() => {
+    const p = location.pathname;
+    return p.startsWith("/admin") || p.startsWith("/pemohon") || p.startsWith("/app");
+  }, [location.pathname]);
 
-  const sidebarMenu = useMemo(() => {
-    if (!user) return [];
-    return getSidebarMenu({ isAdmin });
-  }, [user, isAdmin]);
+  // Auto-close drawer on route change
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname]);
 
-  const showSidebar = !loading && !!user;
-  const isAppArea = loc.pathname.startsWith("/admin") || loc.pathname.startsWith("/pemohon");
+  // ESC closes drawer
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") setMobileOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  // Lock body scroll when drawer open
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev || "";
+    };
+  }, [mobileOpen]);
+
+  // Swipe gesture state (mobile)
+  const touchRef = useRef({
+    tracking: false,
+    startX: 0,
+    startY: 0,
+    lastX: 0,
+    lastY: 0,
+    startT: 0,
+  });
+
+  const onTouchStart = (e) => {
+    if (!e.touches?.length) return;
+    const t = e.touches[0];
+    touchRef.current = {
+      tracking: true,
+      startX: t.clientX,
+      startY: t.clientY,
+      lastX: t.clientX,
+      lastY: t.clientY,
+      startT: Date.now(),
+    };
+  };
+
+  const onTouchMove = (e) => {
+    if (!touchRef.current.tracking || !e.touches?.length) return;
+    const t = e.touches[0];
+    touchRef.current.lastX = t.clientX;
+    touchRef.current.lastY = t.clientY;
+  };
+
+  const onTouchEnd = () => {
+    const s = touchRef.current;
+    if (!s.tracking) return;
+    s.tracking = false;
+
+    const dx = s.lastX - s.startX;
+    const dy = s.lastY - s.startY;
+    const adx = Math.abs(dx);
+    const ady = Math.abs(dy);
+    const dt = Date.now() - s.startT;
+
+    // filter noise
+    if (dt > 700) return;
+    if (ady > 48) return;
+    if (adx < 72) return;
+
+    // Open: swipe right from left edge
+    if (!mobileOpen && s.startX <= 24 && dx > 0) {
+      setMobileOpen(true);
+      return;
+    }
+
+    // Close: swipe left
+    if (mobileOpen && dx < 0) {
+      setMobileOpen(false);
+    }
+  };
 
   return (
-    <div className="min-h-dvh bg-white text-slate-900">
-      <Topbar
-        publicMenu={publicMenu}
-        user={user}
-        isAdmin={isAdmin}
-        loading={loading}
-        userLabel={userLabel}
-        mobileOpen={mobileOpen}
-        onToggleMobile={() => setMobileOpen((v) => !v)}
-        onCloseMobile={() => setMobileOpen(false)}
-        onSignOut={signOut}
-      />
+    <div
+      className="min-h-dvh bg-slate-50 text-slate-900"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
+      {/* Shell: page tidak scroll, hanya area tertentu */}
+      <div className="h-dvh overflow-hidden">
+        {/* Topbar fixed */}
+        <div className="sticky top-0 z-50">
+          <Topbar onMenuClick={() => setMobileOpen(true)} />
+        </div>
 
-      <Burgerbar
-        open={mobileOpen}
-        onClose={() => setMobileOpen(false)}
-        publicMenu={publicMenu}
-        sidebarMenu={sidebarMenu}
-        user={user}
-        isAdmin={isAdmin}
-        loading={loading}
-        userLabel={userLabel}
-        onSignOut={signOut}
-      />
+        {/* BODY */}
+        {isAppArea ? (
+          // APP SHELL: sidebar fixed + content scroll + footer fixed
+          <div className="grid h-[calc(100dvh-3.5rem)] md:grid-cols-[280px_1fr]">
+            {/* Sidebar fixed */}
+            <aside className="hidden md:block h-full bg-emerald-800 border-r border-white/10">
+              <Sidebar />
+            </aside>
 
-      {/* Shell: viewport - topbar (4rem) */}
-      <div className="h-[calc(100dvh-4rem)] bg-slate-50 overflow-hidden">
-        {/* PUBLIC: one-column scroll */}
-        {!isAppArea ? (
-          <div className="h-full overflow-y-auto">
-            <main className="px-4 py-8 md:px-6">
-              <div className="mx-auto max-w-6xl">
-                <Outlet />
-                <div className="mt-12">
-                  <Footbar SOCIAL_LINKS={SOCIAL_LINKS} QUICK_LINKS={QUICK_LINKS} />
-                </div>
+            {/* Content column */}
+            <section className="relative h-full min-w-0 bg-slate-50">
+              {/* Scrollable content area.
+                  pb-[56px] biar konten terakhir nggak ketutup footer fixed (tinggi footer app 56px) */}
+              <div className="h-full overflow-y-auto pb-[56px]">
+                <main className="px-4 py-6 md:px-6">
+                  <div className="mx-auto w-full max-w-[1400px]">
+                    <Outlet />
+                  </div>
+                </main>
               </div>
-            </main>
+
+              {/* Footer fixed di bawah kolom konten */}
+              <div className="absolute bottom-0 left-0 right-0">
+                <Footbar variant="app" />
+              </div>
+            </section>
           </div>
         ) : (
-          /* APP: sidebar fixed, content scroll */
-          <div className="mx-auto max-w-6xl h-full px-4 md:px-6">
-            <div className={showSidebar ? "grid h-full md:grid-cols-[260px_1fr] md:gap-6" : "h-full"}>
-              {/* Sidebar stays still */}
-              {showSidebar ? (
-                <div className="hidden md:block h-full py-6">
-                  <Sidebar sidebarMenu={sidebarMenu} isAdmin={isAdmin} />
-                </div>
-              ) : null}
-
-              {/* Only this scrolls */}
-              <div className="min-w-0 h-full overflow-y-auto py-6">
+          // PUBLIC: scroll normal + footer rame ikut scroll
+          <div className="h-[calc(100dvh-3.5rem)] overflow-y-auto">
+            <main className="px-4 py-8 md:px-6">
+              <div className="mx-auto w-full max-w-[1200px]">
                 <Outlet />
-                <div className="mt-12">
-                  <Footbar SOCIAL_LINKS={SOCIAL_LINKS} QUICK_LINKS={QUICK_LINKS} />
-                </div>
               </div>
-            </div>
+            </main>
+
+            <Footbar variant="public" />
           </div>
         )}
+
+        {/* Mobile drawer overlay */}
+        <Burgerbar open={mobileOpen} onClose={() => setMobileOpen(false)} />
       </div>
     </div>
   );
