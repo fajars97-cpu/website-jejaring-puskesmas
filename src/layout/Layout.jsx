@@ -29,10 +29,9 @@ export default function Layout() {
 
   const userLabel = useMemo(() => getUserLabel(user), [user]);
 
-  // ✅ Sidebar menu khusus APP (tanpa Jejaring/Perizinan public)
+  // ✅ Menu khusus APP (admin vs pemohon). Public menu tetap di Topbar.
   const sidebarMenu = useMemo(() => {
     if (!user) return [];
-
     if (isAdmin) {
       return [
         {
@@ -44,7 +43,6 @@ export default function Layout() {
         },
       ];
     }
-
     return [
       {
         title: "PEMOHON",
@@ -149,8 +147,14 @@ export default function Layout() {
           </div>
         ) : (
           // ===== APP =====
-          <div className={showSidebar ? "grid h-full min-h-0 md:grid-cols-[260px_1fr] md:grid-rows-[1fr_auto]" : "grid h-full min-h-0 grid-rows-[1fr_auto]"}>
-            {/* Sidebar column (row 1) */}
+          <div
+            className={
+              showSidebar
+                ? "grid h-full min-h-0 md:grid-cols-[260px_1fr] md:grid-rows-[1fr_auto]"
+                : "grid h-full min-h-0 grid-rows-[1fr_auto]"
+            }
+          >
+            {/* Sidebar (row 1) */}
             {showSidebar ? (
               <aside className="hidden md:block h-full min-h-0 bg-emerald-900 border-r border-white/10">
                 <div className="h-full p-4 md:p-6">
@@ -163,7 +167,6 @@ export default function Layout() {
             <section className="min-w-0 h-full min-h-0">
               <div className="h-full min-h-0 overflow-y-auto pb-[calc(48px+env(safe-area-inset-bottom))]">
                 <main className="px-4 py-6 md:px-6">
-                  {/* app content lebih lapang */}
                   <div className="mx-auto w-full max-w-[1400px]">
                     <Outlet />
                   </div>
@@ -171,7 +174,7 @@ export default function Layout() {
               </div>
             </section>
 
-            {/* Footer APP (row 2) — span full supaya nyambung */}
+            {/* Footer APP (row 2) */}
             <div className={showSidebar ? "md:col-span-2" : ""}>
               <Footbar variant="app" />
             </div>
