@@ -118,7 +118,7 @@ export default function AdminAccounts() {
 
   return (
     <div className="w-full">
-      <div className="mx-auto w-full max-w-300 px-4 py-6">
+      <div className="w-full max-w-none px-0 md:px-1 py-0">
         <div className="rounded-2xl border border-black/10 bg-white p-5">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
