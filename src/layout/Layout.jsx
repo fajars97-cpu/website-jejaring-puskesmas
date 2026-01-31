@@ -6,24 +6,35 @@ import Sidebar from "./Sidebar";
 import Burgerbar from "./Burgerbar";
 import Footbar from "./Footbar";
 
+import { publicMenu, SOCIAL_LINKS, QUICK_LINKS, getSidebarMenu } from "./config/links";
+import { getUserLabel } from "./utils/getUserLabel";
+import { useAuth } from "../context/AuthContext";
+
 export default function Layout() {
-  const location = useLocation();
+  const loc = useLocation();
+  const { user, isAdmin, loading, signOut } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // PUBLIC hanya 3 halaman ini (sesuai request kamu).
-  // Semua selain ini dianggap APP (login/pemohon/admin).
-  const isPublic = useMemo(() => {
-    const p = location.pathname;
-    return p === "/" || p.startsWith("/jejaring") || p.startsWith("/perizinan");
-  }, [location.pathname]);
+  const touchRef = useRef({
+    startX: 0,
+    startY: 0,
+    lastX: 0,
+    lastY: 0,
+    startT: 0,
+    tracking: false,
+  });
 
-  useEffect(() => setMobileOpen(false), [location.pathname]);
+  const userLabel = useMemo(() => getUserLabel(user), [user]);
 
-  useEffect(() => {
-    const onKeyDown = (e) => e.key === "Escape" && setMobileOpen(false);
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  const sidebarMenu = useMemo(() => {
+    if (!user) return [];
+    return getSidebarMenu({ isAdmin });
+  }, [user, isAdmin]);
+
+  const isAppArea = loc.pathname.startsWith("/admin") || loc.pathname.startsWith("/pemohon");
+  const showSidebar = !loading && !!user && isAppArea;
+
+  useEffect(() => setMobileOpen(false), [loc.pathname]);
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -34,26 +45,16 @@ export default function Layout() {
     };
   }, [mobileOpen]);
 
-  // Swipe gestures for burger
-  const touchRef = useRef({
-    tracking: false,
-    startX: 0,
-    startY: 0,
-    lastX: 0,
-    lastY: 0,
-    startT: 0,
-  });
-
   const onTouchStart = (e) => {
     if (!e.touches?.length) return;
     const t = e.touches[0];
     touchRef.current = {
-      tracking: true,
       startX: t.clientX,
       startY: t.clientY,
       lastX: t.clientX,
       lastY: t.clientY,
       startT: Date.now(),
+      tracking: true,
     };
   };
 
@@ -85,54 +86,76 @@ export default function Layout() {
 
   return (
     <div
-      className="min-h-dvh bg-slate-50 text-slate-900"
+      className="min-h-dvh bg-white text-slate-900"
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
     >
-      <div className="h-dvh overflow-hidden">
-        {/* Topbar fixed */}
-        <div className="sticky top-0 z-50">
-          <Topbar onMenuClick={() => setMobileOpen(true)} mode={isPublic ? "public" : "app"} />
-        </div>
+      <Topbar
+        publicMenu={publicMenu}
+        user={user}
+        isAdmin={isAdmin}
+        loading={loading}
+        userLabel={userLabel}
+        mobileOpen={mobileOpen}
+        onToggleMobile={() => setMobileOpen((v) => !v)}
+        onCloseMobile={() => setMobileOpen(false)}
+        onSignOut={signOut}
+      />
 
-        {isPublic ? (
-          // PUBLIC: scroll normal, footer public ikut scroll
-          <div className="h-[calc(100dvh-3.5rem)] overflow-y-auto">
+      <Burgerbar
+        open={mobileOpen}
+        onClose={() => setMobileOpen(false)}
+        publicMenu={publicMenu}
+        sidebarMenu={sidebarMenu}
+        user={user}
+        isAdmin={isAdmin}
+        loading={loading}
+        userLabel={userLabel}
+        onSignOut={signOut}
+      />
+
+      {/* Viewport minus topbar (h-16 = 4rem) */}
+      <div className="h-[calc(100dvh-4rem)] bg-slate-50 overflow-hidden">
+        {!isAppArea ? (
+          // ===== PUBLIC =====
+          <div className="h-full overflow-y-auto">
             <main className="px-4 py-8 md:px-6">
-              <div className="mx-auto w-full max-w-300">
+              <div className="mx-auto max-w-6xl">
                 <Outlet />
               </div>
             </main>
 
-            {/* Footer PUBLIC (rame) */}
-            <Footbar variant="public" />
+            {/* Footer rame (PUBLIC) */}
+            <Footbar variant="public" SOCIAL_LINKS={SOCIAL_LINKS} QUICK_LINKS={QUICK_LINKS} />
           </div>
         ) : (
-          // APP: sidebar fixed, hanya konten scroll, footer fixed simple
-          <div className="grid h-[calc(100dvh-3.5rem)] md:grid-cols-[280px_1fr]">
-            <aside className="hidden md:block h-full bg-emerald-800 border-r border-white/10">
-              <Sidebar />
-            </aside>
+          // ===== APP =====
+          <div className={showSidebar ? "grid h-full md:grid-cols-[260px_1fr]" : "h-full"}>
+            {showSidebar ? (
+              <aside className="hidden md:block h-full bg-emerald-900 border-r border-white/10">
+                <div className="h-full p-4 md:p-6">
+                  <Sidebar sidebarMenu={sidebarMenu} isAdmin={isAdmin} />
+                </div>
+              </aside>
+            ) : null}
 
-            <section className="relative h-full min-w-0">
+            {/* Content column: scroll only here, footer fixed */}
+            <section className="relative min-w-0 h-full">
               <div className="h-full overflow-y-auto pb-14">
                 <main className="px-4 py-6 md:px-6">
-                  <div className="mx-auto w-full max-w-350">
+                  <div className="max-w-6xl">
                     <Outlet />
                   </div>
                 </main>
               </div>
 
-              {/* Footer APP (simple fixed) */}
               <div className="absolute bottom-0 left-0 right-0">
                 <Footbar variant="app" />
               </div>
             </section>
           </div>
         )}
-
-        <Burgerbar open={mobileOpen} onClose={() => setMobileOpen(false)} />
       </div>
     </div>
   );

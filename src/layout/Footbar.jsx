@@ -1,27 +1,23 @@
 import React from "react";
 import BrandLogo from "./parts/BrandLogo";
 
-/**
- * variant:
- * - "public": footer rame (konten asli kamu, UNCHANGED)
- * - "app": footer simple (buat pemohon/admin) -> cocok fixed
- */
-export default function Footbar({ SOCIAL_LINKS = [], QUICK_LINKS = [], variant = "public" }) {
+export default function Footbar({
+  variant = "public",
+  SOCIAL_LINKS = [],
+  QUICK_LINKS = [],
+}) {
   if (variant === "app") {
-    // APP footer: simple, workplace
+    // APP footer: simple (workplace)
     return (
       <footer className="h-14 border-t border-black/10 bg-white">
         <div className="h-full px-4 md:px-6">
-          <div className="mx-auto h-full w-full max-w-[1400px] flex items-center justify-between text-[11px] text-slate-500">
+          <div className="mx-auto h-full w-full max-w-6xl flex items-center justify-between text-[11px] text-slate-500">
             <div className="flex items-center gap-2 min-w-0">
               <span className="inline-flex h-2 w-2 rounded-full bg-emerald-600" aria-hidden="true" />
               <span className="truncate">© {new Date().getFullYear()} Puskesmas Jagakarsa</span>
             </div>
-
             <div className="flex items-center gap-2 text-slate-400">
-              <span className="hidden sm:inline">Jejaring</span>
-              <span className="hidden sm:inline">•</span>
-              <span className="truncate">Perizinan</span>
+              <span className="truncate">Jejaring • Perizinan</span>
             </div>
           </div>
         </div>
@@ -29,9 +25,10 @@ export default function Footbar({ SOCIAL_LINKS = [], QUICK_LINKS = [], variant =
     );
   }
 
-  // =========================
-  // PUBLIC footer (ASLI KAMU)
-  // =========================
+  // PUBLIC footer (konten kamu sama, hanya ditambah guard supaya ga kosong)
+  const social = Array.isArray(SOCIAL_LINKS) ? SOCIAL_LINKS : [];
+  const quick = Array.isArray(QUICK_LINKS) ? QUICK_LINKS : [];
+
   return (
     <footer className="border-t border-black/10 bg-emerald-950 text-white">
       <div className="mx-auto max-w-6xl px-4 py-10 md:px-6">
@@ -67,7 +64,7 @@ export default function Footbar({ SOCIAL_LINKS = [], QUICK_LINKS = [], variant =
           <div>
             <div className="text-base font-extrabold">Media Sosial</div>
             <div className="mt-3 grid gap-2">
-              {SOCIAL_LINKS.map((s) => (
+              {social.map((s) => (
                 <a
                   key={s.label}
                   href={s.href}
@@ -88,7 +85,7 @@ export default function Footbar({ SOCIAL_LINKS = [], QUICK_LINKS = [], variant =
               <div className="rounded-2xl bg-white/10 p-3">
                 <div className="text-sm font-semibold">Tautan Cepat</div>
                 <div className="mt-2 grid gap-2 text-sm">
-                  {QUICK_LINKS.map((q) => (
+                  {quick.map((q) => (
                     <a
                       key={q.label}
                       className="rounded-xl bg-white/10 px-3 py-2 hover:bg-white/15"
