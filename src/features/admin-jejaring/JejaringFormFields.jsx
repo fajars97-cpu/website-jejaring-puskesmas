@@ -1,243 +1,189 @@
-import React, { useEffect, useMemo, useState } from "react";
-import {
-  JENIS_OPTIONS,
-  TIPE_OPTIONS,
-  STATUS_OPTIONS,
-  PENYELENGGARA_OPTIONS,
-  KELOMPOK_PENYELENGGARA_OPTIONS,
-  FOTO_ALLOWED_TYPES,
-  FOTO_MAX_MB,
-} from "./constants";
-import { uploadToCloudinary } from "./cloudinary";
+// JejaringFormFields.jsx
+import React, { useMemo } from "react";
 
-export default function JejaringFormFields({ value, onChange }) {
-  const set = (k) => (e) =>
-    onChange(k, e.target.type === "checkbox" ? e.target.checked : e.target.value);
+// Kalau kamu sudah punya constants, boleh ganti ini jadi import dari constants.js
+const STATUS_OPTIONS = ["Aktif", "Tidak Aktif"];
+const PENYELENGGARA_OPTIONS = ["Swasta", "Pemerintah", "Lainnya"];
+const KELOMPOK_PENYELENGGARA_OPTIONS = ["Perusahaan", "Perorangan", "Yayasan", "Lainnya"];
 
-  const inputBase =
-    "mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-300";
-  const labelBase = "text-xs font-medium text-slate-700";
+const inputBase =
+  "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-300 disabled:opacity-60";
+const labelBase = "text-xs font-semibold text-slate-700";
+const sectionWrap = "rounded-2xl border border-slate-200 bg-white p-4";
+const sectionTitle = "text-sm font-semibold text-slate-900";
 
-  // ===== Foto upload state (lokal) =====
-  const [file, setFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState("");
-  const [uploading, setUploading] = useState(false);
-  const [uploadErr, setUploadErr] = useState("");
-  const [uploadOk, setUploadOk] = useState("");
-
-  const fotoUrl = String(value?.foto ?? "").trim();
-
-  const maxBytes = useMemo(() => (FOTO_MAX_MB || 3) * 1024 * 1024, []);
-  const allowedTypes = useMemo(
-    () => (Array.isArray(FOTO_ALLOWED_TYPES) && FOTO_ALLOWED_TYPES.length ? FOTO_ALLOWED_TYPES : ["image/jpeg", "image/png", "image/webp"]),
-    []
+function Field({ label, children, hint }) {
+  return (
+    <label className="block">
+      <div className="flex items-baseline justify-between gap-3">
+        <div className={labelBase}>{label}</div>
+        {hint ? <div className="text-[11px] text-slate-500">{hint}</div> : null}
+      </div>
+      <div className="mt-1">{children}</div>
+    </label>
   );
+}
 
-  useEffect(() => {
-    if (!file) {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-      setPreviewUrl("");
-      return;
-    }
-    const u = URL.createObjectURL(file);
-    setPreviewUrl(u);
-    return () => URL.revokeObjectURL(u);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [file]);
+export default function JejaringFormFields({
+  value,
+  onChange,
+  variant = "admin", // "pemohon"
+  disabled = false,
+  sections, // optional: { verified:true, perizinan:true, mou:true, akreditasi:true, foto:true }
+}) {
+  const isPemohon = variant === "pemohon";
 
-  function onPickFile(e) {
-    setUploadErr("");
-    setUploadOk("");
-    const f = e.target.files?.[0];
-    if (!f) return;
+  const show = useMemo(() => {
+    const base = {
+      verified: !isPemohon,
+      perizinan: !isPemohon,
+      mou: !isPemohon,
+      akreditasi: !isPemohon,
+      foto: !isPemohon,
+    };
+    return { ...base, ...(sections || {}) };
+  }, [isPemohon, sections]);
 
-    if (!allowedTypes.includes(f.type)) {
-      setUploadErr(`Format tidak didukung. Gunakan JPG/PNG/WEBP.`);
-      e.target.value = "";
-      return;
-    }
-    if (f.size > maxBytes) {
-      setUploadErr(`Ukuran file terlalu besar. Maks ${FOTO_MAX_MB || 3} MB.`);
-      e.target.value = "";
-      return;
-    }
-
-    setFile(f);
-  }
-
-  async function doUpload() {
-    setUploadErr("");
-    setUploadOk("");
-
-    if (!file) {
-      setUploadErr("Pilih file dulu.");
-      return;
-    }
-
-    setUploading(true);
-    try {
-      const r = await uploadToCloudinary(file);
-      onChange("foto", r.secureUrl); // <-- simpan URL ke form
-      setUploadOk("Upload sukses. URL foto sudah terisi.");
-      setFile(null);
-    } catch (err) {
-      setUploadErr(err?.message || "Upload gagal.");
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  function clearFoto() {
-    setUploadErr("");
-    setUploadOk("");
-    setFile(null);
-    onChange("foto", "");
-  }
+  const set = (k) => (e) => {
+    if (disabled) return;
+    const t = e?.target;
+    const v = t?.type === "checkbox" ? !!t.checked : t?.value;
+    onChange?.(k, v);
+  };
 
   return (
     <div className="space-y-4">
       {/* Identitas */}
-      <div className="rounded-2xl border border-slate-200 p-4">
-        <div className="text-sm font-semibold text-slate-900">Identitas</div>
+      <div className={sectionWrap}>
+        <div className={sectionTitle}>Identitas Fasyankes</div>
 
         <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
           <div className="md:col-span-2">
-            <label className={labelBase}>Nama fasyankes *</label>
-            <input value={value.nama_fasyankes || ""} onChange={set("nama_fasyankes")} className={inputBase} />
+            <Field label="Nama fasyankes *">
+              <input value={value?.nama_fasyankes ?? ""} onChange={set("nama_fasyankes")} disabled={disabled} className={inputBase} />
+            </Field>
           </div>
 
-          <div>
-            <label className={labelBase}>Jenis fasyankes *</label>
-            <select value={value.jenis_fasyankes || ""} onChange={set("jenis_fasyankes")} className={inputBase}>
-              {JENIS_OPTIONS.map((o) => (
-                <option key={o} value={o}>
-                  {o}
-                </option>
-              ))}
-            </select>
-          </div>
+          <Field label="Jenis fasyankes *" hint="contoh: Klinik Pratama">
+            <input value={value?.jenis_fasyankes ?? ""} onChange={set("jenis_fasyankes")} disabled={disabled} className={inputBase} />
+          </Field>
 
-          <div>
-            <label className={labelBase}>Tipe fasyankes *</label>
-            <select value={value.tipe_fasyankes || ""} onChange={set("tipe_fasyankes")} className={inputBase}>
-              {TIPE_OPTIONS.map((o) => (
-                <option key={o} value={o}>
-                  {o}
-                </option>
-              ))}
-            </select>
-          </div>
+          <Field label="Tipe fasyankes *" hint="contoh: Klinik Gigi">
+            <input value={value?.tipe_fasyankes ?? ""} onChange={set("tipe_fasyankes")} disabled={disabled} className={inputBase} />
+          </Field>
 
-          <div>
-            <label className={labelBase}>Status *</label>
-            <select value={value.status || ""} onChange={set("status")} className={inputBase}>
+          <Field label="Status *">
+            <select value={value?.status ?? "Aktif"} onChange={set("status")} disabled={disabled} className={inputBase}>
               {STATUS_OPTIONS.map((o) => (
                 <option key={o} value={o}>
                   {o}
                 </option>
               ))}
             </select>
-          </div>
+          </Field>
 
-          <div className="flex items-end gap-2">
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={!!value.is_verified} onChange={set("is_verified")} />
-              <span className="text-slate-700">Verified</span>
-            </label>
-          </div>
+          {show.verified ? (
+            <div className="flex items-end">
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input type="checkbox" checked={!!value?.is_verified} onChange={set("is_verified")} disabled={disabled} />
+                Verified
+              </label>
+            </div>
+          ) : (
+            <div />
+          )}
         </div>
       </div>
 
       {/* Lokasi */}
-      <div className="rounded-2xl border border-slate-200 p-4">
-        <div className="text-sm font-semibold text-slate-900">Lokasi</div>
+      <div className={sectionWrap}>
+        <div className={sectionTitle}>Lokasi</div>
 
         <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
           <div className="md:col-span-2">
-            <label className={labelBase}>Alamat *</label>
-            <input value={value.alamat || ""} onChange={set("alamat")} className={inputBase} />
+            <Field label="Alamat *">
+              <input value={value?.alamat ?? ""} onChange={set("alamat")} disabled={disabled} className={inputBase} />
+            </Field>
           </div>
 
-          <div>
-            <label className={labelBase}>Kelurahan *</label>
-            <input value={value.kelurahan || ""} onChange={set("kelurahan")} className={inputBase} />
-          </div>
+          <Field label="Kelurahan *">
+            <input value={value?.kelurahan ?? ""} onChange={set("kelurahan")} disabled={disabled} className={inputBase} />
+          </Field>
 
-          <div>
-            <label className={labelBase}>Kecamatan *</label>
-            <input value={value.kecamatan || ""} onChange={set("kecamatan")} className={inputBase} />
-          </div>
+          <Field label="Kecamatan *">
+            <input value={value?.kecamatan ?? ""} onChange={set("kecamatan")} disabled={disabled} className={inputBase} />
+          </Field>
 
-          <div>
-            <label className={labelBase}>Kota *</label>
-            <input value={value.kota || ""} onChange={set("kota")} className={inputBase} />
-          </div>
+          <Field label="Kota *">
+            <input value={value?.kota ?? ""} onChange={set("kota")} disabled={disabled} className={inputBase} />
+          </Field>
 
-          <div>
-            <label className={labelBase}>Kode pos</label>
-            <input value={value.kode_pos ?? ""} onChange={set("kode_pos")} className={inputBase} />
-          </div>
+          <Field label="Kode pos">
+            <input value={value?.kode_pos ?? ""} onChange={set("kode_pos")} disabled={disabled} className={inputBase} />
+          </Field>
 
-          <div>
-            <label className={labelBase}>Latitude (lat) *</label>
-            <input value={String(value.lat ?? "")} onChange={set("lat")} inputMode="decimal" className={inputBase} />
-          </div>
+          <Field label="Latitude (lat) *">
+            <input value={value?.lat ?? ""} onChange={set("lat")} disabled={disabled} inputMode="decimal" className={inputBase} />
+          </Field>
 
-          <div>
-            <label className={labelBase}>Longitude (lng) *</label>
-            <input value={String(value.lng ?? "")} onChange={set("lng")} inputMode="decimal" className={inputBase} />
-          </div>
+          <Field label="Longitude (lng) *">
+            <input value={value?.lng ?? ""} onChange={set("lng")} disabled={disabled} inputMode="decimal" className={inputBase} />
+          </Field>
         </div>
       </div>
 
       {/* Kontak & Maps */}
-      <div className="rounded-2xl border border-slate-200 p-4">
-        <div className="text-sm font-semibold text-slate-900">Kontak & Maps</div>
+      <div className={sectionWrap}>
+        <div className={sectionTitle}>Kontak & Maps</div>
 
         <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-          <div>
-            <label className={labelBase}>Telepon</label>
-            <input value={value.telepon ?? ""} onChange={set("telepon")} className={inputBase} />
-          </div>
+          <Field label="Telepon">
+            <input value={value?.telepon ?? ""} onChange={set("telepon")} disabled={disabled} className={inputBase} />
+          </Field>
 
-          <div>
-            <label className={labelBase}>Email</label>
-            <input value={value.email ?? ""} onChange={set("email")} className={inputBase} />
+          <Field label="Email">
+            <input value={value?.email ?? ""} onChange={set("email")} disabled={disabled} className={inputBase} />
+          </Field>
+
+          <div className="md:col-span-2">
+            <Field label="Google Maps URL (gmaps_url)">
+              <input value={value?.gmaps_url ?? ""} onChange={set("gmaps_url")} disabled={disabled} className={inputBase} />
+            </Field>
           </div>
 
           <div className="md:col-span-2">
-            <label className={labelBase}>Google Maps URL (gmaps_url)</label>
-            <input value={value.gmaps_url ?? ""} onChange={set("gmaps_url")} className={inputBase} />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className={labelBase}>Google Maps Embed URL (gmaps_embed_url)</label>
-            <input value={value.gmaps_embed_url ?? ""} onChange={set("gmaps_embed_url")} className={inputBase} />
+            <Field label="Google Maps Embed URL (gmaps_embed_url)">
+              <input
+                value={value?.gmaps_embed_url ?? ""}
+                onChange={set("gmaps_embed_url")}
+                disabled={disabled}
+                className={inputBase}
+              />
+            </Field>
           </div>
         </div>
       </div>
 
       {/* Penyelenggara */}
-      <div className="rounded-2xl border border-slate-200 p-4">
-        <div className="text-sm font-semibold text-slate-900">Penyelenggara</div>
+      <div className={sectionWrap}>
+        <div className={sectionTitle}>Penyelenggara</div>
 
         <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-          <div>
-            <label className={labelBase}>Penyelenggara *</label>
-            <select value={value.penyelenggara || ""} onChange={set("penyelenggara")} className={inputBase}>
+          <Field label="Penyelenggara *">
+            <select value={value?.penyelenggara ?? "Swasta"} onChange={set("penyelenggara")} disabled={disabled} className={inputBase}>
               {PENYELENGGARA_OPTIONS.map((o) => (
                 <option key={o} value={o}>
                   {o}
                 </option>
               ))}
             </select>
-          </div>
+          </Field>
 
-          <div>
-            <label className={labelBase}>Kelompok penyelenggara</label>
+          <Field label="Kelompok penyelenggara">
             <select
-              value={value.kelompok_penyelenggara ?? ""}
+              value={value?.kelompok_penyelenggara ?? ""}
               onChange={set("kelompok_penyelenggara")}
+              disabled={disabled}
               className={inputBase}
             >
               <option value="">—</option>
@@ -247,215 +193,136 @@ export default function JejaringFormFields({ value, onChange }) {
                 </option>
               ))}
             </select>
-          </div>
+          </Field>
         </div>
       </div>
 
-      {/* Perizinan & PJ */}
-      <div className="rounded-2xl border border-slate-200 p-4">
-        <div className="text-sm font-semibold text-slate-900">Perizinan & Penanggung Jawab</div>
+      {/* Perizinan & PJ (admin-only by default) */}
+      {show.perizinan ? (
+        <div className={sectionWrap}>
+          <div className={sectionTitle}>Perizinan & Penanggung Jawab</div>
 
-        <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-          <div>
-            <label className={labelBase}>PJ Nama (pj_nama)</label>
-            <input value={value.pj_nama ?? ""} onChange={set("pj_nama")} className={inputBase} />
-          </div>
+          <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+            <Field label="PJ Nama (pj_nama)">
+              <input value={value?.pj_nama ?? ""} onChange={set("pj_nama")} disabled={disabled} className={inputBase} />
+            </Field>
 
-          <div>
-            <label className={labelBase}>Nomor Izin (nomor_izin)</label>
-            <input value={value.nomor_izin ?? ""} onChange={set("nomor_izin")} className={inputBase} />
-          </div>
+            <Field label="Nomor Izin (nomor_izin)">
+              <input value={value?.nomor_izin ?? ""} onChange={set("nomor_izin")} disabled={disabled} className={inputBase} />
+            </Field>
 
-          <div>
-            <label className={labelBase}>Izin Mulai (izin_mulai)</label>
-            <input type="date" value={value.izin_mulai ?? ""} onChange={set("izin_mulai")} className={inputBase} />
-          </div>
+            <Field label="Izin Mulai (izin_mulai)">
+              <input type="date" value={value?.izin_mulai ?? ""} onChange={set("izin_mulai")} disabled={disabled} className={inputBase} />
+            </Field>
 
-          <div>
-            <label className={labelBase}>Izin Berakhir (izin_berakhir)</label>
-            <input type="date" value={value.izin_berakhir ?? ""} onChange={set("izin_berakhir")} className={inputBase} />
-          </div>
-
-          <div>
-            <label className={labelBase}>Jumlah SDM (jumlah_sdm)</label>
-            <input value={value.jumlah_sdm ?? ""} onChange={set("jumlah_sdm")} inputMode="numeric" className={inputBase} />
-          </div>
-        </div>
-      </div>
-
-       {/* Akreditasi */}
-       <div className="grid gap-2">
-       <label className="text-xs font-semibold">Terakreditasi</label>
-       <select
-        value={value.terakreditasi ? "YA" : "TIDAK"}
-        onChange={(e) =>
-        onChange("terakreditasi", e.target.value === "YA")
-       }
-      className="rounded-lg border px-3 py-2 text-sm"
-      >
-      <option value="TIDAK">Tidak</option>
-      <option value="YA">Ya</option>
-      </select>
-      </div>
-
-      {value.terakreditasi && (
-      <>
-      <div className="grid gap-2">
-      <label className="text-xs font-semibold">Nomor Akreditasi</label>
-      <input
-        value={value.nomor_akreditasi}
-        onChange={(e) => onChange("nomor_akreditasi", e.target.value)}
-        className="rounded-lg border px-3 py-2 text-sm"
-      />
-      </div>
-
-      <div className="grid gap-2">
-      <label className="text-xs font-semibold">Hasil Akreditasi</label>
-      <select
-        value={value.hasil_akreditasi}
-        onChange={(e) => onChange("hasil_akreditasi", e.target.value)}
-        className="rounded-lg border px-3 py-2 text-sm"
-      >
-        <option value="">— Pilih —</option>
-        <option value="Paripurna">Paripurna</option>
-        <option value="Utama">Utama</option>
-        <option value="Madya">Madya</option>
-        <option value="Dasar">Dasar</option>
-      </select>
-      </div>
-      </>
-   )}
-
-      {/* MoU */}
-      <div className="rounded-2xl border border-slate-200 p-4">
-        <div className="text-sm font-semibold text-slate-900">MoU</div>
-
-        <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-          <div className="md:col-span-2">
-            <label className={labelBase}>MoU Nomor (mou_nomor)</label>
-            <input value={value.mou_nomor ?? ""} onChange={set("mou_nomor")} className={inputBase} />
-          </div>
-
-          <div>
-            <label className={labelBase}>MoU Mulai (mou_mulai)</label>
-            <input type="date" value={value.mou_mulai ?? ""} onChange={set("mou_mulai")} className={inputBase} />
-          </div>
-
-          <div>
-            <label className={labelBase}>MoU Akhir (mou_akhir)</label>
-            <input type="date" value={value.mou_akhir ?? ""} onChange={set("mou_akhir")} className={inputBase} />
-          </div>
-        </div>
-      </div>
-
-      {/* Lainnya */}
-      <div className="rounded-2xl border border-slate-200 p-4">
-        <div className="text-sm font-semibold text-slate-900">Lainnya</div>
-
-        <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-          <div className="md:col-span-2">
-            <label className={labelBase}>Kegiatan</label>
-            <input value={value.kegiatan ?? ""} onChange={set("kegiatan")} className={inputBase} />
-          </div>
-
-          {/* FOTO: upload + URL */}
-          <div className="md:col-span-2">
-            <div className="flex items-center justify-between gap-2">
-              <label className={labelBase}>Foto Fasyankes</label>
-              {fotoUrl ? (
-                <button
-                  type="button"
-                  onClick={clearFoto}
-                  className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium hover:bg-slate-50"
-                >
-                  Clear
-                </button>
-              ) : null}
-            </div>
-
-            {/* Preview */}
-            {fotoUrl ? (
-              <div className="mt-2 flex items-start gap-3">
-                <img
-                  src={fotoUrl}
-                  alt="Preview foto"
-                  className="h-20 w-20 rounded-xl border border-slate-200 object-cover"
-                  loading="lazy"
-                />
-                <div className="min-w-0">
-                  <div className="text-xs text-slate-600">URL tersimpan:</div>
-                  <div className="mt-1 truncate text-xs font-mono text-slate-800" title={fotoUrl}>
-                    {fotoUrl}
-                  </div>
-                </div>
-              </div>
-            ) : previewUrl ? (
-              <div className="mt-2 flex items-start gap-3">
-                <img
-                  src={previewUrl}
-                  alt="Preview file"
-                  className="h-20 w-20 rounded-xl border border-slate-200 object-cover"
-                />
-                <div className="text-xs text-slate-600">
-                  File siap di-upload: <span className="font-semibold">{file?.name}</span>
-                </div>
-              </div>
-            ) : null}
-
-            {/* Picker + upload */}
-            <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <Field label="Izin Berakhir (izin_berakhir)">
               <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={onPickFile}
-                disabled={uploading}
-                className="block w-full text-sm"
+                type="date"
+                value={value?.izin_berakhir ?? ""}
+                onChange={set("izin_berakhir")}
+                disabled={disabled}
+                className={inputBase}
               />
+            </Field>
 
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={doUpload}
-                  disabled={uploading || !file}
-                  className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
-                >
-                  {uploading ? "Uploading…" : "Upload ke Cloudinary"}
-                </button>
+            <Field label="Jumlah SDM (jumlah_sdm)">
+              <input value={value?.jumlah_sdm ?? ""} onChange={set("jumlah_sdm")} disabled={disabled} inputMode="numeric" className={inputBase} />
+            </Field>
 
-                <button
-                  type="button"
-                  onClick={() => setFile(null)}
-                  disabled={uploading || !file}
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold hover:bg-slate-50 disabled:opacity-60"
-                >
-                  Reset file
-                </button>
-              </div>
-            </div>
-
-            {/* Feedback */}
-            {uploadErr ? (
-              <div className="mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-                <span className="font-semibold">Upload gagal:</span> {uploadErr}
-              </div>
-            ) : uploadOk ? (
-              <div className="mt-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
-                {uploadOk}
-              </div>
-            ) : (
-              <div className="mt-2 text-xs text-slate-500">
-                Tips: format JPG/PNG/WEBP, maks {FOTO_MAX_MB || 3} MB.
-              </div>
-            )}
-
-            {/* Manual URL fallback (tetap disediakan) */}
-            <div className="mt-3">
-              <label className={labelBase}>Foto (URL) – opsional</label>
-              <input value={value.foto ?? ""} onChange={set("foto")} className={inputBase} placeholder="https://..." />
+            <div className="md:col-span-2">
+              <Field label="Kegiatan">
+                <input value={value?.kegiatan ?? ""} onChange={set("kegiatan")} disabled={disabled} className={inputBase} />
+              </Field>
             </div>
           </div>
         </div>
-      </div>
+      ) : (
+        // Pemohon tetap bisa isi PJ + SDM + kegiatan (karena ini core data)
+        <div className={sectionWrap}>
+          <div className={sectionTitle}>Penanggung Jawab & Kegiatan</div>
+
+          <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+            <Field label="PJ Nama (pj_nama)">
+              <input value={value?.pj_nama ?? ""} onChange={set("pj_nama")} disabled={disabled} className={inputBase} />
+            </Field>
+
+            <Field label="Jumlah SDM (jumlah_sdm)">
+              <input value={value?.jumlah_sdm ?? ""} onChange={set("jumlah_sdm")} disabled={disabled} inputMode="numeric" className={inputBase} />
+            </Field>
+
+            <div className="md:col-span-2">
+              <Field label="Kegiatan">
+                <input value={value?.kegiatan ?? ""} onChange={set("kegiatan")} disabled={disabled} className={inputBase} />
+              </Field>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Akreditasi (admin-only) */}
+      {show.akreditasi ? (
+        <div className={sectionWrap}>
+          <div className={sectionTitle}>Akreditasi</div>
+
+          <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+            <Field label="Terakreditasi">
+              <select
+                value={value?.terakreditasi ? "YA" : "TIDAK"}
+                onChange={(e) => onChange?.("terakreditasi", e.target.value === "YA")}
+                disabled={disabled}
+                className={inputBase}
+              >
+                <option value="TIDAK">Tidak</option>
+                <option value="YA">Ya</option>
+              </select>
+            </Field>
+
+            <Field label="Nomor Akreditasi">
+              <input value={value?.nomor_akreditasi ?? ""} onChange={set("nomor_akreditasi")} disabled={disabled} className={inputBase} />
+            </Field>
+
+            <Field label="Hasil Akreditasi">
+              <input value={value?.hasil_akreditasi ?? ""} onChange={set("hasil_akreditasi")} disabled={disabled} className={inputBase} />
+            </Field>
+          </div>
+        </div>
+      ) : null}
+
+      {/* MoU (admin-only) */}
+      {show.mou ? (
+        <div className={sectionWrap}>
+          <div className={sectionTitle}>MoU</div>
+
+          <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+            <Field label="MoU Nomor">
+              <input value={value?.mou_nomor ?? ""} onChange={set("mou_nomor")} disabled={disabled} className={inputBase} />
+            </Field>
+
+            <Field label="MoU Mulai">
+              <input type="date" value={value?.mou_mulai ?? ""} onChange={set("mou_mulai")} disabled={disabled} className={inputBase} />
+            </Field>
+
+            <Field label="MoU Akhir">
+              <input type="date" value={value?.mou_akhir ?? ""} onChange={set("mou_akhir")} disabled={disabled} className={inputBase} />
+            </Field>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Foto (admin-only) */}
+      {show.foto ? (
+        <div className={sectionWrap}>
+          <div className={sectionTitle}>Foto</div>
+          <div className="mt-3">
+            <Field label="URL Foto">
+              <input value={value?.foto ?? ""} onChange={set("foto")} disabled={disabled} className={inputBase} placeholder="https://..." />
+            </Field>
+            <div className="mt-2 text-xs text-slate-500">
+              (Upload Cloudinary / isi URL. Pemohon nggak perlu bagian ini.)
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
