@@ -182,9 +182,6 @@ export default function PemohonMoU() {
   const [formBaru, setFormBaru] = useState(DEFAULT_FORM);
   const [formRenew, setFormRenew] = useState(DEFAULT_FORM);
 
-  const [gdriveBaru, setGdriveBaru] = useState("");
-  const [gdriveRenew, setGdriveRenew] = useState("");
-
   const setBaruField = (k, v) => setFormBaru((p) => ({ ...p, [k]: v }));
   const setRenewField = (k, v) => setFormRenew((p) => ({ ...p, [k]: v }));
 
@@ -356,7 +353,7 @@ export default function PemohonMoU() {
         pemohon_id: user.id,
         jenis_pengajuan: "BARU",
         status_pengajuan: "REVIEW_ADMIN",
-        gdrive_url: String(gdriveBaru || "").trim() || null,
+        gdrive_url: String(formBaru?.gdrive_url || "").trim() || null,
         ...pickFormPayload(formBaru),
       };
 
@@ -392,7 +389,7 @@ export default function PemohonMoU() {
         pemohon_id: user.id,
         jenis_pengajuan: "PERPANJANGAN",
         status_pengajuan: "REVIEW_ADMIN",
-        gdrive_url: String(gdriveRenew || "").trim() || null,
+        gdrive_url: String(formRenew?.gdrive_url || "").trim() || null,
         // pastikan renew nempel ke jejaring yang ada
         target_jejaring_id: jejaring?.id || null,
         ...pickFormPayload(formRenew),
@@ -570,17 +567,6 @@ export default function PemohonMoU() {
                       setField={setBaruField}
                       mode="pemohon"
                     />
-
-                    <div className="mt-4">
-                      <label className="text-sm font-semibold">Tautan Berkas (Google Drive)</label>
-                      <input
-                        value={gdriveBaru}
-                        onChange={(e) => setGdriveBaru(e.target.value)}
-                        placeholder="https://drive.google.com/..."
-                        className="mt-2 w-full rounded-xl border px-3 py-2 text-sm"
-                      />
-                      <div className="mt-2 text-xs text-slate-500">Pastikan pengaturan berbagi sudah sesuai (dapat diakses petugas pemeriksa).</div>
-                    </div>
 
                     <div className="mt-5 flex gap-2">
                       <button

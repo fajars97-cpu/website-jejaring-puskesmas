@@ -27,6 +27,9 @@ function Field({ label, children, hint }) {
 export default function JejaringFormFields({
   value,
   onChange,
+  form,
+  setField,
+  mode,
   variant = "admin", // "pemohon"
   disabled = false,
   sections, // optional: { verified:true, perizinan:true, mou:true, akreditasi:true, foto:true }
@@ -144,6 +147,12 @@ export default function JejaringFormFields({
           <Field label="Email">
             <input value={value?.email ?? ""} onChange={set("email")} disabled={disabled} className={inputBase} />
           </Field>
+
+          <div className="md:col-span-2">
+            <Field label="Tautan Berkas (Google Drive)" hint="Pastikan akses tautan dapat dibuka oleh pemeriksa (mis. 'Siapa saja yang memiliki tautan').">
+              <input value={value?.gdrive_url ?? ""} onChange={set("gdrive_url")} disabled={disabled} className={inputBase} />
+            </Field>
+          </div>
 
           <div className="md:col-span-2">
             <Field label="Google Maps URL (gmaps_url)">
