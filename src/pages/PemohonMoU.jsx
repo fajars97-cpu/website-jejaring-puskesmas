@@ -1,10 +1,15 @@
-// PemohonMoU.jsx
+// PemohonMoU.jsx (v4)
+// - Tambah 3 tab: Pengajuan MoU Baru, Perpanjangan MoU, Riwayat Pengajuan
+// - Riwayat menampilkan data lengkap pengajuan + tanggal diajukan
+// - Dari riwayat: muat data ke form untuk koreksi (update), atau ekspor ke draft perpanjangan
+// - Tampilkan catatan pemeriksa per kolom (note_*) hanya bila terisi
+
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabaseClient"; // sesuaikan path kamu
 import { useAuth } from "../context/AuthContext"; // sesuaikan path kamu
 import JejaringFormFields from "../features/admin-jejaring/JejaringFormFields"; // sesuaikan path kamu
 
-// Defaults minimal — aman (nggak maksa options). Kalau mau, nanti bisa kamu ganti ke CREATE_DEFAULTS dari constants.js
+// Defaults minimal — aman (nggak maksa options).
 const DEFAULT_FORM = {
   nama_fasyankes: "",
   jenis_fasyankes: "",
@@ -33,10 +38,10 @@ const DEFAULT_FORM = {
   jumlah_sdm: "",
   kegiatan: "",
 
-  // admin-only (biarin ada, tapi pemohon nggak ngubah)
+  // admin-only
   is_verified: false,
 
-  // mou fields (pemohon bisa isi, nanti admin finalize)
+  // mou fields
   mou_nomor: "",
   mou_mulai: "",
   mou_akhir: "",
@@ -65,12 +70,34 @@ function fmtDate(v) {
   }
 }
 
+function fmtDateTime(v) {
+  const s = String(v ?? "").trim();
+  if (!s) return "—";
+  try {
+    return new Date(s).toLocaleString("id-ID", {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return s;
+  }
+}
+
 function isActiveStatus(status) {
-  // sesuaikan status kamu di permohonan_mou
   const s = String(status ?? "").trim().toUpperCase();
   if (!s) return false;
   // status yang dianggap "selesai / tidak aktif"
   return !["REJECTED", "CANCELED", "DONE", "FINALIZED"].includes(s);
+}
+
+function isEditableStatus(status) {
+  const s = String(status ?? "").trim().toUpperCase();
+  if (!s) return true;
+  // status final / arsip tidak bisa diedit oleh pemohon
+  return !["DONE", "FINALIZED"].includes(s);
 }
 
 function LockBadge({ locked }) {
@@ -87,9 +114,45 @@ function LockBadge({ locked }) {
 }
 
 function HintBox({ children }) {
+  return <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">{children}</div>;
+}
+
+function NotesPanel({ row }) {
+  if (!row) return null;
+
+  // kumpulkan note_* yang berisi
+  const noteEntries = Object.entries(row)
+    .filter(([k, v]) => {
+      const key = String(k || "").toLowerCase();
+      const val = String(v ?? "").trim();
+      return (key.startsWith("note_") || key.startsWith("catatan_")) && val.length > 0;
+    })
+    .map(([k, v]) => {
+      const raw = String(k);
+      const label = raw
+        .replace(/^note_/i, "")
+        .replace(/^catatan_/i, "")
+        .replace(/_/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      const title = label ? label.charAt(0).toUpperCase() + label.slice(1) : raw;
+      return { key: raw, title, value: String(v ?? "").trim() };
+    });
+
+  if (noteEntries.length === 0) return null;
+
   return (
-    <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
-      {children}
+    <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3">
+      <div className="text-sm font-semibold text-amber-900">Catatan Pemeriksa</div>
+      <div className="mt-1 text-xs text-amber-900/80">Catatan berikut diberikan oleh petugas pemeriksa apabila diperlukan.</div>
+      <div className="mt-2 space-y-2">
+        {noteEntries.map((n) => (
+          <div key={n.key} className="rounded-xl border border-amber-200 bg-white p-3">
+            <div className="text-xs font-semibold text-slate-800">{n.title}</div>
+            <div className="mt-1 text-sm text-slate-800">{n.value}</div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -103,14 +166,16 @@ export default function PemohonMoU() {
   const [err, setErr] = useState("");
   const [ok, setOk] = useState("");
 
-  const [activeTab, setActiveTab] = useState("baru"); // "baru" | "renew" | "riwayat"
+  const [activeTab, setActiveTab] = useState("baru"); // "baru" | "renew" | "history"
 
   const [jejaring, setJejaring] = useState(null);
   const [lastBaru, setLastBaru] = useState(null);
   const [lastRenew, setLastRenew] = useState(null);
 
   const [historyRows, setHistoryRows] = useState([]);
-  const [expandedId, setExpandedId] = useState(null);
+  const [historyOpenId, setHistoryOpenId] = useState(null);
+
+  // edit mode
   const [editBaruId, setEditBaruId] = useState(null);
   const [editRenewId, setEditRenewId] = useState(null);
 
@@ -130,7 +195,7 @@ export default function PemohonMoU() {
     setOk("");
 
     try {
-      // 1) Jejaring milik pemohon (butuh kolom pemohon_id)
+      // 1) Jejaring milik pemohon
       const { data: j, error: je } = await supabase
         .from("jejaring_fasyankes")
         .select("*")
@@ -146,13 +211,39 @@ export default function PemohonMoU() {
       // 2) Last BARU
       const { data: pb, error: pbe } = await supabase
         .from("permohonan_mou")
+        .select("id, created_at, status_pengajuan, jenis_pengajuan, gdrive_url, target_jejaring_id")
+        .eq("pemohon_id", user.id)
+        .eq("jenis_pengajuan", "BARU")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (pbe) throw pbe;
+      setLastBaru(pb || null);
+
+      // 3) Last PERPANJANGAN
+      const { data: pr, error: pre } = await supabase
+        .from("permohonan_mou")
+        .select("id, created_at, status_pengajuan, jenis_pengajuan, gdrive_url, target_jejaring_id")
+        .eq("pemohon_id", user.id)
+        .eq("jenis_pengajuan", "PERPANJANGAN")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (pre) throw pre;
+      setLastRenew(pr || null);
+
+      // 4) Riwayat (data lengkap)
+      const { data: hist, error: he } = await supabase
+        .from("permohonan_mou")
         .select("*")
         .eq("pemohon_id", user.id)
         .order("created_at", { ascending: false })
         .limit(50);
 
-      if (histe) throw histe;
-      setHistoryRows(hist || []);
+      if (he) throw he;
+      setHistoryRows(Array.isArray(hist) ? hist : []);
 
       // Prefill renew dari jejaring (biar konsisten)
       if (j?.id) {
@@ -180,786 +271,570 @@ export default function PemohonMoU() {
 
   // LOCK RULES
   const lockBaru = useMemo(() => {
-    // kalau sudah pernah perpanjangan -> lock permanen
+    // kalau sedang edit permohonan BARU yang sama, jangan lock karena anti-spam
+    if (editBaruId) return false;
+
     if (lastRenew?.id) return true;
-
-    // kalau sudah ada jejaring finalize -> lock
     if (jejaring?.id) return true;
-
-    // anti-spam: kalau ada permohonan BARU aktif
     if (lastBaru?.id && isActiveStatus(lastBaru.status_pengajuan)) return true;
-
     return false;
-  }, [lastRenew?.id, jejaring?.id, lastBaru]);
+  }, [editBaruId, lastRenew?.id, jejaring?.id, lastBaru]);
 
   const lockRenew = useMemo(() => {
-    // harus punya jejaring finalize dulu
+    // kalau sedang edit permohonan PERPANJANGAN yang sama, jangan lock karena anti-spam
+    if (editRenewId) return false;
+
     if (!jejaring?.id) return true;
-
-    // harus masuk window H-365
     if (!renewWindow.ok) return true;
-
-    // anti-spam: kalau ada renewal aktif
     if (lastRenew?.id && isActiveStatus(lastRenew.status_pengajuan)) return true;
-
     return false;
-  }, [jejaring?.id, renewWindow.ok, lastRenew]);
-
-  // Jika sedang mengedit permohonan yang sama, kunci otomatis tidak diterapkan pada form tersebut.
-  const lockBaruFinal = lockBaru && !editBaruId;
-  const lockRenewFinal = lockRenew && !editRenewId;
+  }, [editRenewId, jejaring?.id, renewWindow.ok, lastRenew]);
 
   // biar user nggak nyangkut di tab yang terkunci total
   useEffect(() => {
-    if (activeTab === "riwayat") return;
-    if (activeTab === "baru" && lockBaruFinal && !lockRenewFinal) setActiveTab("renew");
-    if (activeTab === "renew" && lockRenewFinal && !lockBaruFinal) setActiveTab("baru");
-  }, [activeTab, lockBaru, lockRenew]);
+    if (activeTab === "baru" && lockBaru && !lockRenew) setActiveTab("renew");
+    if (activeTab === "renew" && lockRenew && !lockBaru) setActiveTab("baru");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lockBaru, lockRenew]);
 
-  function validateCore(form) {
-    // minimal required sesuai kebutuhan
-    if (!String(form.nama_fasyankes || "").trim()) return "Nama fasyankes wajib diisi.";
-    if (!String(form.jenis_fasyankes || "").trim()) return "Jenis fasyankes wajib diisi.";
-    if (!String(form.tipe_fasyankes || "").trim()) return "Tipe fasyankes wajib diisi.";
-    if (!String(form.alamat || "").trim()) return "Alamat wajib diisi.";
-    if (!String(form.kelurahan || "").trim()) return "Kelurahan wajib diisi.";
-    if (!String(form.kecamatan || "").trim()) return "Kecamatan wajib diisi.";
-    if (!String(form.kota || "").trim()) return "Kota wajib diisi.";
-    if (String(form.lat || "").trim() === "" || String(form.lng || "").trim() === "") return "Lat/Lng wajib diisi.";
-    return "";
+  // UI status
+  const statusBaru = lastBaru
+    ? `Terakhir diajukan: ${fmtDateTime(lastBaru.created_at)} • Status: ${String(lastBaru.status_pengajuan || "—")}`
+    : "Belum ada permohonan MoU Baru.";
+
+  const statusRenew = lastRenew
+    ? `Terakhir diajukan: ${fmtDateTime(lastRenew.created_at)} • Status: ${String(lastRenew.status_pengajuan || "—")}`
+    : "Belum ada permohonan Perpanjangan.";
+
+  const renewInfo = renewWindow.unlockAt
+    ? `Perpanjangan dapat diajukan mulai ${fmtDate(renewWindow.unlockAt)} (H-365 sebelum masa berlaku berakhir).`
+    : "Perpanjangan dapat diajukan setelah MoU difinalisasi dan masa berlakunya tersedia.";
+
+  const lockReasonBaru = useMemo(() => {
+    if (editBaruId) return "Sedang membuka mode koreksi permohonan. Silakan perbarui data dan simpan perubahan.";
+    if (lastRenew?.id) return "Terkunci karena telah terdapat pengajuan perpanjangan sebelumnya.";
+    if (jejaring?.id) return "Terkunci karena MoU telah difinalisasi.";
+    if (lastBaru?.id && isActiveStatus(lastBaru.status_pengajuan)) {
+      return `Terkunci karena masih ada permohonan MoU Baru yang sedang diproses (status: ${lastBaru.status_pengajuan}).`;
+    }
+    return "—";
+  }, [editBaruId, lastRenew?.id, jejaring?.id, lastBaru]);
+
+  const lockReasonRenew = useMemo(() => {
+    if (editRenewId) return "Sedang membuka mode koreksi permohonan. Silakan perbarui data dan simpan perubahan.";
+    if (!jejaring?.id) return "Terkunci karena belum ada MoU yang difinalisasi.";
+    if (!renewWindow.ok) return renewInfo;
+    if (lastRenew?.id && isActiveStatus(lastRenew.status_pengajuan)) {
+      return `Terkunci karena masih ada permohonan perpanjangan yang sedang diproses (status: ${lastRenew.status_pengajuan}).`;
+    }
+    return "—";
+  }, [editRenewId, jejaring?.id, renewWindow.ok, lastRenew, renewInfo]);
+
+  function resetEdit() {
+    setEditBaruId(null);
+    setEditRenewId(null);
   }
 
-  async function submitBaru(e) {
-    e.preventDefault();
+  function pickFormPayload(form) {
+    // payload yang dikirim ke permohonan_mou
+    // (usahakan selaras dengan JejaringFormFields)
+    const payload = { ...form };
+    // normalisasi
+    if (payload.lat === "") payload.lat = null;
+    if (payload.lng === "") payload.lng = null;
+    return payload;
+  }
+
+  async function submitBaru() {
+    if (!user?.id) return;
+    setBusy((p) => ({ ...p, baru: true }));
     setErr("");
     setOk("");
 
-    // Jika sedang edit, gunakan lockBaruFinal (lock otomatis tidak berlaku untuk edit record yang sama)
-    if (lockBaruFinal) return;
-    if (!user?.id) return setErr("Silakan login terlebih dahulu.");
-    if (!String(gdriveBaru).trim()) return setErr("Tautan Google Drive wajib diisi.");
-
-    const msg = validateCore(formBaru);
-    if (msg) return setErr(msg);
-
-    setBusy((p) => ({ ...p, baru: true }));
     try {
-      const payload = { ...formBaru, is_verified: false };
+      const payload = {
+        pemohon_id: user.id,
+        jenis_pengajuan: "BARU",
+        status_pengajuan: "REVIEW_ADMIN",
+        gdrive_url: String(gdriveBaru || "").trim() || null,
+        ...pickFormPayload(formBaru),
+      };
 
+      // UPDATE jika mode edit
       if (editBaruId) {
-        const { error } = await supabase
-          .from("permohonan_mou")
-          .update({
-            gdrive_url: String(gdriveBaru).trim(),
-            ...payload,
-          })
-          .eq("id", editBaruId)
-          .eq("pemohon_id", user.id);
-
+        const { error } = await supabase.from("permohonan_mou").update(payload).eq("id", editBaruId);
         if (error) throw error;
-
         setOk("Perubahan permohonan MoU Baru berhasil disimpan.");
-        setEditBaruId(null);
       } else {
-        const { error } = await supabase.from("permohonan_mou").insert({
-          pemohon_id: user.id,
-          jenis_pengajuan: "BARU",
-          gdrive_url: String(gdriveBaru).trim(),
-          status_pengajuan: "SUBMITTED",
-          ...payload,
-        });
-
+        const { error } = await supabase.from("permohonan_mou").insert(payload);
         if (error) throw error;
-
-        setOk("Permohonan MoU Baru berhasil dikirim.");
+        setOk("Permohonan MoU Baru berhasil diajukan.");
       }
 
+      resetEdit();
       await loadAll();
-    } catch (e2) {
-      setErr(e2?.message || "Gagal memproses permohonan MoU Baru.");
+      setActiveTab("history");
+    } catch (e) {
+      setErr(e?.message || "Gagal mengirim permohonan.");
     } finally {
       setBusy((p) => ({ ...p, baru: false }));
     }
   }
 
-  async function submitRenew(e) {
-    e.preventDefault();
+  async function submitRenew() {
+    if (!user?.id) return;
+    setBusy((p) => ({ ...p, renew: true }));
     setErr("");
     setOk("");
 
-    if (lockRenewFinal) return;
-    if (!user?.id) return setErr("Silakan login terlebih dahulu.");
-    if (!String(gdriveRenew).trim()) return setErr("Tautan Google Drive wajib diisi.");
-
-    const msg = validateCore(formRenew);
-    if (msg) return setErr(msg);
-
-    setBusy((p) => ({ ...p, renew: true }));
     try {
-      const payload = { ...formRenew, is_verified: false };
+      const payload = {
+        pemohon_id: user.id,
+        jenis_pengajuan: "PERPANJANGAN",
+        status_pengajuan: "REVIEW_ADMIN",
+        gdrive_url: String(gdriveRenew || "").trim() || null,
+        // pastikan renew nempel ke jejaring yang ada
+        target_jejaring_id: jejaring?.id || null,
+        ...pickFormPayload(formRenew),
+      };
 
       if (editRenewId) {
-        const { error } = await supabase
-          .from("permohonan_mou")
-          .update({
-            gdrive_url: String(gdriveRenew).trim(),
-            target_jejaring_id: jejaring?.id ?? null,
-            ...payload,
-          })
-          .eq("id", editRenewId)
-          .eq("pemohon_id", user.id);
-
+        const { error } = await supabase.from("permohonan_mou").update(payload).eq("id", editRenewId);
         if (error) throw error;
-
         setOk("Perubahan permohonan perpanjangan berhasil disimpan.");
-        setEditRenewId(null);
       } else {
-        const { error } = await supabase.from("permohonan_mou").insert({
-          pemohon_id: user.id,
-          jenis_pengajuan: "PERPANJANGAN",
-          gdrive_url: String(gdriveRenew).trim(),
-          target_jejaring_id: jejaring?.id ?? null,
-          status_pengajuan: "SUBMITTED",
-          ...payload,
-        });
-
+        const { error } = await supabase.from("permohonan_mou").insert(payload);
         if (error) throw error;
-
-        setOk("Permohonan perpanjangan berhasil dikirim.");
+        setOk("Permohonan perpanjangan berhasil diajukan.");
       }
 
+      resetEdit();
       await loadAll();
-    } catch (e2) {
-      setErr(e2?.message || "Gagal memproses permohonan perpanjangan.");
+      setActiveTab("history");
+    } catch (e) {
+      setErr(e?.message || "Gagal mengirim permohonan.");
     } finally {
       setBusy((p) => ({ ...p, renew: false }));
     }
   }
 
-  const statusBaru = lastBaru
-    ? `Terakhir: ${fmtDate(lastBaru.created_at)} • Status: ${lastBaru.status_pengajuan}`
-    : "Belum ada permohonan BARU.";
-
-  const statusRenew = lastRenew
-    ? `Terakhir: ${fmtDate(lastRenew.created_at)} • Status: ${lastRenew.status_pengajuan}`
-    : "Belum ada permohonan PERPANJANGAN.";
-
-  const statusMou = jejaring?.id
-    ? `MoU aktif sampai: ${fmtDate(jejaring.mou_akhir)}`
-    : "Belum ada MoU yang difinalize.";
-
-
-  const lockReasonBaru = useMemo(() => {
-    if (lastRenew?.id) return "Terkunci karena sudah pernah melakukan perpanjangan.";
-    if (jejaring?.id) return "Terkunci karena MoU sudah difinalize (data sudah masuk jejaring).";
-    if (lastBaru?.id && isActiveStatus(lastBaru.status_pengajuan)) {
-      return `Terkunci karena masih ada permohonan BARU aktif (status: ${lastBaru.status_pengajuan}).`;
-    }
-    return "";
-  }, [lastRenew?.id, jejaring?.id, lastBaru]);
-
-  const lockReasonRenew = useMemo(() => {
-    if (!jejaring?.id) return "Terkunci karena belum ada MoU yang difinalize.";
-    if (!renewWindow.ok) return `Terkunci karena belum masuk window perpanjangan (dibuka ${fmtDate(renewWindow.unlockAt)} / H-365).`;
-    if (lastRenew?.id && isActiveStatus(lastRenew.status_pengajuan)) {
-      return `Terkunci karena masih ada permohonan PERPANJANGAN aktif (status: ${lastRenew.status_pengajuan}).`;
-    }
-    return "";
-  }, [jejaring?.id, renewWindow.ok, renewWindow.unlockAt, lastRenew]);
-
-  function pickFormFromHistoryRow(row) {
-    // ambil hanya field yang ada di DEFAULT_FORM supaya aman
-    const out = { ...DEFAULT_FORM };
-    Object.keys(out).forEach((k) => {
-      if (row?.[k] !== undefined) out[k] = row[k];
-    });
-    // pemohon tidak boleh mengubah verified dari sisi UI
-    out.is_verified = false;
-    return out;
+  function loadRowToBaru(row, { asEdit } = { asEdit: true }) {
+    if (!row) return;
+    setFormBaru((p) => ({ ...p, ...row, is_verified: false }));
+    setGdriveBaru(String(row.gdrive_url || ""));
+    setEditBaruId(asEdit ? row.id : null);
+    if (!asEdit) setEditBaruId(null);
+    setActiveTab("baru");
   }
 
-
-  
-function formatNoteKey(key) {
-  if (!key) return "Catatan";
-  const k = String(key)
-    .replace(/^note_/, "")
-    .replace(/^catatan_/, "")
-    .replace(/_/g, " ")
-    .trim();
-  return k ? k.replace(/\b\w/g, (c) => c.toUpperCase()) : "Catatan";
-}
-
-function extractNotes(row) {
-    // Menampilkan catatan per kolom (diisi oleh Super Admin) hanya jika tersedia.
-    // Dukungan pola nama: note_<kolom>, catatan_<kolom>, atau objek 'notes'.
-    const items = [];
-
-    if (row && typeof row === "object") {
-      for (const [k, v] of Object.entries(row)) {
-        const val = typeof v === "string" ? v.trim() : v;
-        if (!val) continue;
-
-        const kk = String(k);
-        if (kk.startsWith("note_") || kk.startsWith("catatan_")) {
-          items.push({ key: kk, value: String(v).trim() });
-        }
-      }
-
-      if (row.notes && typeof row.notes === "object") {
-        for (const [k, v] of Object.entries(row.notes)) {
-          const val = typeof v === "string" ? v.trim() : v;
-          if (!val) continue;
-          items.push({ key: String(k), value: String(v).trim() });
-        }
-      }
-    }
-
-    // stable ordering
-    items.sort((a, b) => a.key.localeCompare(b.key));
-    return items;
+  function loadRowToRenew(row, { asEdit } = { asEdit: true, keepTarget: true }) {
+    if (!row) return;
+    setFormRenew((p) => ({ ...p, ...row, is_verified: false }));
+    setGdriveRenew(String(row.gdrive_url || ""));
+    setEditRenewId(asEdit ? row.id : null);
+    setActiveTab("renew");
   }
 
-  function downloadJson(filename, obj) {
-    const blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json;charset=utf-8" });
+  function exportRowToRenew(row) {
+    if (!row) return;
+    // ekspor = muat data ke form perpanjangan sebagai draft baru (bukan edit row lama)
+    setFormRenew((p) => ({ ...p, ...row, is_verified: false }));
+    setGdriveRenew(String(row.gdrive_url || ""));
+    setEditRenewId(null);
+    setActiveTab("renew");
+  }
+
+  function downloadJson(row) {
+    const blob = new Blob([JSON.stringify(row, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
+    a.download = `permohonan_mou_${row?.id || "data"}.json`;
     a.click();
-    a.remove();
     URL.revokeObjectURL(url);
   }
 
-  function exportToTab(row, tab) {
-    setErr("");
-    setOk("");
+  const historyOpenRow = useMemo(
+    () => historyRows.find((r) => String(r.id) === String(historyOpenId)) || null,
+    [historyRows, historyOpenId]
+  );
 
-    const form = pickFormFromHistoryRow(row);
-    const gdrive = String(row?.gdrive_url || "").trim();
-
-    if (tab === "baru") {
-      setFormBaru(form);
-      setGdriveBaru(gdrive);
-      setActiveTab("baru");
-      setOk("Data riwayat berhasil dimuat ke tab Pengajuan MoU Baru.");
-      return;
-    }
-
-    if (tab === "renew") {
-      setFormRenew(form);
-      setGdriveRenew(gdrive);
-      setActiveTab("renew");
-      setOk("Data riwayat berhasil dimuat ke tab Perpanjangan MoU.");
-      return;
-    }
+  if (!user?.id) {
+    return (
+      <div className="rounded-2xl border bg-white p-6">
+        <div className="text-lg font-semibold">MoU: Pengajuan & Perpanjangan</div>
+        <div className="mt-2 text-sm text-slate-700">Silakan masuk terlebih dahulu untuk mengajukan permohonan.</div>
+      </div>
+    );
   }
 
   return (
-    // FULL width + padding nyaman (nggak nempel tepi)
-    <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
-      {/* Header */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4">
-        <div className="text-lg font-semibold text-slate-900">MoU: Pengajuan & Perpanjangan</div>
-        <div className="mt-1 text-sm text-slate-600">
-          Sistem ini menyediakan dua jalur pengajuan. Silakan memilih salah satu tab di bawah, melengkapi formulir, lalu mengirim pengajuan. Akses formulir dibuka atau dikunci secara otomatis sesuai ketentuan.
+    <div className="w-full">
+      <div className="rounded-2xl border bg-white p-6">
+        <div className="text-xl font-semibold">MoU: Pengajuan & Perpanjangan</div>
+        <div className="mt-1 text-sm text-slate-700">
+          Sistem menyediakan dua jalur permohonan (MoU Baru dan Perpanjangan). Permohonan akan terbuka atau terkunci secara otomatis sesuai ketentuan.
         </div>
 
-        <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <div className="text-sm font-semibold text-slate-800">Status MoU</div>
-          <div className="mt-1 text-sm text-slate-700">{statusMou}</div>
+        <div className="mt-4 rounded-2xl border bg-slate-50 p-4">
+          <div className="text-sm font-semibold">Status MoU</div>
+          <div className="mt-1 text-sm text-slate-700">{jejaring?.id ? "MoU telah difinalisasi." : "Belum ada MoU yang difinalisasi."}</div>
+        </div>
 
-          {jejaring?.id && !renewWindow.ok ? (
-            <div className="mt-2 text-xs text-slate-600">
-              Perpanjangan dibuka mulai: <span className="font-semibold">{fmtDate(renewWindow.unlockAt)}</span> (H-365).
-            </div>
+        {err ? <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{err}</div> : null}
+        {ok ? <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">{ok}</div> : null}
+
+        {/* Tabs */}
+        <div className="mt-6 border-b">
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setActiveTab("baru")}
+              className={[
+                "rounded-t-xl border px-4 py-2 text-sm font-semibold",
+                activeTab === "baru" ? "border-b-white bg-white" : "border-transparent bg-slate-50 text-slate-600 hover:bg-slate-100",
+              ].join(" ")}
+            >
+              Pengajuan MoU Baru <LockBadge locked={lockBaru} />
+            </button>
+
+            <button
+              onClick={() => setActiveTab("renew")}
+              className={[
+                "rounded-t-xl border px-4 py-2 text-sm font-semibold",
+                activeTab === "renew" ? "border-b-white bg-white" : "border-transparent bg-slate-50 text-slate-600 hover:bg-slate-100",
+              ].join(" ")}
+            >
+              Perpanjangan MoU <LockBadge locked={lockRenew} />
+            </button>
+
+            <button
+              onClick={() => setActiveTab("history")}
+              className={[
+                "rounded-t-xl border px-4 py-2 text-sm font-semibold",
+                activeTab === "history" ? "border-b-white bg-white" : "border-transparent bg-slate-50 text-slate-600 hover:bg-slate-100",
+              ].join(" ")}
+            >
+              Riwayat Pengajuan <span className="ml-2 rounded-full border bg-white px-2 py-0.5 text-xs">{historyRows.length}</span>
+            </button>
+
+            <div className="ml-auto hidden items-center text-xs text-slate-500 md:flex">Pilih salah satu tab untuk melanjutkan.</div>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="mt-4">
+          {loading ? (
+            <div className="rounded-2xl border bg-white p-6 text-sm text-slate-700">Memuat data…</div>
           ) : null}
-        </div>
-      </div>
 
-      {/* Alerts */}
-      <div className="mt-4 space-y-3">
-        {loading ? (
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">Memuat data…</div>
-        ) : null}
-
-        {err ? (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{err}</div>
-        ) : null}
-
-        {ok ? (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">{ok}</div>
-        ) : null}
-      </div>
-
-      {/* Tabs container */}
-      <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-        {/* Tab bar */}
-        <div className="flex items-end gap-2 border-b border-slate-200 bg-white px-3 pt-3">
-          <button
-            type="button"
-            onClick={() => setActiveTab("baru")}
-            className={[
-              "relative rounded-t-xl px-4 py-2 text-sm font-semibold",
-              activeTab === "baru"
-                ? "bg-white text-slate-900 border border-slate-200 border-b-white"
-                : "bg-slate-50 text-slate-700 hover:bg-slate-100 border border-transparent",
-            ].join(" ")}
-          >
-            Pengajuan MoU Baru
-            <LockBadge locked={lockBaruFinal} />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab("renew")}
-            className={[
-              "relative rounded-t-xl px-4 py-2 text-sm font-semibold",
-              activeTab === "renew"
-                ? "bg-white text-slate-900 border border-slate-200 border-b-white"
-                : "bg-slate-50 text-slate-700 hover:bg-slate-100 border border-transparent",
-            ].join(" ")}
-          >
-            Perpanjangan MoU
-            <LockBadge locked={lockRenewFinal} />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab("riwayat")}
-            className={[
-              "relative rounded-t-xl px-4 py-2 text-sm font-semibold",
-              activeTab === "riwayat"
-                ? "bg-white text-slate-900 border border-slate-200 border-b-white"
-                : "bg-slate-50 text-slate-700 hover:bg-slate-100 border border-transparent",
-            ].join(" ")}
-          >
-            Riwayat Pengajuan
-            <span className="ml-2 inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
-              {historyRows?.length ?? 0}
-            </span>
-          </button>
-
-          <div className="flex-1" />
-          <div className="pb-2 pr-2 text-xs text-slate-500">Silakan memilih salah satu tab dan melengkapi formulir sesuai kebutuhan.</div>
-        </div>
-
-        {/* Tab content */}
-        <div className="p-4">
-          {activeTab === "baru" ? (
-            <div className="space-y-4">
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          {/* TAB: BARU */}
+          {activeTab === "baru" && !loading ? (
+            <div>
+              <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="text-sm font-semibold text-slate-900">Pengajuan MoU Baru</div>
-                  <div className="text-xs text-slate-600">Untuk kerja sama pertama kali.</div>
-                  <div className="mt-1 text-xs text-slate-600">{statusBaru}</div>
-                {editBaruId ? (
-                  <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                    Anda sedang mengedit data permohonan MoU Baru (ID: <span className="font-mono">{editBaruId}</span>). 
-                    <button
-                      type="button"
-                      className="ml-2 font-semibold underline decoration-amber-400 underline-offset-2 hover:decoration-amber-600"
-                      onClick={() => {
-                        setEditBaruId(null);
-                        setFormBaru(DEFAULT_FORM);
-                        setGdriveBaru("");
-                        setOk("Mode pengeditan dibatalkan. Formulir telah dikosongkan.");
-                        setErr("");
-                      }}
-                    >
-                      Batalkan
-                    </button>
-                  </div>
-                ) : null}
+                  <div className="text-sm font-semibold">Status Permohonan</div>
+                  <div className="mt-1 text-sm text-slate-700">{statusBaru}</div>
                 </div>
-                {lockBaruFinal ? (
-                  <span className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700">
-                    🔒 Terkunci
-                  </span>
+                {editBaruId ? (
+                  <button
+                    className="rounded-xl border px-3 py-2 text-sm hover:bg-black/5"
+                    onClick={() => {
+                      setEditBaruId(null);
+                      setFormBaru(DEFAULT_FORM);
+                      setGdriveBaru("");
+                    }}
+                  >
+                    Batalkan Koreksi
+                  </button>
                 ) : null}
               </div>
 
-              <form onSubmit={submitBaru} className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                {/* kiri (fields) */}
-                <div className="lg:col-span-2">
-                  <JejaringFormFields
-                    value={formBaru}
-                    onChange={setBaruField}
-                    mode="pemohon"
-                    disabled={loading || busy.baru || lockBaruFinal}
-                    hide={{
-                      verified: true,
-                    }}
-                  />
-                </div>
+              {lockBaru ? (
+                <HintBox>
+                  <div className="font-semibold">Form terkunci</div>
+                  <div className="mt-1">{lockReasonBaru}</div>
+                </HintBox>
+              ) : (
+                <HintBox>
+                  <div className="font-semibold">Petunjuk pengisian</div>
+                  <div className="mt-1">Lengkapi data fasilitas dan informasi MoU. Pastikan tautan berkas pendukung (misalnya Google Drive) sudah dapat diakses.</div>
+                </HintBox>
+              )}
 
-                {/* kanan (gdrive + action) */}
-                <div className="lg:col-span-1">
-                  <div className="rounded-2xl border border-slate-200 p-4">
-                    <div className="text-sm font-semibold text-slate-900">Berkas (Google Drive)</div>
-                    <div className="mt-1 text-xs text-slate-600">
-                      Tempel link folder GDrive yang bisa diakses admin.
-                    </div>
+              {!lockBaru ? (
+                <div className="mt-4">
+                  <div className="rounded-2xl border bg-white p-4">
+                    <div className="mb-3 text-sm font-semibold">Data Permohonan</div>
+                    <JejaringFormFields
+                      form={formBaru}
+                      setField={setBaruField}
+                      mode="pemohon"
+                    />
 
-                    <div className="mt-3">
-                      <label className="text-xs font-semibold text-slate-700">Link GDrive *</label>
+                    <div className="mt-4">
+                      <label className="text-sm font-semibold">Tautan Berkas (Google Drive)</label>
                       <input
                         value={gdriveBaru}
                         onChange={(e) => setGdriveBaru(e.target.value)}
-                        disabled={loading || busy.baru || lockBaruFinal}
                         placeholder="https://drive.google.com/..."
-                        className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-300 disabled:bg-slate-50 disabled:text-slate-500"
+                        className="mt-2 w-full rounded-xl border px-3 py-2 text-sm"
                       />
+                      <div className="mt-2 text-xs text-slate-500">Pastikan pengaturan berbagi sudah sesuai (dapat diakses petugas pemeriksa).</div>
                     </div>
 
-                    {lockBaruFinal ? (
-                      <HintBox>
-                        Form ini terkunci: sudah finalize / ada proses aktif / atau sudah pernah perpanjangan.
-                      </HintBox>
-                    ) : (
-                      <HintBox>
-                        Pastikan link GDrive bisa diakses admin (minimal “Anyone with the link” atau share ke email admin).
-                      </HintBox>
-                    )}
-
-                    <div className="mt-4 flex items-center justify-end gap-2">
+                    <div className="mt-5 flex gap-2">
                       <button
-                        type="button"
+                        onClick={submitBaru}
+                        disabled={busy.baru}
+                        className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50"
+                      >
+                        {busy.baru ? "Memproses…" : editBaruId ? "Simpan Perubahan" : "Ajukan Permohonan"}
+                      </button>
+                      <button
                         onClick={() => {
                           setFormBaru(DEFAULT_FORM);
                           setGdriveBaru("");
-                          setErr("");
-                          setOk("");
+                          setEditBaruId(null);
                         }}
-                        className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold hover:bg-slate-50 disabled:opacity-60"
-                        disabled={busy.baru}
+                        className="rounded-xl border px-4 py-2 text-sm hover:bg-black/5"
                       >
                         Reset
                       </button>
-
-                      <button
-                        type="submit"
-                        disabled={loading || busy.baru || lockBaruFinal}
-                        className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
-                      >
-                        {busy.baru ? "Memproses…" : (editBaruId ? "Simpan Perubahan" : "Kirim Permohonan")}
-                      </button>
                     </div>
                   </div>
                 </div>
-              </form>
+              ) : null}
             </div>
-          ) : activeTab === "renew" ? (
-            <div className="space-y-4">
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          ) : null}
+
+          {/* TAB: RENEW */}
+          {activeTab === "renew" && !loading ? (
+            <div>
+              <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="text-sm font-semibold text-slate-900">Perpanjangan MoU</div>
-                  <div className="text-xs text-slate-600">Terbuka H-365 sebelum MoU berakhir.</div>
-                  <div className="mt-1 text-xs text-slate-600">{statusRenew}</div>
-                {editRenewId ? (
-                  <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                    Anda sedang mengedit data permohonan perpanjangan (ID: <span className="font-mono">{editRenewId}</span>). 
-                    <button
-                      type="button"
-                      className="ml-2 font-semibold underline decoration-amber-400 underline-offset-2 hover:decoration-amber-600"
-                      onClick={() => {
-                        setEditRenewId(null);
-                        setFormRenew(DEFAULT_FORM);
-                        setGdriveRenew("");
-                        setOk("Mode pengeditan dibatalkan. Formulir telah dikosongkan.");
-                        setErr("");
-                      }}
-                    >
-                      Batalkan
-                    </button>
-                  </div>
-                ) : null}
+                  <div className="text-sm font-semibold">Status Permohonan</div>
+                  <div className="mt-1 text-sm text-slate-700">{statusRenew}</div>
+                  <div className="mt-1 text-xs text-slate-500">{renewInfo}</div>
                 </div>
-                {lockRenewFinal ? (
-                  <span className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700">
-                    🔒 Terkunci
-                  </span>
+                {editRenewId ? (
+                  <button
+                    className="rounded-xl border px-3 py-2 text-sm hover:bg-black/5"
+                    onClick={() => {
+                      setEditRenewId(null);
+                      setFormRenew(DEFAULT_FORM);
+                      setGdriveRenew("");
+                      if (jejaring?.id) setFormRenew((p) => ({ ...p, ...jejaring, is_verified: false }));
+                    }}
+                  >
+                    Batalkan Koreksi
+                  </button>
                 ) : null}
               </div>
 
-              <form onSubmit={submitRenew} className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                {/* kiri (fields) */}
-                <div className="lg:col-span-2">
-                  <JejaringFormFields
-                    value={formRenew}
-                    onChange={setRenewField}
-                    mode="pemohon"
-                    disabled={loading || busy.renew || lockRenewFinal}
-                    hide={{
-                      verified: true,
-                    }}
-                  />
-                </div>
+              {lockRenew ? (
+                <HintBox>
+                  <div className="font-semibold">Form terkunci</div>
+                  <div className="mt-1">{lockReasonRenew}</div>
+                </HintBox>
+              ) : (
+                <HintBox>
+                  <div className="font-semibold">Petunjuk pengisian</div>
+                  <div className="mt-1">Periksa kembali data fasilitas, masa berlaku MoU, dan tautan berkas pendukung sebelum mengajukan perpanjangan.</div>
+                </HintBox>
+              )}
 
-                {/* kanan (gdrive + action) */}
-                <div className="lg:col-span-1">
-                  <div className="rounded-2xl border border-slate-200 p-4">
-                    <div className="text-sm font-semibold text-slate-900">Berkas (Google Drive)</div>
-                    <div className="mt-1 text-xs text-slate-600">
-                      Upload berkas perpanjangan ke GDrive, lalu tempel link foldernya.
-                    </div>
+              {!lockRenew ? (
+                <div className="mt-4">
+                  <div className="rounded-2xl border bg-white p-4">
+                    <div className="mb-3 text-sm font-semibold">Data Perpanjangan</div>
+                    <JejaringFormFields
+                      form={formRenew}
+                      setField={setRenewField}
+                      mode="pemohon"
+                    />
 
-                    <div className="mt-3">
-                      <label className="text-xs font-semibold text-slate-700">Link GDrive *</label>
+                    <div className="mt-4">
+                      <label className="text-sm font-semibold">Tautan Berkas (Google Drive)</label>
                       <input
                         value={gdriveRenew}
                         onChange={(e) => setGdriveRenew(e.target.value)}
-                        disabled={loading || busy.renew || lockRenewFinal}
                         placeholder="https://drive.google.com/..."
-                        className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-300 disabled:bg-slate-50 disabled:text-slate-500"
+                        className="mt-2 w-full rounded-xl border px-3 py-2 text-sm"
                       />
+                      <div className="mt-2 text-xs text-slate-500">Pastikan pengaturan berbagi sudah sesuai (dapat diakses petugas pemeriksa).</div>
                     </div>
 
-                    {lockRenewFinal ? (
-                      <HintBox>
-                        {jejaring?.id
-                          ? renewWindow.ok
-                            ? "Masih terkunci karena ada proses renewal aktif."
-                            : `Belum masuk window perpanjangan. Dibuka mulai ${fmtDate(renewWindow.unlockAt)} (H-365).`
-                          : "Belum ada MoU finalize, jadi perpanjangan belum bisa."}
-                      </HintBox>
-                    ) : (
-                      <HintBox>
-                        Data di sini akan dipakai admin untuk update record jejaring saat finalize perpanjangan.
-                      </HintBox>
-                    )}
-
-                    <div className="mt-4 flex items-center justify-end gap-2">
+                    <div className="mt-5 flex gap-2">
                       <button
-                        type="button"
-                        onClick={() => {
-                          // reset renew: prefer kembali ke jejaring kalau ada
-                          if (jejaring?.id) setFormRenew((p) => ({ ...DEFAULT_FORM, ...jejaring, is_verified: false }));
-                          else setFormRenew(DEFAULT_FORM);
-                          setGdriveRenew("");
-                          setErr("");
-                          setOk("");
-                        }}
-                        className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold hover:bg-slate-50 disabled:opacity-60"
+                        onClick={submitRenew}
                         disabled={busy.renew}
+                        className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50"
+                      >
+                        {busy.renew ? "Memproses…" : editRenewId ? "Simpan Perubahan" : "Ajukan Perpanjangan"}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setFormRenew(DEFAULT_FORM);
+                          setGdriveRenew("");
+                          setEditRenewId(null);
+                          if (jejaring?.id) setFormRenew((p) => ({ ...p, ...jejaring, is_verified: false }));
+                        }}
+                        className="rounded-xl border px-4 py-2 text-sm hover:bg-black/5"
                       >
                         Reset
                       </button>
-
-                      <button
-                        type="submit"
-                        disabled={loading || busy.renew || lockRenewFinal}
-                        className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
-                      >
-                        {busy.renew ? "Memproses…" : (editRenewId ? "Simpan Perubahan" : "Kirim Permohonan Perpanjangan")}
-                      </button>
                     </div>
                   </div>
                 </div>
-              </form>
+              ) : null}
             </div>
+          ) : null}
 
-          ) : (
-            <div className="space-y-4">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          {/* TAB: HISTORY */}
+          {activeTab === "history" && !loading ? (
+            <div>
+              <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="text-sm font-semibold text-slate-900">Riwayat Pengajuan</div>
-                  <div className="text-xs text-slate-600">
-                    Daftar seluruh permohonan yang telah Anda ajukan. Riwayat ini dapat digunakan untuk memahami alasan penguncian formulir serta mengekspor data untuk pengajuan berikutnya.
+                  <div className="text-sm font-semibold">Riwayat Pengajuan</div>
+                  <div className="mt-1 text-sm text-slate-700">
+                    Daftar berikut memuat seluruh permohonan yang pernah diajukan. Riwayat dapat digunakan untuk memahami alasan penguncian form, serta untuk melakukan koreksi apabila diperlukan.
                   </div>
                 </div>
-                <div className="text-xs text-slate-500">
-                  Total: <span className="font-semibold">{historyRows.length}</span>
-                </div>
+                <button onClick={loadAll} className="rounded-xl border px-3 py-2 text-sm hover:bg-black/5">Refresh</button>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div className="text-sm font-semibold text-slate-800">Informasi Penguncian Formulir</div>
-                <div className="mt-2 grid gap-2 md:grid-cols-2">
-                  <div className="rounded-xl border border-slate-200 bg-white p-3">
-                    <div className="text-xs font-semibold text-slate-700">Pengajuan MoU Baru</div>
-                    <div className="mt-1 text-xs text-slate-600">
-                      {lockBaruFinal ? lockReasonBaru || "Saat ini tidak tersedia untuk diisi." : "Saat ini tersedia untuk diisi."}
-                    </div>
-                  </div>
-                  <div className="rounded-xl border border-slate-200 bg-white p-3">
-                    <div className="text-xs font-semibold text-slate-700">Perpanjangan MoU</div>
-                    <div className="mt-1 text-xs text-slate-600">
-                      {lockRenewFinal ? lockReasonRenew || "Saat ini tidak tersedia untuk diisi." : "Saat ini tersedia untuk diisi."}
-                    </div>
-                  </div>
+              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                <div className="rounded-2xl border bg-white p-4">
+                  <div className="text-sm font-semibold">Pengajuan MoU Baru</div>
+                  <div className="mt-1 text-xs text-slate-600">{lockBaru ? `Status: Terkunci. ${lockReasonBaru}` : "Status: Dibuka."}</div>
+                </div>
+                <div className="rounded-2xl border bg-white p-4">
+                  <div className="text-sm font-semibold">Perpanjangan MoU</div>
+                  <div className="mt-1 text-xs text-slate-600">{lockRenew ? `Status: Terkunci. ${lockReasonRenew}` : "Status: Dibuka."}</div>
                 </div>
               </div>
 
               {historyRows.length === 0 ? (
-                <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-                  Belum terdapat riwayat pengajuan.
-                </div>
+                <div className="mt-4 rounded-2xl border bg-white p-6 text-sm text-slate-700">Belum terdapat riwayat permohonan.</div>
               ) : (
-                <div className="space-y-3">
+                <div className="mt-4 space-y-3">
                   {historyRows.map((row) => {
                     const jenis = String(row.jenis_pengajuan || "").toUpperCase();
-                    const status = String(row.status_pengajuan || "").toUpperCase();
-                    const isBaru = jenis === "BARU";
-                    const submittedAt = row.created_at ? new Date(row.created_at).toLocaleString("id-ID") : "—";
-                    const isEditable = isActiveStatus(status);
-                    const notes = extractNotes(row);
-
+                    const status = String(row.status_pengajuan || "—");
+                    const editable = isEditableStatus(status);
                     return (
-                      <React.Fragment key={row.id}>
-                      <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div key={row.id} className="rounded-2xl border bg-white p-4">
+                        <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                           <div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span
-                                className={[
-                                  "inline-flex items-center rounded-lg px-2 py-0.5 text-[11px] font-semibold",
-                                  isBaru ? "bg-blue-50 text-blue-700 border border-blue-200" : "bg-purple-50 text-purple-700 border border-purple-200",
-                                ].join(" ")}
-                              >
-                                {isBaru ? "MoU Baru" : "Perpanjangan"}
-                              </span>
-                              <span className="inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
-                                {status || "—"}
-                              </span>
-                              <span className="text-xs text-slate-500">Diajukan: {submittedAt}</span>
+                            <div className="text-sm font-semibold">
+                              {jenis === "PERPANJANGAN" ? "Perpanjangan MoU" : "Permohonan MoU Baru"}
+                              <span className="ml-2 rounded-lg border bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-700">{status}</span>
                             </div>
-
-                            <div className="mt-2 text-sm font-semibold text-slate-900">
-                              {row.nama_fasyankes || "—"}
+                            <div className="mt-1 text-xs text-slate-600">Diajukan: {fmtDateTime(row.created_at)}</div>
+                            <div className="mt-2 text-sm text-slate-800">
+                              <span className="font-semibold">Nama Fasyankes:</span> {row.nama_fasyankes || "—"}
                             </div>
                             <div className="mt-1 text-xs text-slate-600">
-                              {row.jenis_fasyankes || "—"} • {row.tipe_fasyankes || "—"} • {row.kecamatan || "—"}, {row.kelurahan || "—"}
+                              {row.kelurahan ? `Kelurahan ${row.kelurahan}` : "—"}
+                              {row.kecamatan ? ` • Kecamatan ${row.kecamatan}` : ""}
                             </div>
-
                             {row.gdrive_url ? (
-                              <div className="mt-2 text-xs text-slate-600">
-                                GDrive:{" "}
-                                <a
-                                  href={row.gdrive_url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="font-semibold text-slate-900 underline decoration-slate-300 underline-offset-2 hover:decoration-slate-500"
-                                >
-                                  Buka tautan
+                              <div className="mt-1 text-xs">
+                                <a className="text-emerald-700 hover:underline" href={row.gdrive_url} target="_blank" rel="noreferrer">
+                                  Tautan berkas pendukung
                                 </a>
                               </div>
                             ) : null}
                           </div>
 
-                          <div className="flex flex-wrap gap-2 sm:justify-end">
+                          <div className="flex flex-wrap gap-2">
                             <button
-                              type="button"
-                              onClick={() => setExpandedId((prev) => (prev === row.id ? null : row.id))}
-                              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold hover:bg-slate-50"
+                              className="rounded-xl border px-3 py-2 text-sm hover:bg-black/5"
+                              onClick={() => setHistoryOpenId((p) => (String(p) === String(row.id) ? null : row.id))}
                             >
-                              {expandedId === row.id ? "Tutup Rincian" : "Lihat Rincian"}
-                            </button>
-
-                            {isEditable ? (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (isBaru) {
-                                    exportToTab(row, "baru");
-                                    setEditBaruId(row.id);
-                                    setEditRenewId(null);
-                                  } else {
-                                    exportToTab(row, "renew");
-                                    setEditRenewId(row.id);
-                                    setEditBaruId(null);
-                                  }
-                                  setExpandedId(row.id);
-                                }}
-                                className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100"
-                                title="Muat data ke formulir dan aktifkan mode edit"
-                              >
-                                Edit
-                              </button>
-                            ) : null}
-
-                            <button
-                              type="button"
-                              onClick={() => exportToTab(row, isBaru ? "baru" : "renew")}
-                              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold hover:bg-slate-50"
-                            >
-                              {isBaru ? "Gunakan pada Form MoU Baru" : "Gunakan pada Form Perpanjangan"}
+                              {String(historyOpenId) === String(row.id) ? "Tutup Detail" : "Lihat Detail"}
                             </button>
 
                             <button
-                              type="button"
-                              onClick={() => exportToTab(row, "renew")}
-                              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold hover:bg-slate-50"
-                              title="Buat draft perpanjangan dari data riwayat ini"
-                            >
-                              Salin ke Form Perpanjangan
-                            </button>
-
-                            <button
-                              type="button"
+                              className="rounded-xl border px-3 py-2 text-sm hover:bg-black/5 disabled:opacity-50"
+                              disabled={!editable}
                               onClick={() => {
-                                const form = pickFormFromHistoryRow(row);
-                                downloadJson(
-                                  `permohonan_${jenis.toLowerCase()}_${row.id}.json`,
-                                  {
-                                    jenis_pengajuan: row.jenis_pengajuan,
-                                    status_pengajuan: row.status_pengajuan,
-                                    created_at: row.created_at,
-                                    gdrive_url: row.gdrive_url,
-                                    target_jejaring_id: row.target_jejaring_id,
-                                    form,
-                                  }
-                                );
+                                if (jenis === "PERPANJANGAN") loadRowToRenew(row, { asEdit: true });
+                                else loadRowToBaru(row, { asEdit: true });
                               }}
-                              className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                              title={editable ? "" : "Permohonan yang telah difinalisasi/selesai tidak dapat diedit."}
                             >
+                              Koreksi (Edit)
+                            </button>
+
+                            <button
+                              className="rounded-xl border px-3 py-2 text-sm hover:bg-black/5"
+                              onClick={() => exportRowToRenew(row)}
+                            >
+                              Ekspor ke Perpanjangan
+                            </button>
+
+                            <button className="rounded-xl border px-3 py-2 text-sm hover:bg-black/5" onClick={() => downloadJson(row)}>
                               Unduh JSON
                             </button>
                           </div>
                         </div>
-                      </div>
-                      {expandedId === row.id ? (
-                        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                          <div className="text-sm font-semibold text-slate-800">Rincian Data Pengajuan</div>
-                          <div className="mt-3">
-                            <JejaringFormFields
-                              value={pickFormFromHistoryRow(row)}
-                              onChange={() => {}}
-                              mode="pemohon"
-                              disabled={true}
-                            />
-                          </div>
 
-                          {notes.length ? (
-                            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                              <div className="text-sm font-semibold text-amber-900">Catatan Pemeriksa (Super Admin)</div>
-                              <div className="mt-2 space-y-2">
-                                {notes.map((n) => (
-                                  <div key={formatNoteKey(n.key)} className="rounded-xl border border-amber-200 bg-white p-3 text-sm text-amber-900">
-                                    <div className="text-xs font-semibold text-amber-800">{formatNoteKey(n.key)}</div>
-                                    <div className="mt-1 whitespace-pre-wrap">{n.value}</div>
+                        {String(historyOpenId) === String(row.id) ? (
+                          <div className="mt-4 rounded-2xl border bg-slate-50 p-4">
+                            <div className="text-sm font-semibold">Rincian Data yang Diajukan</div>
+                            <div className="mt-2 grid gap-2 md:grid-cols-2">
+                              <div className="rounded-xl border bg-white p-3">
+                                <div className="text-xs font-semibold text-slate-700">Jenis Fasyankes</div>
+                                <div className="mt-1 text-sm text-slate-900">{row.jenis_fasyankes || "—"}</div>
+                              </div>
+                              <div className="rounded-xl border bg-white p-3">
+                                <div className="text-xs font-semibold text-slate-700">Tipe Fasyankes</div>
+                                <div className="mt-1 text-sm text-slate-900">{row.tipe_fasyankes || "—"}</div>
+                              </div>
+                              <div className="rounded-xl border bg-white p-3">
+                                <div className="text-xs font-semibold text-slate-700">Alamat</div>
+                                <div className="mt-1 text-sm text-slate-900">{row.alamat || "—"}</div>
+                              </div>
+                              <div className="rounded-xl border bg-white p-3">
+                                <div className="text-xs font-semibold text-slate-700">Kontak</div>
+                                <div className="mt-1 text-sm text-slate-900">
+                                  {row.telepon ? `Telp: ${row.telepon}` : "Telp: —"}
+                                  {row.email ? ` • Email: ${row.email}` : ""}
+                                </div>
+                              </div>
+                              <div className="rounded-xl border bg-white p-3">
+                                <div className="text-xs font-semibold text-slate-700">MoU</div>
+                                <div className="mt-1 text-sm text-slate-900">
+                                  {row.mou_nomor ? `Nomor: ${row.mou_nomor}` : "Nomor: —"}
+                                  <div className="mt-1 text-xs text-slate-600">
+                                    Mulai: {fmtDate(row.mou_mulai)} • Berakhir: {fmtDate(row.mou_akhir)}
                                   </div>
-                                ))}
+                                </div>
+                              </div>
+                              <div className="rounded-xl border bg-white p-3">
+                                <div className="text-xs font-semibold text-slate-700">Lokasi</div>
+                                <div className="mt-1 text-sm text-slate-900">
+                                  {row.lat && row.lng ? `(${row.lat}, ${row.lng})` : "—"}
+                                </div>
                               </div>
                             </div>
-                          ) : null}
-                        </div>
-                      ) : null}
-                      </React.Fragment>
+
+                            <NotesPanel row={row} />
+                          </div>
+                        ) : null}
+                      </div>
                     );
                   })}
                 </div>
               )}
+
+              <div className="mt-4 text-xs text-slate-500">
+                Catatan: Apabila terdapat kesalahan data, gunakan tombol <span className="font-semibold">Koreksi (Edit)</span> pada item riwayat terkait, lalu simpan perubahan.
+              </div>
             </div>
-          )}
-
+          ) : null}
         </div>
-      </div>
-
-      {/* footer note kecil */}
-      <div className="mt-4 text-xs text-slate-500">
-        Catatan: apabila tampilan tidak memenuhi lebar layar, periksa pembungkus (wrapper) halaman sebelumnya yang mungkin menggunakan batas lebar (max-width). Pada halaman ini telah digunakan lebar penuh dengan padding.
       </div>
     </div>
   );
