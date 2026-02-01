@@ -17,7 +17,15 @@ export default function EditJejaringModal({ open, row, onClose, onSaved }) {
   const key = useMemo(() => (row ? getRowKey(row) : null), [row]);
 
   useEffect(() => {
-    if (!open || !row) return;
+    // kalau modal ditutup, bersihkan state supaya tidak kebawa saat buka row lain
+    if (!open) {
+      setForm(null);
+      setErr("");
+      setConfirmOpen(false);
+      return;
+    }
+
+    if (!row) return;
 
     setErr("");
     setConfirmOpen(false);

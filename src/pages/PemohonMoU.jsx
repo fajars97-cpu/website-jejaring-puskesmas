@@ -1,39 +1,51 @@
 // PemohonMoU.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import { supabase } from "../lib/supabaseClient"; // <-- sesuaikan path kamu
-import { useAuth } from "../context/AuthContext"; // <-- sesuaikan path kamu
-import JejaringFormFields from "../features/admin-jejaring/JejaringFormFields"; // <-- sesuaikan path kamu
+import { supabase } from "../lib/supabaseClient"; // sesuaikan path kamu
+import { useAuth } from "../context/AuthContext"; // sesuaikan path kamu
+import JejaringFormFields from "../features/admin-jejaring/JejaringFormFields"; // sesuaikan path kamu
 
-// Defaults minimal (kamu bisa ganti ke CREATE_DEFAULTS dari constants.js kalau ada)
+// Defaults minimal — aman (nggak maksa options). Kalau mau, nanti bisa kamu ganti ke CREATE_DEFAULTS dari constants.js
 const DEFAULT_FORM = {
   nama_fasyankes: "",
   jenis_fasyankes: "",
   tipe_fasyankes: "",
   status: "Aktif",
+
   alamat: "",
   kelurahan: "",
   kecamatan: "",
   kota: "Jakarta Selatan",
   kode_pos: "",
+
   lat: "",
   lng: "",
+
   gmaps_url: "",
   gmaps_embed_url: "",
+
   telepon: "",
   email: "",
+
   penyelenggara: "Swasta",
   kelompok_penyelenggara: "",
+
   pj_nama: "",
   jumlah_sdm: "",
   kegiatan: "",
-  // admin-only fields keep exist but not used in pemohon:
+
+  // admin-only (biarin ada, tapi pemohon nggak ngubah)
   is_verified: false,
+
+  // mou fields (pemohon bisa isi, nanti admin finalize)
   mou_nomor: "",
   mou_mulai: "",
   mou_akhir: "",
+
+  // akreditasi
   terakreditasi: false,
   nomor_akreditasi: "",
   hasil_akreditasi: "",
+
   foto: "",
 };
 
@@ -54,10 +66,32 @@ function fmtDate(v) {
 }
 
 function isActiveStatus(status) {
-  // sesuaikan status yang kamu pakai di permohonan_mou
+  // sesuaikan status kamu di permohonan_mou
   const s = String(status ?? "").trim().toUpperCase();
   if (!s) return false;
+  // status yang dianggap "selesai / tidak aktif"
   return !["REJECTED", "CANCELED", "DONE", "FINALIZED"].includes(s);
+}
+
+function LockBadge({ locked }) {
+  return (
+    <span
+      className={[
+        "ml-2 inline-flex items-center rounded-lg border px-2 py-0.5 text-[11px] font-semibold",
+        locked ? "border-slate-200 bg-slate-50 text-slate-700" : "border-emerald-200 bg-emerald-50 text-emerald-800",
+      ].join(" ")}
+    >
+      {locked ? "🔒 Terkunci" : "✅ Dibuka"}
+    </span>
+  );
+}
+
+function HintBox({ children }) {
+  return (
+    <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+      {children}
+    </div>
+  );
 }
 
 export default function PemohonMoU() {
@@ -65,8 +99,11 @@ export default function PemohonMoU() {
 
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState({ baru: false, renew: false });
+
   const [err, setErr] = useState("");
   const [ok, setOk] = useState("");
+
+  const [activeTab, setActiveTab] = useState("baru"); // "baru" | "renew"
 
   const [jejaring, setJejaring] = useState(null);
   const [lastBaru, setLastBaru] = useState(null);
@@ -74,6 +111,7 @@ export default function PemohonMoU() {
 
   const [formBaru, setFormBaru] = useState(DEFAULT_FORM);
   const [formRenew, setFormRenew] = useState(DEFAULT_FORM);
+
   const [gdriveBaru, setGdriveBaru] = useState("");
   const [gdriveRenew, setGdriveRenew] = useState("");
 
@@ -87,7 +125,7 @@ export default function PemohonMoU() {
     setOk("");
 
     try {
-      // 1) jejaring milik pemohon (butuh kolom pemohon_id)
+      // 1) Jejaring milik pemohon (butuh kolom pemohon_id)
       const { data: j, error: je } = await supabase
         .from("jejaring_fasyankes")
         .select("*")
@@ -100,7 +138,7 @@ export default function PemohonMoU() {
       if (je) throw je;
       setJejaring(j || null);
 
-      // 2) last BARU
+      // 2) Last BARU
       const { data: pb, error: pbe } = await supabase
         .from("permohonan_mou")
         .select("id, created_at, status_pengajuan, jenis_pengajuan, gdrive_url, target_jejaring_id")
@@ -113,7 +151,7 @@ export default function PemohonMoU() {
       if (pbe) throw pbe;
       setLastBaru(pb || null);
 
-      // 3) last PERPANJANGAN
+      // 3) Last PERPANJANGAN
       const { data: pr, error: pre } = await supabase
         .from("permohonan_mou")
         .select("id, created_at, status_pengajuan, jenis_pengajuan, gdrive_url, target_jejaring_id")
@@ -126,7 +164,7 @@ export default function PemohonMoU() {
       if (pre) throw pre;
       setLastRenew(pr || null);
 
-      // Prefill renew form dari jejaring (biar konsisten)
+      // Prefill renew dari jejaring (biar konsisten)
       if (j?.id) {
         setFormRenew((p) => ({ ...p, ...j, is_verified: false }));
       }
@@ -150,15 +188,15 @@ export default function PemohonMoU() {
     return { ok: new Date() >= unlockAt, unlockAt };
   }, [jejaring?.mou_akhir]);
 
-  // LOCK RULES (sesuai request kamu)
+  // LOCK RULES
   const lockBaru = useMemo(() => {
-    // kalau sudah pernah isi perpanjangan -> lock permanen
+    // kalau sudah pernah perpanjangan -> lock permanen
     if (lastRenew?.id) return true;
 
-    // kalau sudah ada jejaring (berarti pengajuan BARU sudah finalize) -> lock
+    // kalau sudah ada jejaring finalize -> lock
     if (jejaring?.id) return true;
 
-    // optional anti-spam: kalau ada permohonan BARU aktif
+    // anti-spam: kalau ada permohonan BARU aktif
     if (lastBaru?.id && isActiveStatus(lastBaru.status_pengajuan)) return true;
 
     return false;
@@ -171,11 +209,17 @@ export default function PemohonMoU() {
     // harus masuk window H-365
     if (!renewWindow.ok) return true;
 
-    // optional anti-spam: kalau ada renewal aktif
+    // anti-spam: kalau ada renewal aktif
     if (lastRenew?.id && isActiveStatus(lastRenew.status_pengajuan)) return true;
 
     return false;
   }, [jejaring?.id, renewWindow.ok, lastRenew]);
+
+  // biar user nggak nyangkut di tab yang terkunci total
+  useEffect(() => {
+    if (activeTab === "baru" && lockBaru && !lockRenew) setActiveTab("renew");
+    if (activeTab === "renew" && lockRenew && !lockBaru) setActiveTab("baru");
+  }, [activeTab, lockBaru, lockRenew]);
 
   function validateCore(form) {
     // minimal required sesuai kebutuhan
@@ -205,6 +249,7 @@ export default function PemohonMoU() {
     setBusy((p) => ({ ...p, baru: true }));
     try {
       const payload = { ...formBaru, is_verified: false };
+
       const { error } = await supabase.from("permohonan_mou").insert({
         pemohon_id: user.id,
         jenis_pengajuan: "BARU",
@@ -212,13 +257,14 @@ export default function PemohonMoU() {
         status_pengajuan: "SUBMITTED",
         ...payload,
       });
+
       if (error) throw error;
 
       setOk("Pengajuan MoU Baru berhasil dikirim.");
       setGdriveBaru("");
       await loadAll();
     } catch (e2) {
-      setErr(e2?.message || "Gagal mengirim pengajuan.");
+      setErr(e2?.message || "Gagal mengirim pengajuan BARU.");
     } finally {
       setBusy((p) => ({ ...p, baru: false }));
     }
@@ -232,7 +278,6 @@ export default function PemohonMoU() {
     if (lockRenew) return;
     if (!user?.id) return setErr("Silakan login dulu.");
     if (!String(gdriveRenew).trim()) return setErr("Link Google Drive wajib diisi.");
-    if (!jejaring?.id) return setErr("Tidak ada data jejaring (MoU belum difinalize).");
 
     const msg = validateCore(formRenew);
     if (msg) return setErr(msg);
@@ -240,227 +285,299 @@ export default function PemohonMoU() {
     setBusy((p) => ({ ...p, renew: true }));
     try {
       const payload = { ...formRenew, is_verified: false };
+
       const { error } = await supabase.from("permohonan_mou").insert({
         pemohon_id: user.id,
         jenis_pengajuan: "PERPANJANGAN",
-        target_jejaring_id: jejaring.id,
         gdrive_url: String(gdriveRenew).trim(),
+        // pakai target_jejaring_id sesuai skema kamu yang sudah ada
+        target_jejaring_id: jejaring?.id ?? null,
         status_pengajuan: "SUBMITTED",
         ...payload,
       });
+
       if (error) throw error;
 
-      setOk("Permohonan Perpanjangan MoU berhasil dikirim.");
+      setOk("Pengajuan Perpanjangan berhasil dikirim.");
       setGdriveRenew("");
       await loadAll();
     } catch (e2) {
-      setErr(e2?.message || "Gagal mengirim perpanjangan.");
+      setErr(e2?.message || "Gagal mengirim pengajuan PERPANJANGAN.");
     } finally {
       setBusy((p) => ({ ...p, renew: false }));
     }
   }
 
-  return (
-    <div className="w-full px-3 sm:px-4 lg:px-6 2xl:px-8 py-6">
-      <div className="mx-auto w-full max-w-6xl space-y-4">
-        {/* Header */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="text-lg font-semibold text-slate-900">MoU: Pengajuan & Perpanjangan</div>
-          <div className="mt-1 text-sm text-slate-600">
-            Sistem ini punya 2 layer form. Yang kebuka/terkunci itu otomatis (biar nggak jadi “form rebutan” 😄).
-          </div>
+  const statusBaru = lastBaru
+    ? `Terakhir: ${fmtDate(lastBaru.created_at)} • Status: ${lastBaru.status_pengajuan}`
+    : "Belum ada permohonan BARU.";
 
-          <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
-            <div className="font-semibold text-slate-900">Status MoU</div>
-            {jejaring?.id ? (
-              <div className="mt-1 grid gap-1 sm:grid-cols-2">
-                <div>
-                  <span className="text-slate-500">Fasyankes:</span> {jejaring.nama_fasyankes || "—"}
-                </div>
-                <div>
-                  <span className="text-slate-500">Berlaku s.d.:</span> {fmtDate(jejaring.mou_akhir)}
-                </div>
-              </div>
-            ) : (
-              <div className="mt-1 text-slate-600">Belum ada MoU yang difinalize.</div>
-            )}
-          </div>
+  const statusRenew = lastRenew
+    ? `Terakhir: ${fmtDate(lastRenew.created_at)} • Status: ${lastRenew.status_pengajuan}`
+    : "Belum ada permohonan PERPANJANGAN.";
+
+  const statusMou = jejaring?.id
+    ? `MoU aktif sampai: ${fmtDate(jejaring.mou_akhir)}`
+    : "Belum ada MoU yang difinalize.";
+
+  return (
+    // FULL width + padding nyaman (nggak nempel tepi)
+    <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
+      {/* Header */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-4">
+        <div className="text-lg font-semibold text-slate-900">MoU: Pengajuan & Perpanjangan</div>
+        <div className="mt-1 text-sm text-slate-600">
+          Sistem ini punya 2 layer form. Yang kebuka/terkunci itu otomatis (biar nggak jadi “form rebutan” 😄).
         </div>
 
-        {/* Feedback */}
-        {loading ? <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">Memuat…</div> : null}
-        {err ? <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{err}</div> : null}
-        {ok ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{ok}</div> : null}
+        <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="text-sm font-semibold text-slate-800">Status MoU</div>
+          <div className="mt-1 text-sm text-slate-700">{statusMou}</div>
 
-        {/* FORM BARU */}
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-          <div className="flex items-start justify-between gap-3 border-b border-slate-200 p-4">
-            <div>
-              <div className="text-sm font-semibold text-slate-900">Pengajuan MoU Baru</div>
-              <div className="mt-1 text-xs text-slate-600">Untuk kerjasama pertama kali.</div>
-              {lastBaru?.id ? (
-                <div className="mt-2 text-xs text-slate-500">
-                  Terakhir: {fmtDate(lastBaru.created_at)} • Status: <span className="font-semibold">{lastBaru.status_pengajuan}</span>
+          {jejaring?.id && !renewWindow.ok ? (
+            <div className="mt-2 text-xs text-slate-600">
+              Perpanjangan dibuka mulai: <span className="font-semibold">{fmtDate(renewWindow.unlockAt)}</span> (H-365).
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      {/* Alerts */}
+      <div className="mt-4 space-y-3">
+        {loading ? (
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">Memuat data…</div>
+        ) : null}
+
+        {err ? (
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{err}</div>
+        ) : null}
+
+        {ok ? (
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">{ok}</div>
+        ) : null}
+      </div>
+
+      {/* Tabs container */}
+      <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        {/* Tab bar */}
+        <div className="flex items-end gap-2 border-b border-slate-200 bg-white px-3 pt-3">
+          <button
+            type="button"
+            onClick={() => setActiveTab("baru")}
+            className={[
+              "relative rounded-t-xl px-4 py-2 text-sm font-semibold",
+              activeTab === "baru"
+                ? "bg-white text-slate-900 border border-slate-200 border-b-white"
+                : "bg-slate-50 text-slate-700 hover:bg-slate-100 border border-transparent",
+            ].join(" ")}
+          >
+            Pengajuan MoU Baru
+            <LockBadge locked={lockBaru} />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("renew")}
+            className={[
+              "relative rounded-t-xl px-4 py-2 text-sm font-semibold",
+              activeTab === "renew"
+                ? "bg-white text-slate-900 border border-slate-200 border-b-white"
+                : "bg-slate-50 text-slate-700 hover:bg-slate-100 border border-transparent",
+            ].join(" ")}
+          >
+            Perpanjangan MoU
+            <LockBadge locked={lockRenew} />
+          </button>
+
+          <div className="flex-1" />
+          <div className="pb-2 pr-2 text-xs text-slate-500">Pilih tab → isi satu jalur aja.</div>
+        </div>
+
+        {/* Tab content */}
+        <div className="p-4">
+          {activeTab === "baru" ? (
+            <div className="space-y-4">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="text-sm font-semibold text-slate-900">Pengajuan MoU Baru</div>
+                  <div className="text-xs text-slate-600">Untuk kerjasama pertama kali.</div>
+                  <div className="mt-1 text-xs text-slate-600">{statusBaru}</div>
                 </div>
-              ) : null}
-              {lastRenew?.id ? (
-                <div className="mt-1 text-xs text-slate-500">Catatan: sudah pernah perpanjangan → pengajuan baru terkunci permanen.</div>
-              ) : null}
-            </div>
-            <div className={`rounded-xl border px-3 py-2 text-xs ${lockBaru ? "border-slate-200 bg-slate-50 text-slate-700" : "border-emerald-200 bg-emerald-50 text-emerald-800"}`}>
-              {lockBaru ? "🔒 Terkunci" : "✅ Dibuka"}
-            </div>
-          </div>
-
-          <form onSubmit={submitBaru} className="p-4">
-            <div className="grid gap-4 lg:grid-cols-3">
-              <div className="lg:col-span-2">
-                <JejaringFormFields value={formBaru} onChange={setBaruField} variant="pemohon" disabled={lockBaru || busy.baru} />
+                {lockBaru ? (
+                  <span className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700">
+                    🔒 Terkunci
+                  </span>
+                ) : null}
               </div>
 
-              <div className="lg:col-span-1">
-                <div className="sticky top-4 space-y-3">
+              <form onSubmit={submitBaru} className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                {/* kiri (fields) */}
+                <div className="lg:col-span-2">
+                  <JejaringFormFields
+                    value={formBaru}
+                    onChange={setBaruField}
+                    mode="pemohon"
+                    disabled={loading || busy.baru || lockBaru}
+                    hide={{
+                      verified: true,
+                    }}
+                  />
+                </div>
+
+                {/* kanan (gdrive + action) */}
+                <div className="lg:col-span-1">
                   <div className="rounded-2xl border border-slate-200 p-4">
                     <div className="text-sm font-semibold text-slate-900">Berkas (Google Drive)</div>
-                    <div className="mt-1 text-xs text-slate-600">Tempel link folder GDrive yang bisa diakses admin.</div>
+                    <div className="mt-1 text-xs text-slate-600">
+                      Tempel link folder GDrive yang bisa diakses admin.
+                    </div>
 
-                    <label className="mt-3 block">
-                      <div className="mb-1 text-xs font-semibold text-slate-700">Link GDrive *</div>
+                    <div className="mt-3">
+                      <label className="text-xs font-semibold text-slate-700">Link GDrive *</label>
                       <input
                         value={gdriveBaru}
                         onChange={(e) => setGdriveBaru(e.target.value)}
-                        disabled={lockBaru || busy.baru}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-300 disabled:opacity-60"
-                        placeholder="https://drive.google.com/…"
+                        disabled={loading || busy.baru || lockBaru}
+                        placeholder="https://drive.google.com/..."
+                        className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-300 disabled:bg-slate-50 disabled:text-slate-500"
                       />
-                    </label>
+                    </div>
 
                     {lockBaru ? (
-                      <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                      <HintBox>
                         Form ini terkunci: sudah finalize / ada proses aktif / atau sudah pernah perpanjangan.
-                      </div>
-                    ) : null}
+                      </HintBox>
+                    ) : (
+                      <HintBox>
+                        Pastikan link GDrive bisa diakses admin (minimal “Anyone with the link” atau share ke email admin).
+                      </HintBox>
+                    )}
+
+                    <div className="mt-4 flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormBaru(DEFAULT_FORM);
+                          setGdriveBaru("");
+                          setErr("");
+                          setOk("");
+                        }}
+                        className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold hover:bg-slate-50 disabled:opacity-60"
+                        disabled={busy.baru}
+                      >
+                        Reset
+                      </button>
+
+                      <button
+                        type="submit"
+                        disabled={loading || busy.baru || lockBaru}
+                        className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                      >
+                        {busy.baru ? "Mengirim…" : "Kirim Pengajuan"}
+                      </button>
+                    </div>
                   </div>
-
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormBaru(DEFAULT_FORM);
-                        setGdriveBaru("");
-                      }}
-                      disabled={busy.baru}
-                      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold hover:bg-slate-50 disabled:opacity-60"
-                    >
-                      Reset
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={lockBaru || busy.baru}
-                      className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
-                    >
-                      {busy.baru ? "Mengirim…" : "Kirim Pengajuan"}
-                    </button>
-                  </div>
                 </div>
-              </div>
+              </form>
             </div>
-          </form>
-        </div>
-
-        {/* FORM PERPANJANGAN */}
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-          <div className="flex items-start justify-between gap-3 border-b border-slate-200 p-4">
-            <div>
-              <div className="text-sm font-semibold text-slate-900">Perpanjangan MoU</div>
-              <div className="mt-1 text-xs text-slate-600">Dibuka 1 tahun sebelum MoU berakhir.</div>
-
-              {jejaring?.mou_akhir ? (
-                <div className="mt-2 text-xs text-slate-500">
-                  MoU berakhir: <span className="font-semibold">{fmtDate(jejaring.mou_akhir)}</span> • Dibuka sejak:{" "}
-                  {renewWindow.unlockAt ? fmtDate(renewWindow.unlockAt) : "—"}
+          ) : (
+            <div className="space-y-4">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="text-sm font-semibold text-slate-900">Perpanjangan MoU</div>
+                  <div className="text-xs text-slate-600">Terbuka H-365 sebelum MoU berakhir.</div>
+                  <div className="mt-1 text-xs text-slate-600">{statusRenew}</div>
                 </div>
-              ) : null}
-
-              {lastRenew?.id ? (
-                <div className="mt-2 text-xs text-slate-500">
-                  Terakhir: {fmtDate(lastRenew.created_at)} • Status: <span className="font-semibold">{lastRenew.status_pengajuan}</span>
-                </div>
-              ) : null}
-            </div>
-
-            <div className={`rounded-xl border px-3 py-2 text-xs ${lockRenew ? "border-slate-200 bg-slate-50 text-slate-700" : "border-emerald-200 bg-emerald-50 text-emerald-800"}`}>
-              {lockRenew ? "🔒 Terkunci" : "✅ Dibuka"}
-            </div>
-          </div>
-
-          <form onSubmit={submitRenew} className="p-4">
-            <div className="grid gap-4 lg:grid-cols-3">
-              <div className="lg:col-span-2">
-                <JejaringFormFields value={formRenew} onChange={setRenewField} variant="pemohon" disabled={lockRenew || busy.renew} />
+                {lockRenew ? (
+                  <span className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700">
+                    🔒 Terkunci
+                  </span>
+                ) : null}
               </div>
 
-              <div className="lg:col-span-1">
-                <div className="sticky top-4 space-y-3">
+              <form onSubmit={submitRenew} className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                {/* kiri (fields) */}
+                <div className="lg:col-span-2">
+                  <JejaringFormFields
+                    value={formRenew}
+                    onChange={setRenewField}
+                    mode="pemohon"
+                    disabled={loading || busy.renew || lockRenew}
+                    hide={{
+                      verified: true,
+                    }}
+                  />
+                </div>
+
+                {/* kanan (gdrive + action) */}
+                <div className="lg:col-span-1">
                   <div className="rounded-2xl border border-slate-200 p-4">
-                    <div className="text-sm font-semibold text-slate-900">Berkas Perpanjangan (Google Drive)</div>
-                    <div className="mt-1 text-xs text-slate-600">Tempel link folder GDrive berkas perpanjangan.</div>
+                    <div className="text-sm font-semibold text-slate-900">Berkas (Google Drive)</div>
+                    <div className="mt-1 text-xs text-slate-600">
+                      Upload berkas perpanjangan ke GDrive, lalu tempel link foldernya.
+                    </div>
 
-                    <label className="mt-3 block">
-                      <div className="mb-1 text-xs font-semibold text-slate-700">Link GDrive *</div>
+                    <div className="mt-3">
+                      <label className="text-xs font-semibold text-slate-700">Link GDrive *</label>
                       <input
                         value={gdriveRenew}
                         onChange={(e) => setGdriveRenew(e.target.value)}
-                        disabled={lockRenew || busy.renew}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-300 disabled:opacity-60"
-                        placeholder="https://drive.google.com/…"
+                        disabled={loading || busy.renew || lockRenew}
+                        placeholder="https://drive.google.com/..."
+                        className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-300 disabled:bg-slate-50 disabled:text-slate-500"
                       />
-                    </label>
+                    </div>
 
-                    {!jejaring?.id ? (
-                      <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-                        Perpanjangan belum bisa: MoU belum difinalize jadi data jejaring.
-                      </div>
-                    ) : !renewWindow.ok ? (
-                      <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-                        Belum masuk masa perpanjangan. Akan terbuka mulai {renewWindow.unlockAt ? fmtDate(renewWindow.unlockAt) : "—"}.
-                      </div>
-                    ) : lastRenew?.id && isActiveStatus(lastRenew.status_pengajuan) ? (
-                      <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
-                        Sudah ada permohonan perpanjangan yang sedang diproses.
-                      </div>
-                    ) : null}
-                  </div>
+                    {lockRenew ? (
+                      <HintBox>
+                        {jejaring?.id
+                          ? renewWindow.ok
+                            ? "Masih terkunci karena ada proses renewal aktif."
+                            : `Belum masuk window perpanjangan. Dibuka mulai ${fmtDate(renewWindow.unlockAt)} (H-365).`
+                          : "Belum ada MoU finalize, jadi perpanjangan belum bisa."}
+                      </HintBox>
+                    ) : (
+                      <HintBox>
+                        Data di sini akan dipakai admin untuk update record jejaring saat finalize perpanjangan.
+                      </HintBox>
+                    )}
 
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormRenew(DEFAULT_FORM);
-                        setGdriveRenew("");
-                      }}
-                      disabled={busy.renew}
-                      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold hover:bg-slate-50 disabled:opacity-60"
-                    >
-                      Reset
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={lockRenew || busy.renew}
-                      className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
-                    >
-                      {busy.renew ? "Mengirim…" : "Kirim Perpanjangan"}
-                    </button>
+                    <div className="mt-4 flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // reset renew: prefer kembali ke jejaring kalau ada
+                          if (jejaring?.id) setFormRenew((p) => ({ ...DEFAULT_FORM, ...jejaring, is_verified: false }));
+                          else setFormRenew(DEFAULT_FORM);
+                          setGdriveRenew("");
+                          setErr("");
+                          setOk("");
+                        }}
+                        className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold hover:bg-slate-50 disabled:opacity-60"
+                        disabled={busy.renew}
+                      >
+                        Reset
+                      </button>
+
+                      <button
+                        type="submit"
+                        disabled={loading || busy.renew || lockRenew}
+                        className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                      >
+                        {busy.renew ? "Mengirim…" : "Kirim Perpanjangan"}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </form>
             </div>
-          </form>
+          )}
         </div>
+      </div>
 
-        <div className="text-xs text-slate-500">
-          Catatan: kalau import path kamu beda, tinggal sesuaikan. Logic & struktur UI tetap aman.
-        </div>
+      {/* footer note kecil */}
+      <div className="mt-4 text-xs text-slate-500">
+        Tips: kalau tab terasa “nggak full”, itu biasanya karena wrapper page sebelumnya pakai max-width. Di versi ini sudah full-width + padding.
       </div>
     </div>
   );

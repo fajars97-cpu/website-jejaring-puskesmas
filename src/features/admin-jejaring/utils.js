@@ -24,6 +24,13 @@ function toIntOrNull(v) {
   return Number.isFinite(n) ? Math.trunc(n) : null;
 }
 
+function toFloatOrNull(v) {
+  const s = String(v ?? "").trim();
+  if (!s) return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
 // ---------- key helper ----------
 export function getRowKey(row) {
   if (!row || typeof row !== "object") return null;
