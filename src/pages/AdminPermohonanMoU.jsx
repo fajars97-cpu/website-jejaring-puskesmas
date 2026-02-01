@@ -42,6 +42,7 @@ function includesQ(row, q) {
     "alamat",
     "email",
     "telepon",
+    "jenis_pengajuan",
     "status_pengajuan",
   ];
   return keys.some((k) => String(row?.[k] ?? "").toLowerCase().includes(q));
@@ -60,6 +61,10 @@ export default function AdminPermohonanMoU() {
 
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailRow, setDetailRow] = useState(null);
+
+  const [noteDraft, setNoteDraft] = useState("");
+  const [noteSaving, setNoteSaving] = useState(false);
+  const [noteErr, setNoteErr] = useState("");
 
   const [finalizeOpen, setFinalizeOpen] = useState(false);
   const [finalizeRow, setFinalizeRow] = useState(null);
@@ -96,6 +101,14 @@ export default function AdminPermohonanMoU() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
+  useEffect(() => {
+    if (!detailOpen || !detailRow) return;
+    setNoteErr("");
+    const existing = detailRow?.admin_notes;
+    const note = typeof existing === "object" && existing ? (existing.note ?? existing._general ?? "") : "";
+    setNoteDraft(String(note ?? ""));
+  }, [detailOpen, detailRow]);
+
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase();
     return rows
@@ -117,6 +130,50 @@ export default function AdminPermohonanMoU() {
       setErr(e?.message || "Gagal update status.");
     }
   }
+
+  async function saveAdminNote() {
+    if (!detailRow?.id) return;
+    setNoteErr("");
+    try {
+      setNoteSaving(true);
+
+      const prev = detailRow?.admin_notes;
+      const base = typeof prev === "object" && prev ? { ...prev } : {};
+      const nextNote = String(noteDraft ?? "").trim();
+
+      if (nextNote) base.note = nextNote;
+      else delete base.note;
+
+      const { error } = await supabase
+        .from("permohonan_mou")
+        .update({ admin_notes: base })
+        .eq("id", detailRow.id);
+
+      if (error) throw error;
+
+      const { data: updatedRow, error: readErr } = await supabase
+        .from("permohonan_mou")
+        .select("*")
+        .eq("id", detailRow.id)
+        .maybeSingle();
+
+      if (readErr) throw readErr;
+
+      // update detail + list locally
+      setDetailRow(updatedRow || detailRow);
+      setRows((prevRows) =>
+        Array.isArray(prevRows)
+          ? prevRows.map((r) => (r.id === detailRow.id ? (updatedRow || r) : r))
+          : prevRows
+      );
+    } catch (e) {
+      setNoteErr(e?.message || "Gagal menyimpan catatan.");
+    } finally {
+      setNoteSaving(false);
+    }
+  }
+
+
 
   function openFinalize(row) {
     setFinalizeErr("");
@@ -231,6 +288,7 @@ export default function AdminPermohonanMoU() {
                     Aksi
                   </th>
                   <Th>Nama</Th>
+                  <Th>Jenis Pengajuan</Th>
                   <Th>Jenis</Th>
                   <Th>Tipe</Th>
                   <Th>Kelurahan</Th>
@@ -262,10 +320,15 @@ export default function AdminPermohonanMoU() {
                         >
                           Finalize
                         </button>
+
+                        {(r.admin_notes && (r.admin_notes.note || r.admin_notes._general)) ? (
+                          <span className="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">Ada catatan</span>
+                        ) : null}
                       </div>
                     </td>
 
                     <Td title={r.nama_fasyankes}>{formatCell(r.nama_fasyankes)}</Td>
+                    <Td>{formatCell(r.jenis_pengajuan)}</Td>
                     <Td>{formatCell(r.jenis_fasyankes)}</Td>
                     <Td>{formatCell(r.tipe_fasyankes)}</Td>
                     <Td>{formatCell(r.kelurahan)}</Td>
@@ -307,34 +370,100 @@ export default function AdminPermohonanMoU() {
         )}
       </div>
 
-      {/* DETAIL MODAL */}
+      {/* DETAIL DRAWER */}
       {detailOpen && detailRow ? (
-        <Modal onClose={() => setDetailOpen(false)} title="Detail Permohonan">
-          <div className="space-y-2 text-sm text-slate-800">
-            <Row label="Nama" value={detailRow.nama_fasyankes} />
-            <Row label="Jenis" value={detailRow.jenis_fasyankes} />
-            <Row label="Tipe" value={detailRow.tipe_fasyankes} />
-            <Row label="Alamat" value={detailRow.alamat} />
-            <Row label="Kelurahan" value={detailRow.kelurahan} />
-            <Row label="Status Pengajuan" value={detailRow.status_pengajuan} />
-            <Row label="Lat/Lng" value={`${detailRow.lat}, ${detailRow.lng}`} />
-            <Row label="Telepon" value={detailRow.telepon} />
-            <Row label="Email" value={detailRow.email} />
-            <Row label="Gmaps URL" value={detailRow.gmaps_url} />
-            <Row label="Berkas (GDrive)" value={detailRow.gdrive_url} />
-          </div>
+        <Drawer onClose={() => setDetailOpen(false)} title="Detail Permohonan">
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="text-base font-semibold text-slate-900">{formatCell(detailRow.nama_fasyankes)}</div>
+                  <div className="mt-1 text-xs text-slate-600">
+                    Jenis Pengajuan: <span className="font-semibold text-slate-800">{formatCell(detailRow.jenis_pengajuan)}</span>
+                    {" • "}
+                    Diajukan: <span className="font-semibold text-slate-800">{String(detailRow.submitted_at || detailRow.created_at || "").replace("T", " ").slice(0, 16) || "—"}</span>
+                  </div>
+                </div>
 
-          <div className="mt-4 flex justify-end">
-            <button
-              type="button"
-              onClick={() => setDetailOpen(false)}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold hover:bg-slate-50"
-            >
-              Tutup
-            </button>
+                <div className="mt-2 flex items-center gap-2 sm:mt-0">
+                  <div className="text-xs font-semibold text-slate-700">Status:</div>
+                  <select
+                    value={detailRow.status_pengajuan}
+                    onChange={async (e) => {
+                      const next = e.target.value;
+                      await updateStatus(detailRow, next);
+                      setDetailRow((r) => (r ? { ...r, status_pengajuan: next } : r));
+                    }}
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 outline-none"
+                  >
+                    {STATUS.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-4">
+              <div className="mb-3 text-sm font-semibold text-slate-900">Rincian Data yang Diajukan</div>
+
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <FieldBox label="Jenis Fasyankes" value={detailRow.jenis_fasyankes} />
+                <FieldBox label="Tipe Fasyankes" value={detailRow.tipe_fasyankes} />
+                <FieldBox label="Alamat" value={detailRow.alamat} />
+                <FieldBox label="Kelurahan" value={detailRow.kelurahan} />
+                <FieldBox label="Kecamatan" value={detailRow.kecamatan} />
+                <FieldBox label="Wilayah" value={detailRow.wilayah} />
+                <FieldBox label="Kontak (Telepon)" value={detailRow.telepon} />
+                <FieldBox label="Kontak (Email)" value={detailRow.email} />
+                <FieldBox label="Koordinat" value={detailRow.lat && detailRow.lng ? `${detailRow.lat}, ${detailRow.lng}` : "—"} />
+                <FieldBox label="Tautan Google Maps" value={detailRow.gmaps_url} isLink={true} />
+                <FieldBox label="Berkas (Google Drive)" value={detailRow.gdrive_url} isLink={true} />
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-4">
+              <div className="mb-2 flex items-center justify-between">
+                <div className="text-sm font-semibold text-slate-900">Catatan Pemeriksa</div>
+                <div className="text-xs text-slate-500">Opsional</div>
+              </div>
+
+              <textarea
+                value={noteDraft}
+                onChange={(e) => setNoteDraft(e.target.value)}
+                placeholder="Tuliskan catatan apabila diperlukan (mis. klarifikasi data, perbaikan berkas, atau tindak lanjut)."
+                className="min-h-[110px] w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-300"
+              />
+
+              {noteErr ? (
+                <div className="mt-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{noteErr}</div>
+              ) : null}
+
+              <div className="mt-3 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDetailOpen(false)}
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold hover:bg-slate-50"
+                >
+                  Tutup
+                </button>
+
+                <button
+                  type="button"
+                  onClick={saveAdminNote}
+                  disabled={noteSaving}
+                  className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                >
+                  {noteSaving ? "Menyimpan…" : "Simpan Catatan"}
+                </button>
+              </div>
+            </div>
           </div>
-        </Modal>
+        </Drawer>
       ) : null}
+
 
       {/* FINALIZE MODAL */}
       {finalizeOpen && finalizeRow ? (
@@ -429,6 +558,50 @@ function Modal({ title, children, onClose }) {
         </div>
         <div className="mt-3">{children}</div>
       </div>
+    </div>
+  );
+}
+
+
+function Drawer({ title, children, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50">
+      <button
+        type="button"
+        aria-label="Tutup"
+        onClick={onClose}
+        className="absolute inset-0 h-full w-full bg-black/30"
+      />
+      <div className="absolute right-0 top-0 h-full w-full max-w-[560px] overflow-y-auto border-l border-slate-200 bg-slate-50 p-4 shadow-2xl">
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-sm font-semibold text-slate-900">{title}</div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold hover:bg-slate-50"
+          >
+            Tutup
+          </button>
+        </div>
+        <div className="mt-4">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function FieldBox({ label, value, isLink = false }) {
+  const v = formatCell(value);
+  const canLink = isLink && isLikelyUrl(value);
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-3">
+      <div className="mb-1 text-xs font-semibold text-slate-700">{label}</div>
+      {canLink ? (
+        <a href={String(value)} target="_blank" rel="noreferrer" className="text-sm font-semibold text-slate-900 underline">
+          Buka tautan
+        </a>
+      ) : (
+        <div className="text-sm text-slate-900">{v}</div>
+      )}
     </div>
   );
 }
