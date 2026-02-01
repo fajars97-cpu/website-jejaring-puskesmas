@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../context/AuthContext";
+
+import JejaringFormFields from "../features/admin-jejaring/JejaringFormFields";
+import { CREATE_DEFAULTS } from "../features/admin-jejaring/constants";
 
 const STATUS = [
   "SUBMITTED",
@@ -48,6 +50,22 @@ function includesQ(row, q) {
   return keys.some((k) => String(row?.[k] ?? "").toLowerCase().includes(q));
 }
 
+function toIdDate(isoLike) {
+  const s = String(isoLike ?? "");
+  if (!s) return "—";
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return s.slice(0, 10);
+  return d.toLocaleString("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+function normalizeRowForForm(row) {
+  // memastikan semua field form tampil (walau null / tidak ada)
+  return {
+    ...CREATE_DEFAULTS,
+    ...(row || {}),
+  };
+}
+
 export default function AdminPermohonanMoU() {
   const { user } = useAuth();
 
@@ -59,13 +77,16 @@ export default function AdminPermohonanMoU() {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("ALL");
 
-  const [detailOpen, setDetailOpen] = useState(false);
+  // drawer detail
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [detailRow, setDetailRow] = useState(null);
 
+  // admin note (single note) stored in admin_notes.note
   const [noteDraft, setNoteDraft] = useState("");
   const [noteSaving, setNoteSaving] = useState(false);
   const [noteErr, setNoteErr] = useState("");
 
+  // finalize (tetap pakai flow existing kamu)
   const [finalizeOpen, setFinalizeOpen] = useState(false);
   const [finalizeRow, setFinalizeRow] = useState(null);
   const [mouNomor, setMouNomor] = useState("");
@@ -101,20 +122,29 @@ export default function AdminPermohonanMoU() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
-  useEffect(() => {
-    if (!detailOpen || !detailRow) return;
-    setNoteErr("");
-    const existing = detailRow?.admin_notes;
-    const note = typeof existing === "object" && existing ? (existing.note ?? existing._general ?? "") : "";
-    setNoteDraft(String(note ?? ""));
-  }, [detailOpen, detailRow]);
-
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase();
     return rows
       .filter((r) => (status === "ALL" ? true : r.status_pengajuan === status))
       .filter((r) => includesQ(r, qq));
   }, [rows, q, status]);
+
+  function openDetail(row) {
+    setErr("");
+    setNoteErr("");
+    setDetailRow(row);
+    const existing = row?.admin_notes;
+    const note = typeof existing === "object" && existing ? (existing.note ?? "") : "";
+    setNoteDraft(String(note ?? ""));
+    setDrawerOpen(true);
+  }
+
+  function closeDetail() {
+    setDrawerOpen(false);
+    setDetailRow(null);
+    setNoteErr("");
+    setNoteDraft("");
+  }
 
   async function updateStatus(row, nextStatus) {
     setErr("");
@@ -125,15 +155,23 @@ export default function AdminPermohonanMoU() {
         .eq("id", row.id);
 
       if (error) throw error;
-      await load({ silent: true });
+
+      // update local list quickly
+      setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, status_pengajuan: nextStatus } : r)));
+
+      // if row is open in drawer, keep in sync
+      if (detailRow?.id === row.id) {
+        setDetailRow((d) => ({ ...(d || {}), status_pengajuan: nextStatus }));
+      }
     } catch (e) {
-      setErr(e?.message || "Gagal update status.");
+      setErr(e?.message || "Gagal memperbarui status pengajuan.");
     }
   }
 
   async function saveAdminNote() {
     if (!detailRow?.id) return;
     setNoteErr("");
+
     try {
       setNoteSaving(true);
 
@@ -144,36 +182,24 @@ export default function AdminPermohonanMoU() {
       if (nextNote) base.note = nextNote;
       else delete base.note;
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("permohonan_mou")
         .update({ admin_notes: base })
-        .eq("id", detailRow.id);
+        .eq("id", detailRow.id)
+        .select("*")
+        .maybeSingle();
 
       if (error) throw error;
 
-      const { data: updatedRow, error: readErr } = await supabase
-        .from("permohonan_mou")
-        .select("*")
-        .eq("id", detailRow.id)
-        .maybeSingle();
-
-      if (readErr) throw readErr;
-
-      // update detail + list locally
-      setDetailRow(updatedRow || detailRow);
-      setRows((prevRows) =>
-        Array.isArray(prevRows)
-          ? prevRows.map((r) => (r.id === detailRow.id ? (updatedRow || r) : r))
-          : prevRows
-      );
+      const updated = data || { ...detailRow, admin_notes: base };
+      setDetailRow(updated);
+      setRows((prevRows) => prevRows.map((r) => (r.id === detailRow.id ? updated : r)));
     } catch (e) {
-      setNoteErr(e?.message || "Gagal menyimpan catatan.");
+      setNoteErr(e?.message || "Gagal menyimpan catatan pemeriksa.");
     } finally {
       setNoteSaving(false);
     }
   }
-
-
 
   function openFinalize(row) {
     setFinalizeErr("");
@@ -206,11 +232,7 @@ export default function AdminPermohonanMoU() {
       setFinalizeOpen(false);
       setFinalizeRow(null);
 
-      // permohonan terhapus otomatis, reload list
       await load({ silent: true });
-
-      // data = id baru jejaring_fasyankes (bigint)
-      // bisa kamu pakai kalau mau nav ke AdminJejaring
       console.log("finalized_new_jejaring_id:", data);
     } catch (e) {
       setFinalizeErr(e?.message || "Gagal finalize.");
@@ -219,6 +241,12 @@ export default function AdminPermohonanMoU() {
     }
   }
 
+  const noteExists = (r) => {
+    const n = r?.admin_notes;
+    if (!n || typeof n !== "object") return false;
+    return String(n.note ?? "").trim().length > 0;
+  };
+
   return (
     <div className="w-full px-3 sm:px-4 lg:px-6 2xl:px-8 py-6">
       <div className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -226,7 +254,7 @@ export default function AdminPermohonanMoU() {
           <div>
             <h1 className="text-lg font-semibold text-slate-900">Rekap Permohonan MoU</h1>
             <p className="mt-1 text-sm text-slate-600">
-              Hanya super admin yang bisa review dan finalize (pindah ke jejaring & hapus permohonan).
+              Halaman ini menampilkan seluruh permohonan yang diajukan. Super admin dapat meninjau detail, memberikan catatan, memperbarui status, dan melakukan finalisasi.
             </p>
           </div>
         </div>
@@ -238,7 +266,7 @@ export default function AdminPermohonanMoU() {
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search…"
+              placeholder="Pencarian…"
               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-300 sm:w-80"
             />
             <select
@@ -261,7 +289,7 @@ export default function AdminPermohonanMoU() {
             disabled={loading || refreshing}
             className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold hover:bg-slate-50 disabled:opacity-60"
           >
-            {refreshing ? "Refreshing…" : "Refresh"}
+            {refreshing ? "Memuat ulang…" : "Refresh"}
           </button>
         </div>
 
@@ -289,8 +317,8 @@ export default function AdminPermohonanMoU() {
                   </th>
                   <Th>Nama</Th>
                   <Th>Jenis Pengajuan</Th>
-                  <Th>Jenis</Th>
-                  <Th>Tipe</Th>
+                  <Th>Jenis Fasyankes</Th>
+                  <Th>Tipe Fasyankes</Th>
                   <Th>Kelurahan</Th>
                   <Th>Berkas</Th>
                   <Th>Status</Th>
@@ -304,10 +332,7 @@ export default function AdminPermohonanMoU() {
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => {
-                            setDetailRow(r);
-                            setDetailOpen(true);
-                          }}
+                          onClick={() => openDetail(r)}
                           className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium hover:bg-slate-50"
                         >
                           Detail
@@ -321,8 +346,10 @@ export default function AdminPermohonanMoU() {
                           Finalize
                         </button>
 
-                        {(r.admin_notes && (r.admin_notes.note || r.admin_notes._general)) ? (
-                          <span className="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">Ada catatan</span>
+                        {noteExists(r) ? (
+                          <span className="ml-1 rounded-full border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700">
+                            Ada catatan
+                          </span>
                         ) : null}
                       </div>
                     </td>
@@ -370,31 +397,26 @@ export default function AdminPermohonanMoU() {
         )}
       </div>
 
-      {/* DETAIL DRAWER */}
-      {detailOpen && detailRow ? (
-        <Drawer onClose={() => setDetailOpen(false)} title="Detail Permohonan">
+      {/* DRAWER DETAIL */}
+      <Drawer open={drawerOpen} onClose={closeDetail} title={detailRow?.nama_fasyankes || "Detail Permohonan"}>
+        {detailRow ? (
           <div className="space-y-4">
             <div className="rounded-2xl border border-slate-200 bg-white p-4">
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="text-base font-semibold text-slate-900">{formatCell(detailRow.nama_fasyankes)}</div>
-                  <div className="mt-1 text-xs text-slate-600">
-                    Jenis Pengajuan: <span className="font-semibold text-slate-800">{formatCell(detailRow.jenis_pengajuan)}</span>
-                    {" • "}
-                    Diajukan: <span className="font-semibold text-slate-800">{String(detailRow.submitted_at || detailRow.created_at || "").replace("T", " ").slice(0, 16) || "—"}</span>
-                  </div>
+              <div className="flex flex-col gap-2">
+                <div className="text-sm text-slate-700">
+                  <span className="font-semibold">Jenis Pengajuan:</span> {formatCell(detailRow.jenis_pengajuan)}
+                  <span className="mx-2">•</span>
+                  <span className="font-semibold">Diajukan:</span> {toIdDate(detailRow.submitted_at || detailRow.created_at)}
                 </div>
 
-                <div className="mt-2 flex items-center gap-2 sm:mt-0">
-                  <div className="text-xs font-semibold text-slate-700">Status:</div>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="text-sm text-slate-700">
+                    <span className="font-semibold">Status:</span>
+                  </div>
                   <select
                     value={detailRow.status_pengajuan}
-                    onChange={async (e) => {
-                      const next = e.target.value;
-                      await updateStatus(detailRow, next);
-                      setDetailRow((r) => (r ? { ...r, status_pengajuan: next } : r));
-                    }}
-                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 outline-none"
+                    onChange={(e) => updateStatus(detailRow, e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none sm:w-64"
                   >
                     {STATUS.map((s) => (
                       <option key={s} value={s}>
@@ -406,26 +428,46 @@ export default function AdminPermohonanMoU() {
               </div>
             </div>
 
+            {/* Berkas (Google Drive) - akan dipindahkan ke form fields nanti */}
             <div className="rounded-2xl border border-slate-200 bg-white p-4">
-              <div className="mb-3 text-sm font-semibold text-slate-900">Rincian Data yang Diajukan</div>
-
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <FieldBox label="Jenis Fasyankes" value={detailRow.jenis_fasyankes} />
-                <FieldBox label="Tipe Fasyankes" value={detailRow.tipe_fasyankes} />
-                <FieldBox label="Alamat" value={detailRow.alamat} />
-                <FieldBox label="Kelurahan" value={detailRow.kelurahan} />
-                <FieldBox label="Kecamatan" value={detailRow.kecamatan} />
-                <FieldBox label="Wilayah" value={detailRow.wilayah} />
-                <FieldBox label="Kontak (Telepon)" value={detailRow.telepon} />
-                <FieldBox label="Kontak (Email)" value={detailRow.email} />
-                <FieldBox label="Koordinat" value={detailRow.lat && detailRow.lng ? `${detailRow.lat}, ${detailRow.lng}` : "—"} />
-                <FieldBox label="Tautan Google Maps" value={detailRow.gmaps_url} isLink={true} />
-                <FieldBox label="Berkas (Google Drive)" value={detailRow.gdrive_url} isLink={true} />
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-semibold text-slate-900">Berkas (Google Drive)</div>
+                {isLikelyUrl(detailRow.gdrive_url) ? (
+                  <a
+                    href={detailRow.gdrive_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold hover:bg-slate-50"
+                  >
+                    Buka Tautan
+                  </a>
+                ) : null}
+              </div>
+              <div className="mt-2 text-sm text-slate-700 wrap-break-word">
+                {isLikelyUrl(detailRow.gdrive_url) ? detailRow.gdrive_url : "—"}
+              </div>
+              <div className="mt-2 text-xs text-slate-500">
+                Tautan berkas digunakan sebagai referensi pemeriksaan. Pastikan pengaturan akses tautan sesuai ketentuan.
               </div>
             </div>
 
+            {/* Form lengkap (read-only) */}
             <div className="rounded-2xl border border-slate-200 bg-white p-4">
-              <div className="mb-2 flex items-center justify-between">
+              <div className="text-sm font-semibold text-slate-900">Rincian Data yang Diajukan</div>
+              <div className="mt-3">
+                <JejaringFormFields
+                  value={normalizeRowForForm(detailRow)}
+                  onChange={() => {}}
+                  variant="admin"
+                  disabled={true}
+                  sections={{ verified: true, perizinan: true, mou: true, akreditasi: true, foto: true }}
+                />
+              </div>
+            </div>
+
+            {/* Catatan Pemeriksa (single note) */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-4">
+              <div className="flex items-center justify-between">
                 <div className="text-sm font-semibold text-slate-900">Catatan Pemeriksa</div>
                 <div className="text-xs text-slate-500">Opsional</div>
               </div>
@@ -433,23 +475,22 @@ export default function AdminPermohonanMoU() {
               <textarea
                 value={noteDraft}
                 onChange={(e) => setNoteDraft(e.target.value)}
-                placeholder="Tuliskan catatan apabila diperlukan (mis. klarifikasi data, perbaikan berkas, atau tindak lanjut)."
-                className="min-h-[110px] w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-300"
+                placeholder="Tuliskan catatan apabila diperlukan (misalnya klarifikasi data, perbaikan berkas, atau tindak lanjut)."
+                className="mt-3 min-h-27.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-300"
               />
 
               {noteErr ? (
-                <div className="mt-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{noteErr}</div>
+                <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{noteErr}</div>
               ) : null}
 
-              <div className="mt-3 flex items-center justify-end gap-2">
+              <div className="mt-4 flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setDetailOpen(false)}
+                  onClick={closeDetail}
                   className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold hover:bg-slate-50"
                 >
                   Tutup
                 </button>
-
                 <button
                   type="button"
                   onClick={saveAdminNote}
@@ -461,9 +502,8 @@ export default function AdminPermohonanMoU() {
               </div>
             </div>
           </div>
-        </Drawer>
-      ) : null}
-
+        ) : null}
+      </Drawer>
 
       {/* FINALIZE MODAL */}
       {finalizeOpen && finalizeRow ? (
@@ -483,8 +523,7 @@ export default function AdminPermohonanMoU() {
             <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{finalizeErr}</div>
           ) : (
             <div className="mt-3 text-xs text-slate-500">
-              Finalize akan: insert ke <span className="font-mono">jejaring_fasyankes</span> lalu hapus dari{" "}
-              <span className="font-mono">permohonan_mou</span>.
+              Finalisasi akan memindahkan data ke <span className="font-mono">jejaring_fasyankes</span> dan menghapus data dari <span className="font-mono">permohonan_mou</span> (sesuai mekanisme saat ini).
             </div>
           )}
 
@@ -503,7 +542,7 @@ export default function AdminPermohonanMoU() {
               disabled={finalizing}
               className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
             >
-              {finalizing ? "Finalizing…" : "Finalize"}
+              {finalizing ? "Memproses…" : "Finalize"}
             </button>
           </div>
         </Modal>
@@ -547,38 +586,11 @@ function Modal({ title, children, onClose }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3">
       <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
         <div className="flex items-center justify-between gap-3">
-          <div className="text-sm font-semibold text-slate-900">{title}</div>
+          <div className="text-base font-semibold text-slate-900">{title}</div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold hover:bg-slate-50"
-          >
-            ✕
-          </button>
-        </div>
-        <div className="mt-3">{children}</div>
-      </div>
-    </div>
-  );
-}
-
-
-function Drawer({ title, children, onClose }) {
-  return (
-    <div className="fixed inset-0 z-50">
-      <button
-        type="button"
-        aria-label="Tutup"
-        onClick={onClose}
-        className="absolute inset-0 h-full w-full bg-black/30"
-      />
-      <div className="absolute right-0 top-0 h-full w-full max-w-[560px] overflow-y-auto border-l border-slate-200 bg-slate-50 p-4 shadow-2xl">
-        <div className="flex items-center justify-between gap-3">
-          <div className="text-sm font-semibold text-slate-900">{title}</div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold hover:bg-slate-50"
+            className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold hover:bg-slate-50"
           >
             Tutup
           </button>
@@ -589,28 +601,31 @@ function Drawer({ title, children, onClose }) {
   );
 }
 
-function FieldBox({ label, value, isLink = false }) {
-  const v = formatCell(value);
-  const canLink = isLink && isLikelyUrl(value);
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-3">
-      <div className="mb-1 text-xs font-semibold text-slate-700">{label}</div>
-      {canLink ? (
-        <a href={String(value)} target="_blank" rel="noreferrer" className="text-sm font-semibold text-slate-900 underline">
-          Buka tautan
-        </a>
-      ) : (
-        <div className="text-sm text-slate-900">{v}</div>
-      )}
-    </div>
-  );
-}
+function Drawer({ open, onClose, title, children }) {
+  if (!open) return null;
 
-function Row({ label, value }) {
   return (
-    <div className="flex flex-col gap-0.5 sm:flex-row sm:items-start sm:gap-3">
-      <div className="w-44 shrink-0 text-xs font-semibold text-slate-600">{label}</div>
-      <div className="text-sm text-slate-900 wrap-break-word">{formatCell(value)}</div>
+    <div className="fixed inset-0 z-50">
+      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+      <div className="absolute right-0 top-0 h-full w-full max-w-180 bg-slate-50 shadow-2xl">
+        <div className="flex h-full flex-col">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
+            <div className="min-w-0">
+              <div className="truncate text-base font-semibold text-slate-900">{title}</div>
+              <div className="mt-0.5 text-xs text-slate-500">Tinjau data dan catatan pemeriksa.</div>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold hover:bg-slate-50"
+            >
+              Tutup
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4">{children}</div>
+        </div>
+      </div>
     </div>
   );
 }
