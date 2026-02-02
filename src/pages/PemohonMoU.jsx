@@ -639,17 +639,6 @@ export default function PemohonMoU() {
                       mode="pemohon"
                     />
 
-                    <div className="mt-4">
-                      <label className="text-sm font-semibold">Tautan Berkas (Google Drive)</label>
-                      <input
-                        value={gdriveRenew}
-                        onChange={(e) => setGdriveRenew(e.target.value)}
-                        placeholder="https://drive.google.com/..."
-                        className="mt-2 w-full rounded-xl border px-3 py-2 text-sm"
-                      />
-                      <div className="mt-2 text-xs text-slate-500">Pastikan pengaturan berbagi sudah sesuai (dapat diakses petugas pemeriksa).</div>
-                    </div>
-
                     <div className="mt-5 flex gap-2">
                       <button
                         onClick={submitRenew}

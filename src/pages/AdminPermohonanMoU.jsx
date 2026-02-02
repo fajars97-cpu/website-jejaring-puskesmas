@@ -132,7 +132,10 @@ export default function AdminPermohonanMoU() {
   function openDetail(row) {
     setErr("");
     setNoteErr("");
-    setDetailRow(row);
+    setDetailRow({
+    ...CREATE_DEFAULTS,
+    ...row,
+  });
     const existing = row?.admin_notes;
     const note = typeof existing === "object" && existing ? (existing.note ?? "") : "";
     setNoteDraft(String(note ?? ""));

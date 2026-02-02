@@ -104,14 +104,15 @@ export function normalizeJejaringPayload(form) {
     kode_pos: toNullIfEmpty(form?.kode_pos),
 
     // geo
-    lat: Number(form?.lat),
-    lng: Number(form?.lng),
+    lat: toFloatOrNull(form?.lat),
+    lng: toFloatOrNull(form?.lng),
 
     // kontak + maps
     telepon: toNullIfEmpty(form?.telepon),
     email: toNullIfEmpty(form?.email),
     gmaps_url: toNullIfEmpty(form?.gmaps_url),
     gmaps_embed_url: toNullIfEmpty(form?.gmaps_embed_url),
+    gdrive_url: toNullIfEmpty(form?.gdrive_url),
 
     // admin/meta
     is_verified: !!form?.is_verified,
@@ -138,6 +139,8 @@ export function normalizeJejaringPayload(form) {
     terakreditasi: !!form?.terakreditasi,
     nomor_akreditasi: form?.terakreditasi ? toNullIfEmpty(form?.nomor_akreditasi) : null,
     hasil_akreditasi: form?.terakreditasi ? toNullIfEmpty(form?.hasil_akreditasi) : null,
+    akreditasi_berlaku_mulai: form?.terakreditasi ? toDateOrNull(form?.akreditasi_berlaku_mulai) : null,
+    akreditasi_berlaku_sampai: form?.terakreditasi ? toDateOrNull(form?.akreditasi_berlaku_sampai) : null,
   };
 }
 
