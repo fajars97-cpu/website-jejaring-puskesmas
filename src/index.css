@@ -9,7 +9,6 @@ html,
 body,
 #root {
   width: 100%;
-  height: 100%;
   margin: 0;
   padding: 0;
 }
@@ -45,7 +44,41 @@ body {
 
 html,
 body {
-  overflow-x: hidden;
+  overflow-x: clip;
+}
+
+/* Public pages use the document scrollbar. Only the admin workspace is fixed. */
+#root {
+  min-height: 100dvh;
+}
+.portal-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background: var(--portal-bg);
+}
+.portal-shell-app {
+  height: 100dvh;
+  overflow: hidden;
+}
+.portal-public-viewport,
+.portal-public-page {
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 auto;
+  min-width: 0;
+}
+.portal-public-page > main {
+  flex: 1 0 auto;
+  width: 100%;
+}
+.portal-public-page > footer {
+  flex-shrink: 0;
+}
+.portal-app-viewport {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 /* Shared visual language: calm surfaces, clear hierarchy, accessible controls. */
 :root {
@@ -83,6 +116,7 @@ button:disabled {
   border-color: var(--portal-border);
 }
 .portal-topbar {
+  flex-shrink: 0;
   position: sticky;
   top: 0;
   z-index: 50;
@@ -623,12 +657,12 @@ button:disabled {
 }
 .portal-footer-inner {
   max-width: 1248px;
-  padding: 44px 24px 22px;
+  padding: 48px 24px 24px;
   margin: auto;
 }
 .portal-footer-grid {
   display: grid;
-  grid-template-columns: 1.15fr 1.15fr 0.8fr;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.15fr) minmax(0, 0.85fr);
   gap: 64px;
 }
 .portal-brand-footer strong {
@@ -640,7 +674,7 @@ button:disabled {
 }
 .portal-footer h2 {
   color: #f1f5ee;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   margin-bottom: 16px;
 }
@@ -669,7 +703,7 @@ button:disabled {
   margin: 16px 0;
 }
 .portal-footer-hours {
-  font-size: 10px;
+  font-size: 12px;
   color: #9cb3a2;
   line-height: 1.8;
   margin-top: 12px;
@@ -690,7 +724,7 @@ button:disabled {
   padding-top: 20px;
   margin-top: 32px;
   color: #94ae9d;
-  font-size: 10px;
+  font-size: 12px;
 }
 .portal-app-footer {
   display: flex;
@@ -885,5 +919,5 @@ button:disabled {
 .portal-footer address,
 .portal-footer-description,
 .portal-footer a:not(.portal-brand) {
-  font-size: 12px;
+  font-size: 14px;
 }

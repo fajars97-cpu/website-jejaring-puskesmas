@@ -35,7 +35,10 @@ export default function Layout() {
     return getSidebarMenu({ isAdmin });
   }, [user, isAdmin]);
 
-  useEffect(() => setMobileOpen(false), [loc.pathname]);
+  useEffect(() => {
+    setMobileOpen(false);
+    if (!isAppArea) window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [loc.pathname, isAppArea]);
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -87,7 +90,7 @@ export default function Layout() {
 
   return (
     <div
-      className="min-h-dvh bg-white text-slate-900"
+      className={isAppArea ? "portal-shell portal-shell-app" : "portal-shell"}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
@@ -118,10 +121,10 @@ export default function Layout() {
       />
 
       {/* body viewport */}
-      <div className="h-[calc(100dvh-4rem)] bg-[#f6f8f5] overflow-hidden min-h-0">
+      <div className={isAppArea ? "portal-app-viewport" : "portal-public-viewport"}>
         {!isAppArea ? (
           // ===== PUBLIC =====
-          <div className="h-full overflow-y-auto min-h-0">
+          <div className="portal-public-page">
             <main className="portal-public-main">
              <div className="w-full min-w-0">
                 <Outlet />
@@ -134,8 +137,8 @@ export default function Layout() {
           <div
             className={
               showSidebar
-                ? "grid h-full min-h-0 md:grid-cols-[260px_1fr] md:grid-rows-[1fr_auto]"
-                : "grid h-full min-h-0 grid-rows-[1fr_auto]"
+                ? "grid h-full min-h-0 grid-rows-[minmax(0,1fr)_auto] md:grid-cols-[260px_1fr]"
+                : "grid h-full min-h-0 grid-rows-[minmax(0,1fr)_auto]"
             }
           >
             {/* Sidebar (row 1) */}
@@ -149,7 +152,7 @@ export default function Layout() {
 
             {/* Content (row 1) */}
             <section className="min-w-0 h-full min-h-0">
-              <div className="h-full min-h-0 overflow-y-auto pb-[calc(48px+env(safe-area-inset-bottom))]">
+              <div className="h-full min-h-0 overflow-y-auto pb-[env(safe-area-inset-bottom)]">
                 <main className="px-4 py-6 md:px-6">
                   <div className="w-full">
                     <Outlet />
