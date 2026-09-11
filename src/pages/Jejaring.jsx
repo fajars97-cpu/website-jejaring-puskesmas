@@ -298,7 +298,7 @@ export default function Jejaring() {
   return (
     <main className="min-h-screen bg-gray-50">
       {/* padding mobile dikecilkan biar gak “sumpek” */}
-      <div className="mx-auto max-w-7xl px-4 py-8 space-y-8 md:px-6 md:py-10 md:space-y-10">
+      <div className="w-full px-4 py-8 space-y-8 md:px-6 md:py-10 md:space-y-10">
         {/* ================= HEADER ================= */}
         <header>
           <h1 className="text-2xl font-bold text-[#087745] md:text-3xl">

@@ -17,7 +17,7 @@ export default function Login({ mode = "any" }) {
   const redirectTo = useMemo(() => {
     const from = location?.state?.from?.pathname;
     if (from) return from;
-    return isAdmin ? "/admin" : "/pemohon/mou";
+    return isAdmin ? "/admin/jejaring" : "/pemohon/mou";
   }, [location, isAdmin]);
 
   // Jika sudah login dan role sudah ready:

@@ -1,6 +1,7 @@
 // src/features/admin-jejaring/api.js
 import { supabase } from "../../lib/supabaseClient";
 import { TABLE } from "./constants";
+import { collectPages } from "../../lib/pagination.js";
 
 export async function listJejaring({ from, to }) {
   const base = supabase.from(TABLE).select("*", { count: "exact" }).range(from, to);
@@ -38,47 +39,11 @@ export async function deleteJejaring(pk, value) {
   if (error) throw error;
 }
 
-// Fetch ALL rows (for export). Chunking supaya aman kalau data banyak.
+// Ordered pages terminate even if rows were deleted during export.
 export async function fetchAllJejaring({ columns = "*", chunkSize = 1000 } = {}) {
-  const table = "jejaring_fasyankes";
-  let all = [];
-  let from = 0;
-
-  // coba ambil count biar loop rapi (kalau count null tetap aman)
-  const first = await supabase
-    .from(table)
+  return collectPages((from, to) => supabase
+    .from(TABLE)
     .select(columns, { count: "exact" })
-    .range(0, chunkSize - 1);
-
-  if (first.error) throw first.error;
-  all = all.concat(first.data || []);
-
-  const total = first.count ?? null;
-  // kalau count ada, loop sampai total
-  if (typeof total === "number") {
-    from = chunkSize;
-    while (all.length < total) {
-      const to = from + chunkSize - 1;
-      const res = await supabase.from(table).select(columns).range(from, to);
-      if (res.error) throw res.error;
-      all = all.concat(res.data || []);
-      from += chunkSize;
-    }
-    return all;
-  }
-
-  // fallback: loop sampai batch < chunkSize
-  from = chunkSize;
-  while (true) {
-    const to = from + chunkSize - 1;
-    const res = await supabase.from(table).select(columns).range(from, to);
-    if (res.error) throw res.error;
-    const batch = res.data || [];
-    if (!batch.length) break;
-    all = all.concat(batch);
-    if (batch.length < chunkSize) break;
-    from += chunkSize;
-  }
-
-  return all;
+    .order("id", { ascending: true })
+    .range(from, to), { pageSize: chunkSize });
 }

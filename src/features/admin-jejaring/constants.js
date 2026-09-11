@@ -18,7 +18,6 @@ export const TIPE_OPTIONS = [
   "Klinik Kecantikan",
   "Klinik Gigi",
   "Apotek",
-  "Laboratorium",
   "Optik",
   "Lainnya",
 ];
@@ -32,7 +31,8 @@ export const CREATE_DEFAULTS = {
   // inti
   nama_fasyankes: "",
   jenis_fasyankes: "Klinik Pratama",
-  tipe_fasyankes: "Klinik",
+  // NOTE: harus match salah satu opsi di TIPE_OPTIONS biar select tidak blank
+tipe_fasyankes: "Klinik Umum",
   status: "Aktif",
 
   alamat: "",
@@ -49,6 +49,8 @@ export const CREATE_DEFAULTS = {
   email: "",
   gmaps_url: "",
   gmaps_embed_url: "",
+
+  gdrive_url: "", // tautan berkas (Google Drive)
 
   // admin/meta
   is_verified: true,
@@ -74,6 +76,8 @@ export const CREATE_DEFAULTS = {
   terakreditasi: false,
   nomor_akreditasi: "",
   hasil_akreditasi: "",
+  akreditasi_berlaku_mulai: "",  // yyyy-mm-dd
+  akreditasi_berlaku_sampai: "", // yyyy-mm-dd
 };
 
 export const FOTO_MAX_MB = 3;

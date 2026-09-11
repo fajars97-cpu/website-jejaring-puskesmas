@@ -37,3 +37,7 @@ body {
 .animate-expand {
   animation: expand 0.45s ease-out forwards;
 }
+
+html, body {
+  overflow-x: hidden;
+}

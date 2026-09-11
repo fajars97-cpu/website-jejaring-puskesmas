@@ -2,10 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { fetchJejaringList } from "../lib/jejaringRepo";
 
-function cn(...c) {
-  return c.filter(Boolean).join(" ");
-}
-
 /* ---------- DASHBOARD CARD ---------- */
 function StatCard({ title, value }) {
   return (
@@ -68,15 +64,19 @@ function CarouselControls({ containerRef }) {
 export default function Home() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const jejaringRef = useRef(null);
   const regulasiRef = useRef(null);
   const dashboardRef = useRef(null);
 
   useEffect(() => {
+    let active = true;
     fetchJejaringList()
-      .then((d) => setRows(Array.isArray(d) ? d : []))
-      .finally(() => setLoading(false));
+      .then((d) => { if (active) setRows(Array.isArray(d) ? d : []); })
+      .catch(() => { if (active) setError("Data jejaring belum dapat dimuat. Silakan muat ulang halaman."); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
   }, []);
 
   /* ---------- DASHBOARD HITUNGAN ---------- */
@@ -128,20 +128,22 @@ export default function Home() {
   ];
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-10 lg:space-y-12">
       {/* HERO */}
-      <section className="rounded-3xl border border-black/10 bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-extrabold text-emerald-900">
-          Website Jejaring & Perizinan Puskesmas
-        </h1>
-        <p className="mt-3 max-w-2xl text-sm text-black/60">
-          Sistem informasi jejaring dan perizinan fasilitas kesehatan
-          Kecamatan Jagakarsa.
-        </p>
+      <section className="rounded-3xl border border-black/10 bg-white p-6 shadow-sm md:p-8">
+        <div className="max-w-4xl">
+          <h1 className="text-2xl font-extrabold text-emerald-900 md:text-[28px]">
+            Website Jejaring & Perizinan Puskesmas
+          </h1>
+          <p className="mt-3 max-w-2xl text-sm text-black/60 md:text-[15px]">
+            Sistem informasi jejaring dan perizinan fasilitas kesehatan Kecamatan Jagakarsa.
+          </p>
+        </div>
       </section>
 
       {/* DASHBOARD */}
       <section>
+        {error && <p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-extrabold">Ringkasan Jejaring</h2>
           <CarouselControls containerRef={dashboardRef} />
@@ -151,7 +153,7 @@ export default function Home() {
           ref={dashboardRef}
           className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-2 [&::-webkit-scrollbar]:hidden"
         >
-          {(loading ? Array.from({ length: 8 }) : dashboardItems).map((it, idx) => (
+          {(loading ? Array.from({ length: 8 }) : error ? [] : dashboardItems).map((it, idx) => (
             <div
               key={loading ? idx : it.key}
               className="snap-start w-[70%] sm:w-65"

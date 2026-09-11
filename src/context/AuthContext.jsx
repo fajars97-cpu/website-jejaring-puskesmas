@@ -1,5 +1,5 @@
 // src/context/AuthContext.jsx
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../lib/supabaseClient.js";
 
 const AuthContext = createContext(null);
@@ -42,36 +42,14 @@ function writeAdminCache(uid, { isAdmin, isSuperAdmin, role }) {
       adminCacheKey(uid),
       JSON.stringify({ isAdmin: !!isAdmin, isSuperAdmin: !!isSuperAdmin, role: role || "", ts: Date.now() })
     );
-  } catch {}
+  } catch { /* Storage may be unavailable in private browsing. */ }
 }
 
 function clearAdminCache(uid) {
   try {
     localStorage.removeItem(adminCacheKey(uid));
-  } catch {}
+  } catch { /* Storage may be unavailable in private browsing. */ }
 }
-
-export function AuthProvider({ children }) {
-  const [session, setSession] = useState(null);
-  const [user, setUser] = useState(null);
-
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-  const [role, setRole] = useState("");
-  const [adminReady, setAdminReady] = useState(false);
-  const [adminError, setAdminError] = useState("");
-
-  // loading: hanya untuk "restore awal" / "proses login" yang memang layak blocking
-  const [loading, setLoading] = useState(true);
-
-  // UX: restoring = true hanya saat app baru load dan memulihkan session pertama kali
-  const [restoring, setRestoring] = useState(true);
-
-  // optional: indikator sync background (tidak dipakai guard)
-  const [bgSyncing, setBgSyncing] = useState(false);
-
-  const seqRef = useRef(0);
-  const lastUserIdRef = useRef(null);
 
   async function resolveRoleAndAdmin(userId) {
     if (!userId) return { ok: false, err: "" };
@@ -128,7 +106,29 @@ export function AuthProvider({ children }) {
     }
   }
 
-  async function refreshAdminCheck() {
+export function AuthProvider({ children }) {
+  const [session, setSession] = useState(null);
+  const [user, setUser] = useState(null);
+
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [role, setRole] = useState("");
+  const [adminReady, setAdminReady] = useState(false);
+  const [adminError, setAdminError] = useState("");
+
+  // loading: hanya untuk "restore awal" / "proses login" yang memang layak blocking
+  const [loading, setLoading] = useState(true);
+
+  // UX: restoring = true hanya saat app baru load dan memulihkan session pertama kali
+  const [restoring, setRestoring] = useState(true);
+
+  // optional: indikator sync background (tidak dipakai guard)
+  const [bgSyncing, setBgSyncing] = useState(false);
+
+  const seqRef = useRef(0);
+  const lastUserIdRef = useRef(null);
+
+  const refreshAdminCheck = useCallback(async () => {
     if (!user?.id) return;
     const mySeq = ++seqRef.current;
 
@@ -160,7 +160,7 @@ export function AuthProvider({ children }) {
 
     if (res.ok) writeAdminCache(user.id, { isAdmin: true, isSuperAdmin: !!res.isSuper, role: res.role || "" });
     else clearAdminCache(user.id);
-  }
+  }, [user?.id]);
 
   async function applySession(newSession, { forceAdminCheck = false } = {}) {
     const mySeq = ++seqRef.current;
@@ -260,19 +260,21 @@ export function AuthProvider({ children }) {
         setAdminReady(true);
         setAdminError((prev) => prev || (e?.message || "init failed"));
       } finally {
-        if (!mounted) return;
-        setLoading(false);
-        setRestoring(false);
+        if (mounted) {
+          setLoading(false);
+          setRestoring(false);
+        }
       }
     }
 
     init();
 
-    const { data: listener } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+    async function handleAuthStateChange(event, newSession) {
   if (!mounted) return;
 
   if (event === "SIGNED_OUT") {
-    const uid = user?.id;
+    const uid = lastUserIdRef.current;
+    ++seqRef.current;
     if (uid) clearAdminCache(uid);
 
     lastUserIdRef.current = null;
@@ -302,9 +304,10 @@ export function AuthProvider({ children }) {
     try {
       applySessionSoft(newSession);
     } finally {
-      if (!mounted) return;
-      setBgSyncing(false);
-      setRestoring(false);
+      if (mounted) {
+        setBgSyncing(false);
+        setRestoring(false);
+      }
     }
     return;
   }
@@ -323,22 +326,34 @@ export function AuthProvider({ children }) {
     setAdminReady(true);
     setAdminError(e?.message || "applySession error");
   } finally {
-    if (!mounted) return;
-    if (isForegroundBlocking) setLoading(false);
-    else setBgSyncing(false);
-    setRestoring(false);
+    if (mounted) {
+      if (isForegroundBlocking) setLoading(false);
+      else setBgSyncing(false);
+      setRestoring(false);
+    }
   }
-});
+}
+
+    // Supabase callbacks run under the auth lock. Defer queries until it is released.
+    const pending = new Set();
+    const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
+      const timer = setTimeout(() => {
+        pending.delete(timer);
+        void handleAuthStateChange(event, newSession);
+      }, 0);
+      pending.add(timer);
+    });
 
     return () => {
       mounted = false;
+      pending.forEach(clearTimeout);
       clearTimeout(failSafeTimer);
       listener?.subscription?.unsubscribe();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, []);
 
-  async function signIn(email, password) {
+  const signIn = useCallback(async (email, password) => {
     // login memang boleh blocking
     setLoading(true);
     try {
@@ -346,9 +361,10 @@ export function AuthProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
-  async function signOut() {
+  const signOut = useCallback(async () => {
+    ++seqRef.current;
     try {
       await supabase.auth.signOut();
     } finally {
@@ -366,7 +382,7 @@ export function AuthProvider({ children }) {
       setLoading(false);
       setRestoring(false);
     }
-  }
+  }, [user?.id]);
 
   const value = useMemo(
     () => ({
@@ -384,12 +400,13 @@ export function AuthProvider({ children }) {
       signOut,
       refreshAdminCheck,
     }),
-    [session, user, isAdmin, isSuperAdmin, role, adminReady, adminError, loading, restoring, bgSyncing]
+    [session, user, isAdmin, isSuperAdmin, role, adminReady, adminError, loading, restoring, bgSyncing, signIn, signOut, refreshAdminCheck]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- The auth hook intentionally shares its provider module.
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth harus dipakai di dalam <AuthProvider>");

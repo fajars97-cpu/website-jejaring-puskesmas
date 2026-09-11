@@ -160,10 +160,10 @@ export function useJejaringList() {
       }
     } finally {
       if (timeoutHandle) clearTimeout(timeoutHandle);
-      if (!aliveRef.current || myId !== requestIdRef.current) return;
-
-      setLoading(false);
-      setRefreshing(false);
+      if (aliveRef.current && myId === requestIdRef.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }
 

@@ -29,6 +29,9 @@ Deno.serve(async (req) => {
   const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
   const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const APP_URL = Deno.env.get("APP_URL") || undefined;
+  if (!SUPABASE_URL || !ANON_KEY || !SERVICE_KEY || !APP_URL) {
+    return json(500, { error: "Missing env secrets (including APP_URL)" });
+  }
 
   const token = getBearerToken(req);
   if (!token) return json(401, { error: "Missing bearer token" });
@@ -44,10 +47,8 @@ Deno.serve(async (req) => {
   const actorId = userData.user.id;
 
   const body = await req.json().catch(() => null);
-  const email = body?.email as string | undefined;
-  const targetUserId = body?.target_user_id as string | undefined; // optional, tapi recommended
-
-  if (!email) return json(400, { error: "email is required" });
+  const targetUserId = body?.target_user_id as string | undefined;
+  if (!targetUserId) return json(400, { error: "target_user_id is required" });
 
   const adminClient = createClient(SUPABASE_URL, SERVICE_KEY);
 
@@ -74,9 +75,17 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Trigger built-in Supabase reset email
+  // Resolve the email from Auth so it cannot differ from the checked target.
+  const { data: target, error: targetError } = await adminClient.auth.admin.getUserById(targetUserId);
+  const email = target?.user?.email;
+  if (targetError || !email) return json(404, { error: "Target email not found" });
+  const redirect = new URL(APP_URL);
+  redirect.hash = "";
+  redirect.searchParams.set("recovery", "1");
+
+  // Keep the fragment free for Supabase's implicit recovery tokens.
   const { error: resetErr } = await adminClient.auth.resetPasswordForEmail(email, {
-    redirectTo: APP_URL ? `${APP_URL}#/reset-password` : undefined,
+    redirectTo: redirect.toString(),
   });
 
   if (resetErr) return json(500, { error: "Failed to send reset email" });

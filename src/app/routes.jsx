@@ -1,23 +1,24 @@
-import React from "react";
+import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 
 import Layout from "../layout/Layout";
 
 // pages (flat)
-import Home from "../pages/Home";
-import Jejaring from "../pages/Jejaring";
-import Perizinan from "../pages/Perizinan";
+const Home = lazy(() => import("../pages/Home"));
+const Jejaring = lazy(() => import("../pages/Jejaring"));
+const Perizinan = lazy(() => import("../pages/Perizinan"));
 
-import Login from "../pages/Login";
-import Signup from "../pages/Signup";
+const Login = lazy(() => import("../pages/Login"));
+const ResetPassword = lazy(() => import("../pages/ResetPassword"));
+const Signup = lazy(() => import("../pages/Signup"));
 
-import AdminJejaring from "../pages/AdminJejaring";
-import AdminPermohonanMoU from "../pages/AdminPermohonanMoU";
-import PemohonMoU from "../pages/PemohonMoU";
-import AdminAccounts from "../pages/AdminAccounts";
-import PemohonProfile from "../pages/PemohonProfile";
+const AdminJejaring = lazy(() => import("../pages/AdminJejaring"));
+const AdminPermohonanMoU = lazy(() => import("../pages/AdminPermohonanMoU"));
+const PemohonMoU = lazy(() => import("../pages/PemohonMoU"));
+const AdminAccounts = lazy(() => import("../pages/AdminAccounts"));
+const PemohonProfile = lazy(() => import("../pages/PemohonProfile"));
 
-import NotFound from "../pages/NotFound";
+const NotFound = lazy(() => import("../pages/NotFound"));
 
 // ⚠️ Sesuaikan ini kalau file context kamu beda lokasinya:
 import { useAuth } from "../context/AuthContext";
@@ -31,10 +32,10 @@ function RequireAuth({ children }) {
   return user ? children : <Navigate to="/login" replace />;
 }
 
-function RequireAdmin({ children }) {
-  const { user, isAdmin, loading } = useAuth();
-  if (loading) return null;
-  return user && isAdmin ? children : <Navigate to="/" replace />;
+function RequireAdmin({ children, requireSuperAdmin = false }) {
+  const { user, isAdmin, isSuperAdmin, loading, adminReady } = useAuth();
+  if (loading || !adminReady) return null;
+  return user && (requireSuperAdmin ? isSuperAdmin : isAdmin) ? children : <Navigate to="/" replace />;
 }
 
 /* =====================
@@ -42,6 +43,7 @@ function RequireAdmin({ children }) {
 ===================== */
 export default function AppRoutes() {
   return (
+    <Suspense fallback={<div className="p-6 text-sm text-gray-600" role="status">Memuat halaman...</div>}>
     <Routes>
       <Route element={<Layout />}>
         {/* PUBLIC */}
@@ -51,6 +53,9 @@ export default function AppRoutes() {
 
         {/* AUTH */}
         <Route path="/login" element={<Login />} />
+        <Route path="/login-admin" element={<Login mode="admin" />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/admin" element={<Navigate to="/admin/jejaring" replace />} />
         <Route path="/signup" element={<Signup />} />
 
         {/* PEMOHON */}
@@ -94,7 +99,7 @@ export default function AppRoutes() {
         <Route
           path="/admin/accounts"
           element={
-            <RequireAdmin>
+            <RequireAdmin requireSuperAdmin>
               <AdminAccounts />
             </RequireAdmin>
           }
@@ -104,5 +109,6 @@ export default function AppRoutes() {
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
+    </Suspense>
   );
 }

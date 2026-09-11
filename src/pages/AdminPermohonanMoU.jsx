@@ -119,7 +119,7 @@ export default function AdminPermohonanMoU() {
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [user?.id]);
 
   const filtered = useMemo(() => {

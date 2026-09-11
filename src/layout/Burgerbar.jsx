@@ -53,7 +53,7 @@ export default function Burgerbar({
   return (
     <div
       className={[
-        "fixed inset-0 z-[70] md:hidden",
+        "fixed inset-0 z-70 md:hidden",
         open ? "pointer-events-auto" : "pointer-events-none",
       ].join(" ")}
       aria-hidden={!open}
@@ -70,7 +70,7 @@ export default function Burgerbar({
       {/* Panel */}
       <div
         className={[
-          "absolute left-0 top-0 h-full w-[86%] max-w-[340px]",
+          "absolute left-0 top-0 h-full w-[86%] max-w-85",
           "bg-emerald-900 text-white border-r border-white/10 shadow-2xl",
           "transition-transform duration-200 ease-out",
           open ? "translate-x-0" : "-translate-x-full",

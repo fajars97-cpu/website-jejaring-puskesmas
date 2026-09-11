@@ -418,7 +418,6 @@ export default function PemohonMoU() {
   function loadRowToBaru(row, { asEdit } = { asEdit: true }) {
     if (!row) return;
     setFormBaru((p) => ({ ...p, ...row, is_verified: false }));
-    setGdriveBaru(String(row.gdrive_url || ""));
     setEditBaruId(asEdit ? row.id : null);
     if (!asEdit) setEditBaruId(null);
     setActiveTab("baru");
@@ -427,7 +426,6 @@ export default function PemohonMoU() {
   function loadRowToRenew(row, { asEdit } = { asEdit: true, keepTarget: true }) {
     if (!row) return;
     setFormRenew((p) => ({ ...p, ...row, is_verified: false }));
-    setGdriveRenew(String(row.gdrive_url || ""));
     setEditRenewId(asEdit ? row.id : null);
     setActiveTab("renew");
   }
@@ -436,7 +434,6 @@ export default function PemohonMoU() {
     if (!row) return;
     // ekspor = muat data ke form perpanjangan sebagai draft baru (bukan edit row lama)
     setFormRenew((p) => ({ ...p, ...row, is_verified: false }));
-    setGdriveRenew(String(row.gdrive_url || ""));
     setEditRenewId(null);
     setActiveTab("renew");
   }
@@ -451,10 +448,6 @@ export default function PemohonMoU() {
     URL.revokeObjectURL(url);
   }
 
-  const historyOpenRow = useMemo(
-    () => historyRows.find((r) => String(r.id) === String(historyOpenId)) || null,
-    [historyRows, historyOpenId]
-  );
 
   if (!user?.id) {
     return (
@@ -538,7 +531,6 @@ export default function PemohonMoU() {
                     onClick={() => {
                       setEditBaruId(null);
                       setFormBaru(DEFAULT_FORM);
-                      setGdriveBaru("");
                     }}
                   >
                     Batalkan Koreksi
@@ -563,9 +555,9 @@ export default function PemohonMoU() {
                   <div className="rounded-2xl border bg-white p-4">
                     <div className="mb-3 text-sm font-semibold">Data Permohonan</div>
                     <JejaringFormFields
-                      form={formBaru}
-                      setField={setBaruField}
-                      mode="pemohon"
+                      value={formBaru}
+                      onChange={setBaruField}
+                      variant="pemohon"
                     />
 
                     <div className="mt-5 flex gap-2">
@@ -579,7 +571,6 @@ export default function PemohonMoU() {
                       <button
                         onClick={() => {
                           setFormBaru(DEFAULT_FORM);
-                          setGdriveBaru("");
                           setEditBaruId(null);
                         }}
                         className="rounded-xl border px-4 py-2 text-sm hover:bg-black/5"
@@ -608,7 +599,6 @@ export default function PemohonMoU() {
                     onClick={() => {
                       setEditRenewId(null);
                       setFormRenew(DEFAULT_FORM);
-                      setGdriveRenew("");
                       if (jejaring?.id) setFormRenew((p) => ({ ...p, ...jejaring, is_verified: false }));
                     }}
                   >
@@ -634,9 +624,9 @@ export default function PemohonMoU() {
                   <div className="rounded-2xl border bg-white p-4">
                     <div className="mb-3 text-sm font-semibold">Data Perpanjangan</div>
                     <JejaringFormFields
-                      form={formRenew}
-                      setField={setRenewField}
-                      mode="pemohon"
+                      value={formRenew}
+                      onChange={setRenewField}
+                      variant="pemohon"
                     />
 
                     <div className="mt-5 flex gap-2">
@@ -650,7 +640,6 @@ export default function PemohonMoU() {
                       <button
                         onClick={() => {
                           setFormRenew(DEFAULT_FORM);
-                          setGdriveRenew("");
                           setEditRenewId(null);
                           if (jejaring?.id) setFormRenew((p) => ({ ...p, ...jejaring, is_verified: false }));
                         }}

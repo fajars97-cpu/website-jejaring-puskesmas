@@ -217,6 +217,8 @@ export function pickDisplayColumns(rows) {
     "terakreditasi",
     "nomor_akreditasi",
     "hasil_akreditasi",
+    "akreditasi_berlaku_mulai",
+    "akreditasi_berlaku_sampai",
 
     "mou_nomor",
     "mou_mulai",

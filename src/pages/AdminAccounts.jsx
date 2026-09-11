@@ -86,7 +86,7 @@ export default function AdminAccounts() {
       });
       if (error) throw error;
       if (!data?.ok) throw new Error("Force logout gagal.");
-      alert("OK: user sudah dikeluarkan dari semua sesi.");
+      alert("Sesi pengguna telah dicabut. Pengguna perlu login kembali saat sesi diperbarui; token aktif dapat berlaku sampai kedaluwarsa.");
     } catch (e) {
       alert(e?.message || "Gagal force logout.");
     } finally {

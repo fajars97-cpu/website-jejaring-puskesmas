@@ -36,7 +36,7 @@ const CREATE_DRAFT_KEY = "jp_admin_create_jejaring_draft_v1";
 const CREATE_AUTOSAVE_MS = 1000; // 1 detik setelah user berhenti ngetik
 
 export default function AdminJejaring() {
-  const { user, isAdmin, isSuperAdmin, signOut } = useAuth();
+  const { user, isAdmin, signOut } = useAuth();
   const { rows, count, page, setPage, pageCount, loading, refreshing, error, fetchPage } =
     useJejaringList();
 
@@ -74,7 +74,7 @@ export default function AdminJejaring() {
     } catch {
       // ignore corrupted draft
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, []);
 
   useEffect(() => {
@@ -222,7 +222,7 @@ export default function AdminJejaring() {
 
   function renderCell(col, value) {
     const text = formatCellValue(value);
-    if (col === "mou_akhir" || col === "izin_berakhir") {
+    if (col === "mou_akhir" || col === "izin_berakhir" || col === "akreditasi_berlaku_sampai") {
       return <span className={expiryTextClass(value)}>{text}</span>;
     }
     return text;

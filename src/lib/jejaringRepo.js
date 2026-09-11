@@ -1,5 +1,6 @@
 // src/lib/jejaringRepo.js
 import { supabase } from "./supabaseClient";
+import { collectPages } from "./pagination.js";
 
 const TABLE = "jejaring_fasyankes";
 
@@ -34,6 +35,11 @@ function mapRowToJejaring(row) {
     jenisFasyankes: row.jenis_fasyankes ?? "",
     tipeFasyankes: row.tipe_fasyankes ?? "",
     status: row.status ?? "",
+
+    // === AKREDITASI ===
+   terakreditasi: !!row.terakreditasi,
+   nomorAkreditasi: row.nomor_akreditasi ?? "",
+   hasilAkreditasi: row.hasil_akreditasi ?? "",
 
     alamat: row.alamat ?? "",
     kelurahan: row.kelurahan ?? "",
@@ -81,30 +87,24 @@ export async function fetchJejaringList({
   jenis = "Semua",
   kelurahan = "Semua",
   status = "Semua",
-  limit = 500,
+  limit = null,
 } = {}) {
-  let query = supabase.from(TABLE).select("*").order("id", { ascending: true });
-
-  if (jenis !== "Semua") query = query.eq("jenis_fasyankes", jenis);
-  if (kelurahan !== "Semua") query = query.eq("kelurahan", kelurahan);
-  if (status !== "Semua") query = query.eq("status", status);
-
-  if (limit) query = query.limit(limit);
-
-  const { data, error } = await query;
-  if (error) throw error;
-
-  return (data ?? []).map(mapRowToJejaring);
+  const rows = await collectPages((from, to) => {
+    let query = supabase.from(TABLE).select("*", { count: "exact" }).order("id", { ascending: true });
+    if (jenis !== "Semua") query = query.eq("jenis_fasyankes", jenis);
+    if (kelurahan !== "Semua") query = query.eq("kelurahan", kelurahan);
+    if (status !== "Semua") query = query.eq("status", status);
+    return query.range(from, to);
+  }, { limit });
+  return rows.map(mapRowToJejaring);
 }
 
-export async function fetchJejaringFilterOptions({ limit = 2000 } = {}) {
-  const { data, error } = await supabase
+export async function fetchJejaringFilterOptions({ limit = null } = {}) {
+  const data = await collectPages((from, to) => supabase
     .from(TABLE)
-    .select("jenis_fasyankes, kelurahan, status")
-    .order("kelurahan", { ascending: true })
-    .limit(limit);
-
-  if (error) throw error;
+    .select("jenis_fasyankes, kelurahan, status", { count: "exact" })
+    .order("id", { ascending: true })
+    .range(from, to), { limit });
 
   const jenis = new Set();
   const kelurahan = new Set();

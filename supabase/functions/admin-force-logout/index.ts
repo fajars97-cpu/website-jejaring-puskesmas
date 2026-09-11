@@ -75,17 +75,12 @@ Deno.serve(async (req) => {
     return json(403, { error: "Cannot manage super_admin" });
   }
 
-  // FORCE LOGOUT (sign out all sessions)
-  const { error: signoutErr } = await adminClient.auth.admin.signOut(targetUserId);
+  // The Auth signOut API takes a session JWT, not a user ID.
+  const { data: revoked, error: signoutErr } = await adminClient.rpc("admin_revoke_sessions", {
+    p_actor_id: actorId,
+    p_target_id: targetUserId,
+  });
   if (signoutErr) return json(500, { error: "Failed to sign out target user" });
 
-  // audit log
-  await adminClient.from("admin_audit_logs").insert({
-    actor_id: actorId,
-    target_id: targetUserId,
-    action: "FORCE_LOGOUT",
-    meta: {},
-  });
-
-  return json(200, { ok: true });
+  return json(200, { ok: true, sessions_revoked: revoked });
 });

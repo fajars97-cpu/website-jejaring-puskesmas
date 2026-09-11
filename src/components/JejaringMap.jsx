@@ -174,7 +174,7 @@ export default function JejaringMap({
           activeId ?? -999999,
         ]);
       }
-    } catch (e) {
+    } catch {
       // style might be reloading; we'll try again on styledata/idle
       // keep silent-ish to avoid noise
       // console.warn("syncMarkers skipped:", e?.message || e);

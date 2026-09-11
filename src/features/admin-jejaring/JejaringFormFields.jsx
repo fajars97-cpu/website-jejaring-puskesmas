@@ -27,9 +27,6 @@ function Field({ label, children, hint }) {
 export default function JejaringFormFields({
   value,
   onChange,
-  form,
-  setField,
-  mode,
   variant = "admin", // "pemohon"
   disabled = false,
   sections, // optional: { verified:true, perizinan:true, mou:true, akreditasi:true, foto:true }
@@ -293,6 +290,27 @@ export default function JejaringFormFields({
             <Field label="Hasil Akreditasi">
               <input value={value?.hasil_akreditasi ?? ""} onChange={set("hasil_akreditasi")} disabled={disabled} className={inputBase} />
             </Field>
+
+            <Field label="Berlaku Mulai">
+              <input
+                type="date"
+                value={value?.akreditasi_berlaku_mulai ?? ""}
+                onChange={set("akreditasi_berlaku_mulai")}
+                disabled={disabled}
+                className={inputBase}
+              />
+            </Field>
+
+            <Field label="Berlaku Sampai">
+              <input
+                type="date"
+                value={value?.akreditasi_berlaku_sampai ?? ""}
+                onChange={set("akreditasi_berlaku_sampai")}
+                disabled={disabled}
+                className={inputBase}
+              />
+            </Field>
+
           </div>
         </div>
       ) : null}
