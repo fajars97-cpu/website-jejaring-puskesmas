@@ -17,7 +17,7 @@ function Field({ label, children, hint }) {
     <label className="block">
       <div className="flex items-baseline justify-between gap-3">
         <div className={labelBase}>{label}</div>
-        {hint ? <div className="text-[11px] text-slate-500">{hint}</div> : null}
+        {hint ? <div className="text-xs text-slate-500">{hint}</div> : null}
       </div>
       <div className="mt-1">{children}</div>
     </label>

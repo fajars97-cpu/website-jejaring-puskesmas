@@ -44,7 +44,7 @@ export default function Burgerbar({
       onClick={onClose}
       className={({ isActive }) =>
         [
-          "relative flex items-center rounded-md px-3 py-2 text-[13px] font-medium",
+          "relative flex items-center rounded-md px-3 py-2 text-xs font-medium",
           "transition-colors",
           "text-white/85 hover:text-white hover:bg-white/10",
           isActive ? "bg-white/12 text-white" : "",
@@ -69,7 +69,7 @@ export default function Burgerbar({
   return (
     <div
       className={[
-        "fixed inset-0 z-70 md:hidden",
+        "fixed inset-0 z-70 lg:hidden",
         open ? "pointer-events-auto" : "pointer-events-none",
       ].join(" ")}
       aria-hidden={!open}
@@ -107,7 +107,7 @@ export default function Burgerbar({
                 <div className="text-sm font-semibold text-white leading-tight">
                   Website Jejaring Puskesmas
                 </div>
-                <div className="mt-0.5 text-[12px] text-white/70 truncate">
+                <div className="mt-0.5 text-xs text-white/70 truncate">
                   Puskesmas Jagakarsa • DKI Jakarta
                 </div>
               </div>
@@ -127,7 +127,7 @@ export default function Burgerbar({
 
           {/* Menu */}
           <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
-            <div className="px-2 pb-2 text-[11px] uppercase tracking-wider text-white/60">
+            <div className="px-2 pb-2 text-xs uppercase tracking-wider text-white/60">
               {isAuthed ? "Apps" : "Menu"}
             </div>
 
@@ -138,7 +138,7 @@ export default function Burgerbar({
                 </nav>
                 {sidebarMenu.map((group) => (
                   <div key={group.title || "app"}>
-                    <div className="px-2 pb-2 text-[11px] uppercase tracking-wider text-white/50">
+                    <div className="px-2 pb-2 text-xs uppercase tracking-wider text-white/50">
                       {group.title || "Menu"}
                     </div>
                     <nav className="space-y-1">
@@ -150,11 +150,11 @@ export default function Burgerbar({
                 <div className="mt-6 h-px bg-white/10" />
 
                 <div className="rounded-lg bg-white/7 px-3 py-3">
-                  <div className="text-[12px] font-semibold text-white/90">Akun</div>
-                  <div className="mt-1 text-[12px] text-white/70 truncate">
+                  <div className="text-xs font-semibold text-white/90">Akun</div>
+                  <div className="mt-1 text-xs text-white/70 truncate">
                     {userLabel || user?.email}
                   </div>
-                  <div className="mt-1 text-[12px] text-white/60">
+                  <div className="mt-1 text-xs text-white/60">
                     {isAdmin ? "Admin / Super Admin" : "Pemohon"}
                   </div>
                 </div>
@@ -181,7 +181,7 @@ export default function Burgerbar({
                 Logout
               </button>
             ) : (
-              <div className="text-[11px] text-white/60">Swipe kiri / tap luar untuk menutup</div>
+              <div className="text-xs text-white/60">Swipe kiri / tap luar untuk menutup</div>
             )}
           </div>
         </div>

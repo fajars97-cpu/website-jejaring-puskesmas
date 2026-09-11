@@ -74,15 +74,14 @@ export default function Home() {
             JAGAKARSA
           </p>
           <h1>
-            Terhubung untuk <br />
-            <span>layanan yang lebih baik.</span>
+            Terhubung untuk <span>layanan yang lebih baik.</span>
           </h1>
           <p className="portal-hero-description">
             Akses informasi fasilitas kesehatan, jejaring pelayanan, dan
             pengajuan kerja sama dalam satu portal.
           </p>
           <div className="portal-actions">
-            <Link to="/jejaring" className="portal-button portal-button-light">
+            <Link to="/jejaring" className="portal-button portal-button-green">
               Jelajahi jejaring <span aria-hidden="true">&#8599;</span>
             </Link>
             <Link to="/perizinan" className="portal-hero-link">
@@ -94,14 +93,23 @@ export default function Home() {
             SELATAN
           </p>
         </div>
+        <figure className="portal-hero-art">
+          <img
+            src={import.meta.env.BASE_URL + "illustrations/community-care.jpg"}
+            alt="Ilustrasi dokter dan perawat mendampingi keluarga di lingkungan fasilitas kesehatan"
+            width="1448"
+            height="1086"
+            fetchPriority="high"
+          />
+          <figcaption>Ilustrasi pelayanan kesehatan masyarakat</figcaption>
+        </figure>
+      </section>
+      <section className="portal-services" aria-label="Akses layanan digital">
         <div className="portal-service-panel">
-          <div className="portal-panel-heading">
-            <span>LAYANAN DIGITAL</span>
-            <span className="portal-panel-symbol" aria-hidden="true">
-              +
-            </span>
+          <div className="portal-services-heading">
+            <p className="portal-eyebrow">LAYANAN DIGITAL</p>
+            <h2>Mulai dari kebutuhan Anda</h2>
           </div>
-          <h2>Apa yang Anda butuhkan?</h2>
           {[
             [
               "01",

@@ -104,7 +104,7 @@ function LockBadge({ locked }) {
   return (
     <span
       className={[
-        "ml-2 inline-flex items-center rounded-lg border px-2 py-0.5 text-[11px] font-semibold",
+        "ml-2 inline-flex items-center rounded-lg border px-2 py-0.5 text-xs font-semibold",
         locked ? "border-slate-200 bg-slate-50 text-slate-700" : "border-emerald-200 bg-emerald-50 text-emerald-800",
       ].join(" ")}
     >
@@ -692,7 +692,7 @@ export default function PemohonMoU() {
                           <div>
                             <div className="text-sm font-semibold">
                               {jenis === "PERPANJANGAN" ? "Perpanjangan MoU" : "Permohonan MoU Baru"}
-                              <span className="ml-2 rounded-lg border bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-700">{status}</span>
+                              <span className="ml-2 rounded-lg border bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-700">{status}</span>
                             </div>
                             <div className="mt-1 text-xs text-slate-600">Diajukan: {fmtDateTime(row.created_at)}</div>
                             <div className="mt-2 text-sm text-slate-800">

@@ -350,7 +350,7 @@ export default function AdminPermohonanMoU() {
                         </button>
 
                         {noteExists(r) ? (
-                          <span className="ml-1 rounded-full border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700">
+                          <span className="ml-1 rounded-full border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700">
                             Ada catatan
                           </span>
                         ) : null}
