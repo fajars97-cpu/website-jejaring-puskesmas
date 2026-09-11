@@ -78,7 +78,7 @@ export default function Sidebar({ sidebarMenu = [], isAdmin = false }) {
 
         {/* ✅ HAPUS copyright bawah biar gak double */}
         <div className="px-5 py-4 border-t border-white/10 text-[11px] text-white/60">
-          Sidebar siap diisi fitur lain ✨
+          Portal layanan Puskesmas Jagakarsa
         </div>
       </div>
     </div>

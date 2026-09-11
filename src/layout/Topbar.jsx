@@ -1,6 +1,4 @@
-import React from "react";
 import { NavLink } from "react-router-dom";
-import { cn } from "./utils/cn";
 import BrandLogo from "./parts/BrandLogo";
 import MenuLink from "./parts/MenuLink";
 
@@ -16,89 +14,73 @@ export default function Topbar({
   onSignOut,
   isAppChrome = false,
 }) {
-  const appsPath = isAdmin ? "/admin/permohonan-mou" : "/pemohon/mou";
-
   return (
-    <header className="sticky top-0 z-50 border-b border-black/10 bg-emerald-900">
-      {/* PUBLIC: max width (rapi), APP: full width (mentok kiri/kanan) */}
-      <div className={isAppChrome ? "w-full px-4 md:px-6" : "mx-auto max-w-6xl px-4 md:px-6"}>
-        <div className="flex h-16 items-center gap-3">
-          {/* Brand (kiri) */}
-          <NavLink to="/" className="flex items-center gap-3 min-w-0" onClick={onCloseMobile}>
-            <BrandLogo />
-            <div className="min-w-0">
-              <div className="truncate text-sm font-extrabold text-white">Website Jejaring Puskesmas</div>
-              <div className="truncate text-xs text-white/70">Puskesmas Jagakarsa • DKI Jakarta</div>
-            </div>
-          </NavLink>
-
-          {/* Desktop menu */}
-          <nav
-            className={cn(
-              "hidden md:flex items-center gap-6",
-              // APP: dorong menu ke kanan
-              isAppChrome ? "ml-auto" : "mx-auto"
-            )}
-          >
-            {publicMenu.map((item) => (
-              <MenuLink key={item.path} to={item.path} end={item.end}>
-                {item.label}
-              </MenuLink>
-            ))}
-          </nav>
-
-          {/* Right actions (desktop) */}
-          <div className="hidden md:flex items-center gap-3 shrink-0">
-            {loading ? (
-              <span className="text-sm text-white/80">…</span>
-            ) : user ? (
-              <>
-                {/* Tombol Apps = nama akun */}
-                <NavLink
-                  to={appsPath}
-                  title={user?.email || ""}
-                  className={cn(
-                    "rounded-xl bg-white/10 px-3 py-2 text-sm font-semibold text-white",
-                    "ring-1 ring-white/15 hover:bg-white/15"
-                  )}
-                >
-                  {userLabel}
-                </NavLink>
-
-                <button
-                  type="button"
-                  onClick={onSignOut}
-                  className={cn(
-                    "rounded-xl bg-white/10 px-3 py-2 text-sm font-semibold text-white",
-                    "ring-1 ring-white/15 hover:bg-white/15"
-                  )}
-                >
-                  Logout
-                </button>
-              </>
-            ) : (
+    <header className="portal-topbar">
+      <div
+        className={
+          isAppChrome ? "portal-nav-inner portal-nav-wide" : "portal-nav-inner"
+        }
+      >
+        <NavLink to="/" className="portal-brand" onClick={onCloseMobile}>
+          <BrandLogo />
+          <span>
+            <strong>Jejaring Puskesmas</strong>
+            <small>JAGAKARSA &middot; JAKARTA SELATAN</small>
+          </span>
+        </NavLink>
+        <nav className="portal-desktop-nav" aria-label="Navigasi utama">
+          {publicMenu.map((item) => (
+            <MenuLink key={item.path} to={item.path} end={item.end}>
+              {item.label}
+            </MenuLink>
+          ))}
+        </nav>
+        <div className="portal-account">
+          {loading ? (
+            <span className="portal-meta" role="status">
+              Memuat...
+            </span>
+          ) : user ? (
+            <>
               <NavLink
-                to="/login"
-                className="rounded-xl bg-white px-3 py-2 text-sm font-bold text-emerald-900 hover:bg-white/95"
+                to={isAdmin ? "/admin/permohonan-mou" : "/pemohon/mou"}
+                className="portal-account-name"
               >
-                Login
+                {userLabel}
               </NavLink>
-            )}
-          </div>
-
-          {/* Mobile hamburger */}
-          <button
-            type="button"
-            className="md:hidden ml-auto rounded-xl bg-white/10 p-2 ring-1 ring-white/15 text-white"
-            onClick={onToggleMobile}
-            aria-label="Toggle menu"
-            aria-expanded={mobileOpen ? "true" : "false"}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M4 6h16v2H4zM4 11h16v2H4zM4 16h16v2H4z" />
-            </svg>
-          </button>
+              <button onClick={onSignOut} className="portal-signout">
+                Keluar
+              </button>
+            </>
+          ) : (
+            <NavLink to="/login" className="portal-button portal-button-green">
+              Masuk <span aria-hidden="true">&#8599;</span>
+            </NavLink>
+          )}
         </div>
+        <button
+          className="portal-menu-toggle"
+          onClick={onToggleMobile}
+          aria-label={mobileOpen ? "Tutup menu" : "Buka menu"}
+          aria-expanded={mobileOpen}
+          aria-controls="mobile-navigation"
+        >
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            aria-hidden="true"
+          >
+            <path
+              d={
+                mobileOpen ? "M6 6l12 12M6 18L18 6" : "M4 7h16M4 12h16M4 17h16"
+              }
+            />
+          </svg>
+        </button>
       </div>
     </header>
   );

@@ -1,250 +1,298 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { NavLink } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { fetchJejaringList } from "../lib/jejaringRepo";
 
-/* ---------- DASHBOARD CARD ---------- */
-function StatCard({ title, value }) {
-  return (
-    <div className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm">
-      <div className="text-sm font-semibold text-black/60">{title}</div>
-      <div className="mt-2 text-3xl font-extrabold text-emerald-900">{value}</div>
-    </div>
-  );
-}
-
-/* ---------- BADGE ---------- */
-function Badge({ children }) {
-  return (
-    <span className="rounded-full border border-black/10 bg-white/70 px-2.5 py-1 text-xs font-semibold text-black/70">
-      {children}
-    </span>
-  );
-}
-
-function AkreditasiBadge({ r }) {
-  if (!r?.terakreditasi) return null;
-  const hasil = r?.hasilAkreditasi ? ` ${r.hasilAkreditasi}` : "";
-  const nomor = r?.nomorAkreditasi ? ` • ${r.nomorAkreditasi}` : "";
-  return (
-    <div className="absolute top-2 right-2 rounded-full bg-emerald-600 px-3 py-1 text-[11px] font-extrabold text-white shadow">
-      ✓ TERAKREDITASI{hasil}{nomor}
-    </div>
-  );
-}
-
-/* ---------- CAROUSEL CONTROLS ---------- */
-function CarouselControls({ containerRef }) {
-  const scroll = (dir) => {
-    if (!containerRef.current) return;
-    const w = containerRef.current.clientWidth;
-    containerRef.current.scrollBy({
-      left: dir === "left" ? -w : w,
-      behavior: "smooth",
-    });
-  };
-
-  return (
-    <div className="hidden md:flex gap-2">
-      <button
-        onClick={() => scroll("left")}
-        className="rounded-xl border border-black/10 bg-white px-3 py-2 hover:bg-black/5"
-      >
-        ◀
-      </button>
-      <button
-        onClick={() => scroll("right")}
-        className="rounded-xl border border-black/10 bg-white px-3 py-2 hover:bg-black/5"
-      >
-        ▶
-      </button>
-    </div>
-  );
-}
+const resources = [
+  {
+    title: "Permenkes Puskesmas",
+    desc: "Dokumen ketentuan penyelenggaraan Puskesmas.",
+    href: "https://drive.google.com/file/d/1AL-SvFQBR7TBuNqQtf8rszrJ-SS5FY6m/view?usp=drive_link",
+  },
+  {
+    title: "Akreditasi fasilitas kesehatan",
+    desc: "Referensi standar dan masa berlaku akreditasi.",
+    href: "https://drive.google.com/drive/folders/1K0l6fhubuARHBBvSjMSuyVhudEX-zcF0?usp=sharing",
+  },
+];
 
 export default function Home() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
-  const jejaringRef = useRef(null);
-  const regulasiRef = useRef(null);
-  const dashboardRef = useRef(null);
-
   useEffect(() => {
     let active = true;
     fetchJejaringList()
-      .then((d) => { if (active) setRows(Array.isArray(d) ? d : []); })
-      .catch(() => { if (active) setError("Data jejaring belum dapat dimuat. Silakan muat ulang halaman."); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+      .then((data) => {
+        if (active) setRows(data);
+      })
+      .catch(() => {
+        if (active)
+          setError(
+            "Data jejaring belum dapat dimuat. Silakan muat ulang halaman.",
+          );
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
-
-  /* ---------- DASHBOARD HITUNGAN ---------- */
-  const dashboardItems = useMemo(() => {
-    const total = rows.length;
-    const terakreditasi = rows.filter((r) => r?.terakreditasi === true).length;
-
-    // hitung per tipe_fasyankes (scalable)
-    const byTipe = new Map();
-    for (const r of rows) {
-      const tipe = (r?.tipeFasyankes || "Lainnya").trim() || "Lainnya";
-      byTipe.set(tipe, (byTipe.get(tipe) || 0) + 1);
-    }
-
-    const tipeSorted = Array.from(byTipe.entries())
-      .sort((a, b) => b[1] - a[1])
-      .map(([title, value]) => ({ key: `tipe:${title}`, title, value }));
-
-    // dashboard = 2 card utama + semua tipe
-    return [
-      { key: "total", title: "Total Fasyankes", value: total },
-      { key: "akreditasi", title: "Terakreditasi", value: terakreditasi },
-      ...tipeSorted,
-    ];
+  const stats = useMemo(
+    () => [
+      { label: "Fasilitas kesehatan", value: rows.length },
+      {
+        label: "Fasyankes aktif",
+        value: rows.filter((r) => r.status?.toLowerCase() === "aktif").length,
+      },
+      {
+        label: "Terakreditasi",
+        value: rows.filter((r) => r.terakreditasi).length,
+      },
+      {
+        label: "Kelurahan terwakili",
+        value: new Set(rows.map((r) => r.kelurahan).filter(Boolean)).size,
+      },
+    ],
+    [rows],
+  );
+  const types = useMemo(() => {
+    const counts = new Map();
+    rows.forEach((r) => {
+      const type = r.tipeFasyankes?.trim() || "Lainnya";
+      counts.set(type, (counts.get(type) || 0) + 1);
+    });
+    return [...counts].sort((a, b) => b[1] - a[1]);
   }, [rows]);
 
-  /* ---------- DATA REGULASI (DUMMY LINK) ---------- */
-  const regulasi = [
-    {
-      title: "Permenkes Puskesmas",
-      desc: "Ketentuan penyelenggaraan Puskesmas",
-      url: "https://drive.google.com/file/d/1AL-SvFQBR7TBuNqQtf8rszrJ-SS5FY6m/view?usp=drive_link",
-    },
-    {
-      title: "Akreditasi Fasyankes",
-      desc: "Standar & masa berlaku akreditasi",
-      url: "https://drive.google.com/drive/folders/1K0l6fhubuARHBBvSjMSuyVhudEX-zcF0?usp=sharing",
-    },
-    {
-      title: "Jejaring & Rujukan",
-      desc: "Pengaturan jejaring pelayanan",
-      url: "https://drive.google.com/",
-    },
-    {
-      title: "SISDMK",
-      desc: "Sistem Informasi SDM Kesehatan",
-      url: "https://drive.google.com/",
-    },
-  ];
-
   return (
-    <div className="space-y-10 lg:space-y-12">
-      {/* HERO */}
-      <section className="rounded-3xl border border-black/10 bg-white p-6 shadow-sm md:p-8">
-        <div className="max-w-4xl">
-          <h1 className="text-2xl font-extrabold text-emerald-900 md:text-[28px]">
-            Website Jejaring & Perizinan Puskesmas
+    <div className="portal-home">
+      <section className="portal-hero">
+        <div className="portal-hero-copy">
+          <p className="portal-eyebrow">
+            <span className="portal-status-dot" /> PORTAL JEJARING PUSKESMAS
+            JAGAKARSA
+          </p>
+          <h1>
+            Terhubung untuk <br />
+            <span>layanan yang lebih baik.</span>
           </h1>
-          <p className="mt-3 max-w-2xl text-sm text-black/60 md:text-[15px]">
-            Sistem informasi jejaring dan perizinan fasilitas kesehatan Kecamatan Jagakarsa.
+          <p className="portal-hero-description">
+            Akses informasi fasilitas kesehatan, jejaring pelayanan, dan
+            pengajuan kerja sama dalam satu portal.
+          </p>
+          <div className="portal-actions">
+            <Link to="/jejaring" className="portal-button portal-button-light">
+              Jelajahi jejaring <span aria-hidden="true">&#8599;</span>
+            </Link>
+            <Link to="/perizinan" className="portal-hero-link">
+              Informasi perizinan <span aria-hidden="true">&#8599;</span>
+            </Link>
+          </div>
+          <p className="portal-hero-location">
+            KECAMATAN JAGAKARSA <span aria-hidden="true">/</span> JAKARTA
+            SELATAN
           </p>
         </div>
-      </section>
-
-      {/* DASHBOARD */}
-      <section>
-        {error && <p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-extrabold">Ringkasan Jejaring</h2>
-          <CarouselControls containerRef={dashboardRef} />
-        </div>
-
-        <div
-          ref={dashboardRef}
-          className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-2 [&::-webkit-scrollbar]:hidden"
-        >
-          {(loading ? Array.from({ length: 8 }) : error ? [] : dashboardItems).map((it, idx) => (
-            <div
-              key={loading ? idx : it.key}
-              className="snap-start w-[70%] sm:w-65"
-            >
-              <StatCard
-                title={loading ? "Memuat…" : it.title}
-                value={loading ? "…" : it.value}
-              />
-            </div>
+        <div className="portal-service-panel">
+          <div className="portal-panel-heading">
+            <span>LAYANAN DIGITAL</span>
+            <span className="portal-panel-symbol" aria-hidden="true">
+              +
+            </span>
+          </div>
+          <h2>Apa yang Anda butuhkan?</h2>
+          {[
+            [
+              "01",
+              "Temukan fasilitas kesehatan",
+              "Direktori dan peta jejaring",
+              "/jejaring",
+            ],
+            [
+              "02",
+              "Ajukan kerja sama MoU",
+              "Pengajuan baru dan perpanjangan",
+              "/pemohon/mou",
+            ],
+            [
+              "03",
+              "Pelajari alur perizinan",
+              "Informasi dan persyaratan",
+              "/perizinan",
+            ],
+          ].map(([n, title, description, path]) => (
+            <Link key={n} to={path} className="portal-service-link">
+              <span className="portal-service-number">{n}</span>
+              <span>
+                <strong>{title}</strong>
+                <small>{description}</small>
+              </span>
+              <span aria-hidden="true">&#8599;</span>
+            </Link>
           ))}
         </div>
       </section>
 
-      {/* JEJARING CAROUSEL */}
-      <section>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-extrabold">Sorotan Jejaring</h2>
-          <CarouselControls containerRef={jejaringRef} />
+      <section className="portal-section" aria-labelledby="stats-heading">
+        <div className="portal-section-heading">
+          <div>
+            <p className="portal-eyebrow">JEJARING DALAM ANGKA</p>
+            <h2 id="stats-heading">Bersama melayani Jagakarsa</h2>
+          </div>
+          <span className="portal-meta">
+            Berdasarkan data jejaring terdaftar
+          </span>
         </div>
-
-        <div
-          ref={jejaringRef}
-          className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-2 [&::-webkit-scrollbar]:hidden"
-        >
-          {rows.slice(0, 10).map((r) => (
-            <NavLink
-              key={r.id}
-              to="/jejaring"
-              className="snap-start w-[80%] sm:w-90 rounded-3xl border border-black/10 bg-white shadow-sm"
-            >
-              <div className="relative h-40 overflow-hidden rounded-t-3xl bg-black/5">
-  {r.foto ? (
-    <img
-      src={r.foto}
-      alt={r.namaFasyankes}
-      className="h-full w-full object-cover"
-      loading="lazy"
-    />
-  ) : (
-    <div className="flex h-full w-full items-center justify-center text-xs text-black/40">
-      Tanpa Foto
-    </div>
-  )}
-
-  <AkreditasiBadge r={r} />
-</div>
-
-              <div className="p-4 space-y-2">
-                <div className="flex gap-2">
-                  <Badge>{r.tipeFasyankes || r.jenisFasyankes || "-"}</Badge>
-                  {r.kelurahan && <Badge>Kel. {r.kelurahan}</Badge>}
-                </div>
-                <div className="font-extrabold text-black/90">
-                  {r.namaFasyankes}
-                </div>
-                <div className="text-sm text-black/60 line-clamp-2">
-                  {r.alamat || "Alamat belum diisi"}
-                </div>
+        {error ? (
+          <p role="alert" className="portal-notice">
+            {error}
+          </p>
+        ) : (
+          <div className="portal-stats" aria-busy={loading}>
+            {stats.map((s, i) => (
+              <div key={s.label} className="portal-stat">
+                <span className="portal-stat-index">0{i + 1}</span>
+                <strong>
+                  {loading ? "\u2014" : s.value.toLocaleString("id-ID")}
+                </strong>
+                <span>{s.label}</span>
               </div>
-            </NavLink>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
+        {!loading && !error && types.length > 0 && (
+          <div className="portal-types">
+            {types.map(([type, count]) => (
+              <span key={type}>
+                {type}
+                <b>{count}</b>
+              </span>
+            ))}
+          </div>
+        )}
       </section>
 
-      {/* REGULASI CAROUSEL */}
-      <section>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-extrabold">Regulasi & Peraturan</h2>
-          <CarouselControls containerRef={regulasiRef} />
+      <section className="portal-section" aria-labelledby="facilities-heading">
+        <div className="portal-section-heading">
+          <div>
+            <p className="portal-eyebrow">DIREKTORI FASILITAS</p>
+            <h2 id="facilities-heading">Kenali jejaring kesehatan kami</h2>
+          </div>
+          <Link to="/jejaring" className="portal-text-link">
+            Lihat semua fasilitas <span aria-hidden="true">&#8599;</span>
+          </Link>
         </div>
+        {loading ? (
+          <div className="portal-facility-grid" aria-label="Memuat fasilitas">
+            {[1, 2, 3].map((n) => (
+              <div className="portal-skeleton" key={n} />
+            ))}
+          </div>
+        ) : rows.length ? (
+          <div className="portal-facility-grid">
+            {rows.slice(0, 6).map((r) => (
+              <Link to="/jejaring" key={r.id} className="portal-facility">
+                <div className="portal-facility-image">
+                  {r.foto ? (
+                    <img
+                      src={r.foto}
+                      alt={r.namaFasyankes}
+                      loading="lazy"
+                      onError={(e) => {
+                        e.currentTarget.hidden = true;
+                      }}
+                    />
+                  ) : null}
+                  <span className="portal-image-placeholder" aria-hidden="true">
+                    +
+                  </span>
+                  {r.terakreditasi && (
+                    <span className="portal-accreditation">
+                      &#10003; Terakreditasi
+                    </span>
+                  )}
+                </div>
+                <div className="portal-facility-body">
+                  <p className="portal-facility-type">
+                    {r.tipeFasyankes ||
+                      r.jenisFasyankes ||
+                      "Fasilitas kesehatan"}
+                  </p>
+                  <h3>{r.namaFasyankes}</h3>
+                  <p className="portal-facility-address">
+                    {r.alamat || "Alamat belum tersedia"}
+                  </p>
+                  <div className="portal-facility-bottom">
+                    <span>{r.kelurahan || "Jagakarsa"}</span>
+                    <span aria-hidden="true">&#8599;</span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <p className="portal-notice">
+            {error
+              ? "Direktori sementara belum dapat ditampilkan."
+              : "Belum ada fasilitas kesehatan yang ditampilkan."}
+          </p>
+        )}
+      </section>
 
-        <div
-          ref={regulasiRef}
-          className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-2 [&::-webkit-scrollbar]:hidden"
-        >
-          {regulasi.map((r) => (
+      <section
+        className="portal-resource-section"
+        aria-labelledby="resources-heading"
+      >
+        <div>
+          <p className="portal-eyebrow">PUSAT INFORMASI</p>
+          <h2 id="resources-heading">
+            Referensi untuk
+            <br />
+            pelayanan yang berkualitas.
+          </h2>
+          <p>
+            Temukan dokumen dan informasi pendukung bagi fasilitas kesehatan
+            dalam jejaring.
+          </p>
+          <Link to="/perizinan" className="portal-text-link">
+            Panduan perizinan <span aria-hidden="true">&#8599;</span>
+          </Link>
+        </div>
+        <div className="portal-resources">
+          {resources.map((r, i) => (
             <a
+              href={r.href}
               key={r.title}
-              href={r.url}
               target="_blank"
               rel="noreferrer"
-              className="snap-start w-[80%] sm:w-90 rounded-3xl border border-black/10 bg-white p-4 shadow-sm hover:shadow-md"
+              className="portal-resource"
             >
-              <div className="text-sm font-extrabold">{r.title}</div>
-              <div className="mt-1 text-sm text-black/60">{r.desc}</div>
-              <div className="mt-3 text-sm font-semibold text-emerald-900">
-                Buka Dokumen →
-              </div>
+              <span className="portal-resource-number">0{i + 1}</span>
+              <span>
+                <h3>{r.title}</h3>
+                <p>{r.desc}</p>
+                <small>
+                  Buka dokumen <span className="sr-only">di tab baru</span>
+                </small>
+              </span>
+              <span aria-hidden="true">&#8599;</span>
             </a>
           ))}
         </div>
+      </section>
+      <section className="portal-partner">
+        <div>
+          <p className="portal-eyebrow">KEMITRAAN PELAYANAN</p>
+          <h2>Bangun kerja sama yang lebih terarah.</h2>
+          <p>
+            Kelola pengajuan MoU dan perpanjangan kerja sama melalui akun
+            pemohon.
+          </p>
+        </div>
+        <Link to="/pemohon/mou" className="portal-button portal-button-green">
+          Ajukan kerja sama <span aria-hidden="true">&#8599;</span>
+        </Link>
       </section>
     </div>
   );

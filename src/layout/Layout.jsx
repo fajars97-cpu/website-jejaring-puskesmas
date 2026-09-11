@@ -118,12 +118,12 @@ export default function Layout() {
       />
 
       {/* body viewport */}
-      <div className="h-[calc(100dvh-4rem)] bg-slate-50 overflow-hidden min-h-0">
+      <div className="h-[calc(100dvh-4rem)] bg-[#f6f8f5] overflow-hidden min-h-0">
         {!isAppArea ? (
           // ===== PUBLIC =====
           <div className="h-full overflow-y-auto min-h-0">
-            <main className="px-3 py-4 md:px-4 md:py-5">
-             <div className="w-full max-w-none">
+            <main className="portal-public-main">
+             <div className="w-full min-w-0">
                 <Outlet />
               </div>
             </main>

@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { NavLink } from "react-router-dom";
 
 export default function Burgerbar({
@@ -12,11 +12,26 @@ export default function Burgerbar({
   isAdmin,
   onSignOut,
 }) {
+  const panelRef = useRef(null);
   useEffect(() => {
     if (!open) return;
-    const onKey = (e) => e.key === "Escape" && onClose?.();
+    const previousFocus = document.activeElement;
+    const focusable = () => [...(panelRef.current?.querySelectorAll('a[href], button:not([disabled])') || [])];
+    focusable()[0]?.focus();
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose?.();
+      if (e.key !== "Tab") return;
+      const items = focusable();
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
+      if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+    };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      previousFocus?.focus();
+    };
   }, [open, onClose]);
 
   const isAuthed = !!user && !loading;
@@ -25,6 +40,7 @@ export default function Burgerbar({
     <NavLink
       key={to}
       to={to}
+      end={to === "/"}
       onClick={onClose}
       className={({ isActive }) =>
         [
@@ -57,6 +73,7 @@ export default function Burgerbar({
         open ? "pointer-events-auto" : "pointer-events-none",
       ].join(" ")}
       aria-hidden={!open}
+      inert={!open}
     >
       {/* Backdrop */}
       <div
@@ -75,6 +92,9 @@ export default function Burgerbar({
           "transition-transform duration-200 ease-out",
           open ? "translate-x-0" : "-translate-x-full",
         ].join(" ")}
+        id="mobile-navigation"
+        ref={panelRef}
+        aria-label="Menu navigasi"
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
@@ -113,6 +133,9 @@ export default function Burgerbar({
 
             {isAuthed ? (
               <div className="space-y-4">
+                <nav aria-label="Navigasi publik" className="space-y-1">
+                  {publicMenu.map((it) => renderLink(it.path, it.label))}
+                </nav>
                 {sidebarMenu.map((group) => (
                   <div key={group.title || "app"}>
                     <div className="px-2 pb-2 text-[11px] uppercase tracking-wider text-white/50">

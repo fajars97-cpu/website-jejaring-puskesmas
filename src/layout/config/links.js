@@ -1,6 +1,6 @@
 // ===== PUBLIC MENU (selalu tampil) =====
 export const publicMenu = [
-  { label: "Home", path: "/", end: true },
+  { label: "Beranda", path: "/", end: true },
   { label: "Jejaring", path: "/jejaring" },
   { label: "Perizinan", path: "/perizinan" },
 ];

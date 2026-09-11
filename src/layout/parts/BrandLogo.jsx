@@ -6,7 +6,7 @@ export default function BrandLogo() {
   const src = `${BASE}icons/logo-puskesmas-jagakarsa.png`;
 
   return (
-    <div className="relative h-10 w-10 overflow-hidden rounded-xl bg-white/10 ring-1 ring-white/15">
+    <div className="relative h-10 w-10 overflow-hidden rounded-xl bg-white ring-1 ring-black/5">
       <img
         src={src}
         alt="Puskesmas Jagakarsa"

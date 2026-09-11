@@ -68,7 +68,7 @@ function JejaringCardTK({ data, isActive, onClick }) {
         "w-full overflow-hidden rounded-2xl border bg-white text-left shadow-sm transition active:scale-[0.99] " +
         (isActive
           ? "border-emerald-300 ring-2 ring-emerald-200"
-          : "border-slate-200 hover:shadow-md")
+          : "border-slate-200 hover:shadow-sm")
       }
     >
       {/* Foto */}
@@ -296,17 +296,18 @@ export default function Jejaring() {
      RENDER
   ========================================================= */
   return (
-    <main className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       {/* padding mobile dikecilkan biar gak “sumpek” */}
-      <div className="w-full px-4 py-8 space-y-8 md:px-6 md:py-10 md:space-y-10">
+      <div className="w-full space-y-6">
         {/* ================= HEADER ================= */}
-        <header>
+        <header className="portal-page-heading">
+          <p className="portal-eyebrow mb-2">DIREKTORI & PETA JEJARING</p>
           <h1 className="text-2xl font-bold text-[#087745] md:text-3xl">
             Data Jejaring Fasilitas Kesehatan
           </h1>
           <p className="mt-2 max-w-3xl text-sm text-gray-600 md:text-base">
-            Informasi fasilitas pelayanan kesehatan yang bekerja sama dengan
-            Puskesmas dan telah diverifikasi.
+            Informasi fasilitas pelayanan kesehatan dalam jejaring
+            Puskesmas Jagakarsa.
           </p>
 
           {isLoading && (
@@ -421,6 +422,6 @@ export default function Jejaring() {
           />
         </section>
       </div>
-    </main>
+    </div>
   );
 }
