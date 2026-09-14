@@ -977,7 +977,7 @@ button:disabled {
   display: none;
 }
 .portal-hero-copy {
-  padding: 44px;
+  padding: 48px 44px;
   min-width: 0;
 }
 .portal-hero .portal-eyebrow {
@@ -990,13 +990,15 @@ button:disabled {
   background: #487446;
 }
 .portal-hero h1 {
-  font-size: clamp(36px, 3.8vw, 52px);
-  line-height: 1.15;
-  letter-spacing: -1.8px;
+  font-size: clamp(36px, 3.6vw, 48px);
+  line-height: 1.18;
+  letter-spacing: -1.5px;
   font-weight: 750;
   margin: 24px 0;
 }
 .portal-hero h1 span {
+  display: block;
+  text-wrap: balance;
   color: #478059;
 }
 .portal-hero-description {
@@ -1030,18 +1032,6 @@ button:disabled {
   position: absolute;
   object-fit: cover;
   object-position: 52% center;
-}
-.portal-hero-art figcaption {
-  position: absolute;
-  bottom: 14px;
-  left: 16px;
-  right: 16px;
-  width: fit-content;
-  padding: 5px 10px;
-  border-radius: 6px;
-  background: #fffffff0;
-  color: #47604b;
-  font-size: 12px;
 }
 .portal-service-panel {
   display: grid;

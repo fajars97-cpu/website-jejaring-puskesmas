@@ -1,3 +1,5 @@
+import { getFacilityIllustration, resolveFacilityImage } from "../lib/facilityIllustration";
+
 export default function JejaringCard({ data, isActive, onClick }) {
   return (
     <div
@@ -24,21 +26,16 @@ export default function JejaringCard({ data, isActive, onClick }) {
 
           {/* FOTO */}
           <div className="w-24 h-20 bg-[#f0f7f4] rounded-xl overflow-hidden flex items-center justify-center text-xs text-gray-500">
-          {data.foto ? (
           <img
-            src={data.foto}
-            alt={`Foto ${data.namaFasyankes || "Fasyankes"}`}
+            src={resolveFacilityImage(data)}
+            alt={data.foto ? `Foto ${data.namaFasyankes || "Fasyankes"}` : `Ilustrasi ${data.tipeFasyankes || data.jenisFasyankes || "fasilitas kesehatan"}`}
             className="w-full h-full object-cover"
             loading="lazy"
             referrerPolicy="no-referrer"
             onError={(e) => {
-           // fallback kalau URL invalid / diblok
-           e.currentTarget.style.display = "none";
-           }}
+              e.currentTarget.src = getFacilityIllustration(data);
+            }}
            />
-           ) : (  
-          "Foto Fasyankes"
-          )}
           </div>
 
           {/* CONTENT */}

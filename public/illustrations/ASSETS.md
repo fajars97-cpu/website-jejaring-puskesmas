@@ -3,6 +3,20 @@
 - Website asset: `community-care.jpg` (1448 x 1086, JPEG quality 85).
 - Generated with the built-in ImageGen tool for this project; not an Unsplash photograph.
 - Original: `output/imagegen/community-care-original.png` (local working artifact).
+
+## Facility directory defaults
+
+The `facilities/` folder contains the default card images used when a facility has no uploaded photo. Each is a generated editorial illustration (JPEG quality 85) for one supported category:
+
+- `hospital.jpg` — Rumah Sakit
+- `general-clinic.jpg` — Klinik Umum
+- `dental-clinic.jpg` — Klinik Gigi
+- `circumcision-clinic.jpg` — Klinik Khitan
+- `general-practice.jpg` — Tempat Praktik Mandiri Dokter Umum
+- `dental-practice.jpg` — Tempat Praktik Mandiri Dokter Gigi
+- `midwife-practice.jpg` — Tempat Praktik Mandiri Bidan
+
+The frontend maps `jenis_fasyankes` and `tipe_fasyankes` to these assets in `src/lib/facilityIllustration.js`. A real uploaded photo always takes priority.
 - The artwork illustrates community healthcare, not an actual named facility or staff member.
 - Font: Manrope Variable, locally bundled through `@fontsource-variable/manrope` (OFL-1.1; license included in the package).
 

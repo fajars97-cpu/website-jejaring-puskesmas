@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchJejaringList } from "../lib/jejaringRepo";
+import { getFacilityIllustration, resolveFacilityImage } from "../lib/facilityIllustration";
 
 const resources = [
   {
@@ -101,7 +102,6 @@ export default function Home() {
             height="1086"
             fetchPriority="high"
           />
-          <figcaption>Ilustrasi pelayanan kesehatan masyarakat</figcaption>
         </figure>
       </section>
       <section className="portal-services" aria-label="Akses layanan digital">
@@ -202,19 +202,14 @@ export default function Home() {
             {rows.slice(0, 6).map((r) => (
               <Link to="/jejaring" key={r.id} className="portal-facility">
                 <div className="portal-facility-image">
-                  {r.foto ? (
-                    <img
-                      src={r.foto}
-                      alt={r.namaFasyankes}
-                      loading="lazy"
-                      onError={(e) => {
-                        e.currentTarget.hidden = true;
-                      }}
-                    />
-                  ) : null}
-                  <span className="portal-image-placeholder" aria-hidden="true">
-                    +
-                  </span>
+                  <img
+                    src={resolveFacilityImage(r)}
+                    alt={r.foto ? r.namaFasyankes : `Ilustrasi ${r.tipeFasyankes || r.jenisFasyankes || "fasilitas kesehatan"}`}
+                    loading="lazy"
+                    onError={(e) => {
+                      e.currentTarget.src = getFacilityIllustration(r);
+                    }}
+                  />
                   {r.terakreditasi && (
                     <span className="portal-accreditation">
                       &#10003; Terakreditasi

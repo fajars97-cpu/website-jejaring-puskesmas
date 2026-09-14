@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 
 /* NOTE: Repo Supabase (adapter snake_case -> camelCase) */
 import { fetchJejaringList } from "../lib/jejaringRepo";
+import { getFacilityIllustration, resolveFacilityImage } from "../lib/facilityIllustration";
 
 import JejaringCard from "../components/JejaringCard";
 import JejaringFilter from "../components/JejaringFilter";
@@ -43,7 +44,8 @@ function smoothScrollTo(targetY, duration = 750) {
    - Minimal dan aman (no dependency)
 ========================================================= */
 function JejaringCardTK({ data, isActive, onClick }) {
-  const foto = data?.foto || "";
+  const foto = resolveFacilityImage(data);
+  const fallbackIllustration = getFacilityIllustration(data);
   const nama = data?.namaFasyankes || "-";
   const isAkreditasi = data?.terakreditasi === true;
   const hasilAkreditasi = data?.hasilAkreditasi || "";
@@ -73,18 +75,15 @@ function JejaringCardTK({ data, isActive, onClick }) {
     >
       {/* Foto */}
       <div className="relative h-48 w-full bg-slate-100">
-        {foto ? (
-          <img
-            src={foto}
-            alt={nama}
-            className="h-full w-full object-cover"
-            loading="lazy"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-sm text-slate-500">
-            Foto Fasyankes
-          </div>
-        )}
+        <img
+          src={foto}
+          alt={data?.foto ? nama : `Ilustrasi ${tipe || jenis}`}
+          className="h-full w-full object-cover"
+          loading="lazy"
+          onError={(event) => {
+            event.currentTarget.src = fallbackIllustration;
+          }}
+        />
         {/* Badge akreditasi */}
           {isAkreditasi && (
           <div className="absolute right-3 top-3">
