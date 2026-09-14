@@ -15,6 +15,7 @@ The `facilities/` folder contains the default card images used when a facility h
 - `general-practice.jpg` — Tempat Praktik Mandiri Dokter Umum
 - `dental-practice.jpg` — Tempat Praktik Mandiri Dokter Gigi
 - `midwife-practice.jpg` — Tempat Praktik Mandiri Bidan
+- `puskesmas-jagakarsa.jpg` — Puskesmas Jagakarsa, dibuat dari referensi foto fasad yang diberikan pengguna
 
 The frontend maps `jenis_fasyankes` and `tipe_fasyankes` to these assets in `src/lib/facilityIllustration.js`. A real uploaded photo always takes priority.
 - The artwork illustrates community healthcare, not an actual named facility or staff member.

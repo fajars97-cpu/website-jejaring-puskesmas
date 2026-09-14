@@ -36,6 +36,25 @@ function smoothScrollTo(targetY, duration = 750) {
   requestAnimationFrame(step);
 }
 
+const FACILITIES_PER_PAGE = 10;
+
+function getVisiblePageNumbers(totalPages, currentPage) {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  const start = Math.max(2, Math.min(currentPage - 1, totalPages - 4));
+  const end = Math.min(totalPages - 1, Math.max(currentPage + 1, 5));
+  const pages = [1];
+
+  if (start > 2) pages.push("start-ellipsis");
+  for (let page = start; page <= end; page += 1) pages.push(page);
+  if (end < totalPages - 1) pages.push("end-ellipsis");
+
+  pages.push(totalPages);
+  return pages;
+}
+
 /* =========================================================
    MOBILE CARD (Traveloka-like)
    - Foto di atas (object-cover)
@@ -131,6 +150,7 @@ export default function Jejaring() {
   const [filterJenis, setFilterJenis] = useState("Semua");
   const [filterKelurahan, setFilterKelurahan] = useState("Semua");
   const [filterStatus, setFilterStatus] = useState("Semua");
+  const [currentPage, setCurrentPage] = useState(1);
 
   /* =========================================================
      DATA SOURCE (SUPABASE ONLY)
@@ -209,7 +229,7 @@ export default function Jejaring() {
   }, [jejaringList]);
 
   /* =========================================================
-     FILTERED DATA (MAX 10) - tetap
+     FILTERED DATA & PAGINATION
   ========================================================= */
   const filteredData = useMemo(() => {
     return (jejaringList ?? [])
@@ -218,11 +238,29 @@ export default function Jejaring() {
           (filterJenis === "Semua" || item.jenisFasyankes === filterJenis) &&
           (filterKelurahan === "Semua" || item.kelurahan === filterKelurahan) &&
           (filterStatus === "Semua" || item.status === filterStatus)
-      )
-      .slice(0, 10);
+      );
   }, [jejaringList, filterJenis, filterKelurahan, filterStatus]);
 
-  const activeData = filteredData.find((i) => i.id === activeId);
+  const totalPages = Math.max(1, Math.ceil(filteredData.length / FACILITIES_PER_PAGE));
+  const pageStart = (currentPage - 1) * FACILITIES_PER_PAGE;
+  const paginatedData = filteredData.slice(pageStart, pageStart + FACILITIES_PER_PAGE);
+  const activeData = paginatedData.find((i) => i.id === activeId);
+  const visiblePageNumbers = getVisiblePageNumbers(totalPages, currentPage);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+      setActiveId(null);
+      setActiveRow(null);
+    }
+  }, [currentPage, totalPages]);
+
+  const goToPage = (page) => {
+    if (page === currentPage || page < 1 || page > totalPages) return;
+    setCurrentPage(page);
+    setActiveId(null);
+    setActiveRow(null);
+  };
 
   /* =========================================================
      HANDLER: CARD CLICK (LIST)
@@ -246,12 +284,13 @@ export default function Jejaring() {
   ========================================================= */
   const handleKelurahanSelect = (kelurahanName) => {
     setFilterKelurahan(kelurahanName);
+    setCurrentPage(1);
     setActiveId(null);
     setActiveRow(null);
   };
 
   const handleMarkerClick = (id) => {
-    const index = filteredData.findIndex((item) => item.id === id);
+    const index = paginatedData.findIndex((item) => item.id === id);
     if (index === -1) return;
 
     setActiveId(id);
@@ -335,18 +374,21 @@ export default function Jejaring() {
             jenis={filterJenis}
             setJenis={(v) => {
               setFilterJenis(v);
+              setCurrentPage(1);
               setActiveId(null);
               setActiveRow(null);
             }}
             kelurahan={filterKelurahan}
             setKelurahan={(v) => {
               setFilterKelurahan(v);
+              setCurrentPage(1);
               setActiveId(null);
               setActiveRow(null);
             }}
             status={filterStatus}
             setStatus={(v) => {
               setFilterStatus(v);
+              setCurrentPage(1);
               setActiveId(null);
               setActiveRow(null);
             }}
@@ -357,14 +399,20 @@ export default function Jejaring() {
         </section>
 
         <p className="text-sm text-gray-600">
-          Menampilkan <b>{filteredData.length}</b> fasilitas kesehatan
+          {filteredData.length > 0 ? (
+            <>
+              Menampilkan <b>{pageStart + 1}&ndash;{Math.min(pageStart + FACILITIES_PER_PAGE, filteredData.length)}</b> dari <b>{filteredData.length}</b> fasilitas kesehatan
+            </>
+          ) : (
+            <>Menampilkan <b>0</b> fasilitas kesehatan</>
+          )}
         </p>
 
         {/* ================= LIST JEJARING ================= */}
         <section className="space-y-6 md:space-y-8">
           {/* MOBILE: 1 kolom (Traveloka style), DESKTOP: 2 kolom (existing) */}
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            {filteredData.map((item, index) => (
+            {paginatedData.map((item, index) => (
               <div key={item.id ?? index} className="space-y-4">
                 {/* Mobile card */}
                 <div className="md:hidden">
@@ -403,6 +451,56 @@ export default function Jejaring() {
           {!isLoading && !loadError && filteredData.length === 0 && (
             <p className="text-sm text-gray-500">Data tidak ditemukan.</p>
           )}
+
+          {!isLoading && filteredData.length > FACILITIES_PER_PAGE && (
+            <nav
+              aria-label="Navigasi halaman fasilitas kesehatan"
+              className="flex flex-wrap items-center justify-center gap-2 pt-1 md:justify-end"
+            >
+              <button
+                type="button"
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:border-emerald-600 hover:text-emerald-700 disabled:cursor-not-allowed disabled:border-slate-100 disabled:text-slate-300"
+              >
+                &larr; Sebelumnya
+              </button>
+
+              <div className="flex items-center gap-1" aria-label="Nomor halaman">
+                {visiblePageNumbers.map((page) =>
+                  typeof page === "string" ? (
+                    <span key={page} className="flex h-10 w-6 items-center justify-center text-slate-400" aria-hidden="true">
+                      &hellip;
+                    </span>
+                  ) : (
+                    <button
+                      key={page}
+                      type="button"
+                      onClick={() => goToPage(page)}
+                      aria-current={page === currentPage ? "page" : undefined}
+                      aria-label={`Halaman ${page}`}
+                      className={`inline-flex h-10 min-w-10 items-center justify-center rounded-lg border px-3 text-sm font-semibold transition ${
+                        page === currentPage
+                          ? "border-[#087745] bg-[#087745] text-white"
+                          : "border-slate-200 bg-white text-slate-700 hover:border-emerald-600 hover:text-emerald-700"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  )
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:border-emerald-600 hover:text-emerald-700 disabled:cursor-not-allowed disabled:border-slate-100 disabled:text-slate-300"
+              >
+                Berikutnya &rarr;
+              </button>
+            </nav>
+          )}
         </section>
 
         {/* ================= MAP ================= */}
@@ -412,7 +510,7 @@ export default function Jejaring() {
           </h2>
 
           <JejaringMap
-            data={filteredData}
+            data={paginatedData}
             activeId={activeId}
             activeKelurahan={filterKelurahan}
             onKelurahanSelect={handleKelurahanSelect}
