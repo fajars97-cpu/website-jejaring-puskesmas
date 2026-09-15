@@ -228,6 +228,10 @@ export default function Jejaring() {
     return [...new Set((jejaringList ?? []).map((i) => i.status).filter(Boolean))];
   }, [jejaringList]);
 
+  const activeFacilities = useMemo(() => {
+    return (jejaringList ?? []).filter((item) => String(item.status).toLowerCase() === "aktif").length;
+  }, [jejaringList]);
+
   /* =========================================================
      FILTERED DATA & PAGINATION
   ========================================================= */
@@ -258,6 +262,15 @@ export default function Jejaring() {
   const goToPage = (page) => {
     if (page === currentPage || page < 1 || page > totalPages) return;
     setCurrentPage(page);
+    setActiveId(null);
+    setActiveRow(null);
+  };
+
+  const resetFilters = () => {
+    setFilterJenis("Semua");
+    setFilterKelurahan("Semua");
+    setFilterStatus("Semua");
+    setCurrentPage(1);
     setActiveId(null);
     setActiveRow(null);
   };
@@ -338,15 +351,29 @@ export default function Jejaring() {
       {/* padding mobile dikecilkan biar gak “sumpek” */}
       <div className="w-full space-y-6">
         {/* ================= HEADER ================= */}
-        <header className="portal-page-heading">
-          <p className="portal-eyebrow mb-2">DIREKTORI & PETA JEJARING</p>
-          <h1 className="text-2xl font-bold text-[#087745] md:text-3xl">
-            Data Jejaring Fasilitas Kesehatan
-          </h1>
-          <p className="mt-2 max-w-3xl text-sm text-gray-600 md:text-base">
-            Informasi fasilitas pelayanan kesehatan dalam jejaring
-            Puskesmas Jagakarsa.
-          </p>
+        <header className="overflow-hidden rounded-[24px] border border-[#0b5c45] bg-[#07513d] px-6 py-7 text-white shadow-[0_18px_45px_rgba(10,81,61,0.18)] md:px-8 md:py-8">
+          <div className="max-w-3xl">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#d3e7ac]">Direktori & peta jejaring</p>
+            <h1 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">Fasilitas kesehatan Jagakarsa</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-[#d8ebe1] md:text-base">
+              Temukan fasilitas pelayanan kesehatan, lokasi, dan informasi layanan dalam satu direktori.
+            </p>
+          </div>
+
+          <div className="mt-7 grid max-w-2xl grid-cols-3 divide-x divide-white/15 rounded-2xl border border-white/15 bg-white/8">
+            <div className="px-4 py-3">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#b9d9c9]">Fasilitas</p>
+              <p className="mt-1 text-xl font-bold">{isLoading ? "–" : jejaringList.length}</p>
+            </div>
+            <div className="px-4 py-3">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#b9d9c9]">Aktif</p>
+              <p className="mt-1 text-xl font-bold">{isLoading ? "–" : activeFacilities}</p>
+            </div>
+            <div className="px-4 py-3">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#b9d9c9]">Kelurahan</p>
+              <p className="mt-1 text-xl font-bold">{isLoading ? "–" : kelurahanOptions.length}</p>
+            </div>
+          </div>
 
           {isLoading && (
             <p className="mt-3 text-sm text-gray-500">Memuat data dari database…</p>
@@ -369,7 +396,7 @@ export default function Jejaring() {
         </header>
 
         {/* ================= FILTER ================= */}
-        <section className="rounded-2xl border bg-white p-4 shadow-md md:p-6">
+        <section>
           <JejaringFilter
             jenis={filterJenis}
             setJenis={(v) => {
@@ -395,23 +422,27 @@ export default function Jejaring() {
             jenisOptions={jenisOptions}
             kelurahanOptions={kelurahanOptions}
             statusOptions={statusOptions}
+            onReset={resetFilters}
           />
         </section>
 
-        <p className="text-sm text-gray-600">
-          {filteredData.length > 0 ? (
-            <>
-              Menampilkan <b>{pageStart + 1}&ndash;{Math.min(pageStart + FACILITIES_PER_PAGE, filteredData.length)}</b> dari <b>{filteredData.length}</b> fasilitas kesehatan
-            </>
-          ) : (
-            <>Menampilkan <b>0</b> fasilitas kesehatan</>
-          )}
-        </p>
-
         {/* ================= LIST JEJARING ================= */}
-        <section className="space-y-6 md:space-y-8">
+        <section className="space-y-5 md:space-y-6">
+          <div className="flex flex-col gap-2 border-b border-[#dce8e1] pb-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#4e8067]">Hasil pencarian</p>
+              <h2 className="mt-1 text-xl font-bold text-[#153f30]">Daftar fasilitas</h2>
+            </div>
+            <p className="text-sm text-slate-600">
+              {filteredData.length > 0 ? (
+                <>Menampilkan <b className="text-[#176548]">{pageStart + 1}&ndash;{Math.min(pageStart + FACILITIES_PER_PAGE, filteredData.length)}</b> dari <b className="text-[#176548]">{filteredData.length}</b> fasilitas</>
+              ) : (
+                <>Menampilkan <b>0</b> fasilitas</>
+              )}
+            </p>
+          </div>
           {/* MOBILE: 1 kolom (Traveloka style), DESKTOP: 2 kolom (existing) */}
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             {paginatedData.map((item, index) => (
               <div key={item.id ?? index} className="space-y-4">
                 {/* Mobile card */}
@@ -449,19 +480,21 @@ export default function Jejaring() {
           </div>
 
           {!isLoading && !loadError && filteredData.length === 0 && (
-            <p className="text-sm text-gray-500">Data tidak ditemukan.</p>
+            <div className="rounded-2xl border border-dashed border-[#bfd5c7] bg-[#f7fbf8] px-6 py-10 text-center text-sm text-slate-600">
+              Data tidak ditemukan. Ubah atau reset filter untuk melihat fasilitas lain.
+            </div>
           )}
 
           {!isLoading && filteredData.length > FACILITIES_PER_PAGE && (
             <nav
               aria-label="Navigasi halaman fasilitas kesehatan"
-              className="flex flex-wrap items-center justify-center gap-2 pt-1 md:justify-end"
+              className="flex flex-wrap items-center justify-center gap-2 rounded-2xl border border-[#dce8e1] bg-[#f8fbf9] p-3 md:justify-end"
             >
               <button
                 type="button"
                 onClick={() => goToPage(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:border-emerald-600 hover:text-emerald-700 disabled:cursor-not-allowed disabled:border-slate-100 disabled:text-slate-300"
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:border-emerald-600 hover:text-emerald-700 disabled:cursor-not-allowed disabled:border-slate-100 disabled:text-slate-300"
               >
                 &larr; Sebelumnya
               </button>
@@ -479,7 +512,7 @@ export default function Jejaring() {
                       onClick={() => goToPage(page)}
                       aria-current={page === currentPage ? "page" : undefined}
                       aria-label={`Halaman ${page}`}
-                      className={`inline-flex h-10 min-w-10 items-center justify-center rounded-lg border px-3 text-sm font-semibold transition ${
+                      className={`inline-flex h-10 min-w-10 items-center justify-center rounded-xl border px-3 text-sm font-semibold transition ${
                         page === currentPage
                           ? "border-[#087745] bg-[#087745] text-white"
                           : "border-slate-200 bg-white text-slate-700 hover:border-emerald-600 hover:text-emerald-700"
@@ -495,7 +528,7 @@ export default function Jejaring() {
                 type="button"
                 onClick={() => goToPage(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:border-emerald-600 hover:text-emerald-700 disabled:cursor-not-allowed disabled:border-slate-100 disabled:text-slate-300"
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:border-emerald-600 hover:text-emerald-700 disabled:cursor-not-allowed disabled:border-slate-100 disabled:text-slate-300"
               >
                 Berikutnya &rarr;
               </button>
@@ -504,10 +537,14 @@ export default function Jejaring() {
         </section>
 
         {/* ================= MAP ================= */}
-        <section className="rounded-2xl border bg-white p-4 shadow-md md:p-6">
-          <h2 className="mb-3 text-lg font-bold text-[#087745] md:text-xl">
-            Peta Jejaring Wilayah Jagakarsa
-          </h2>
+        <section className="overflow-hidden rounded-2xl border border-[#dce8e1] bg-white p-4 shadow-[0_12px_30px_rgba(23,76,55,0.06)] md:p-6">
+          <div className="mb-5 flex items-end justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#4e8067]">Peta interaktif</p>
+              <h2 className="mt-1 text-xl font-bold text-[#153f30]">Peta jejaring wilayah Jagakarsa</h2>
+            </div>
+            <span className="hidden rounded-full bg-[#edf7f1] px-3 py-1.5 text-xs font-bold text-[#176548] sm:inline-flex">{paginatedData.length} titik di halaman ini</span>
+          </div>
 
           <JejaringMap
             data={paginatedData}

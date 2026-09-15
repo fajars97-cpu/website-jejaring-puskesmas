@@ -8,23 +8,37 @@ export default function JejaringFilter({
   statusOptions = [],
   jenisOptions = [],
   kelurahanOptions = [],
+  onReset,
 }) {
-  return (
-    <section className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-      <h3 className="text-sm font-semibold text-gray-900 mb-4">
-        Filter Fasilitas Kesehatan
-      </h3>
+  const isFiltered = jenis !== "Semua" || kelurahan !== "Semua" || status !== "Semua";
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/** Jenis */}
+  return (
+    <section className="overflow-hidden rounded-2xl border border-[#dce8e1] bg-white shadow-[0_14px_34px_rgba(20,70,51,0.08)]">
+      <div className="flex flex-col gap-3 border-b border-[#e6eee9] bg-[#f7faf7] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <label className="block text-sm text-gray-700 mb-1">
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#39745c]">Pencarian direktori</p>
+          <h3 className="mt-1 text-base font-bold text-[#163f31]">Filter fasilitas kesehatan</h3>
+        </div>
+        {isFiltered && (
+          <button
+            type="button"
+            onClick={onReset}
+            className="inline-flex w-fit items-center rounded-lg border border-[#bed4c6] bg-white px-3 py-2 text-xs font-bold text-[#176548] transition hover:border-[#176548] hover:bg-[#edf7f1]"
+          >
+            Reset filter
+          </button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-3">
+        <div>
+          <label className="mb-2 block text-xs font-bold uppercase tracking-[0.08em] text-slate-500">
             Jenis Fasyankes
           </label>
           <select
             value={jenis}
             onChange={(e) => setJenis(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-[#087745]"
+            className="h-11 w-full rounded-xl border border-[#d7e3dc] bg-white px-3 text-sm font-medium text-slate-800 outline-none transition focus:border-[#087745] focus:ring-4 focus:ring-[#087745]/10"
           >
             <option value="Semua">Semua</option>
             {jenisOptions.map((j) => (
@@ -35,13 +49,12 @@ export default function JejaringFilter({
           </select>
         </div>
 
-        {/** Kelurahan */}
         <div>
-          <label className="block text-sm text-gray-700 mb-1">Kelurahan</label>
+          <label className="mb-2 block text-xs font-bold uppercase tracking-[0.08em] text-slate-500">Kelurahan</label>
           <select
             value={kelurahan}
             onChange={(e) => setKelurahan(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-[#087745]"
+            className="h-11 w-full rounded-xl border border-[#d7e3dc] bg-white px-3 text-sm font-medium text-slate-800 outline-none transition focus:border-[#087745] focus:ring-4 focus:ring-[#087745]/10"
           >
             <option value="Semua">Semua</option>
             {kelurahanOptions.map((k) => (
@@ -52,13 +65,12 @@ export default function JejaringFilter({
           </select>
         </div>
 
-        {/** Status */}
         <div>
-          <label className="block text-sm text-gray-700 mb-1">Status</label>
+          <label className="mb-2 block text-xs font-bold uppercase tracking-[0.08em] text-slate-500">Status operasional</label>
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-[#087745]"
+            className="h-11 w-full rounded-xl border border-[#d7e3dc] bg-white px-3 text-sm font-medium text-slate-800 outline-none transition focus:border-[#087745] focus:ring-4 focus:ring-[#087745]/10"
           >
             <option value="Semua">Semua</option>
             {statusOptions.map((s) => (
